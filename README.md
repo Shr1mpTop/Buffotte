@@ -1,10 +1,19 @@
- # Buffotte v0.3.0
+ # Buffotte v0.4.0
 A Website showing stats of CS2 NFT stats &amp; noting your own transaction plan.
 ---
 Buffotte 是一个用于抓取并存储 `buff.163.com`（CS:GO/CS2 饰品市场）商品数据的轻量级爬虫与数据接入工具。项目目标是把网页端的商品快照抓取下来，保存到 MySQL 中，方便后续的数据分析、策略回测和交易记录管理。
 ---
 
 ## 🚀 版本更新日志
+
+### v0.4.0 - 代理池 + 智能速率限制 (2025.09.20)
+- 🔄 **代理池管理**：支持代理轮换、健康检查、自动故障切换 ⭐**重要功能**
+- 🧠 **智能速率限制**：根据429错误自动调整并发数，避免被封禁 ⭐**重要功能**
+- 📊 **实时监控**：提供代理池和速率限制的详细统计信息
+- ⚡ **动态调整**：遇到限制时自动降低并发，成功时逐步恢复
+- 🛡️ **防封策略**：指数退避、延迟机制、错误统计等多重保护
+- 🔧 **灵活配置**：支持独立启用代理池或速率限制功能
+- 📋 **详细文档**：提供完整的配置说明和最佳实践指南
 
 ### v0.3.0 - 价格历史数据支持 (2025.09.20)
 - 📊 **价格历史记录**：新增独立价格历史表 `items_price_history`，记录每次爬取的价格变化 ⭐**重要功能**
@@ -35,20 +44,21 @@ Buffotte 是一个用于抓取并存储 `buff.163.com`（CS:GO/CS2 饰品市场�
 - `crawler/`：主要抓取脚本，`buff_to_mysql_async.py` 为异步并发抓取并写入 MySQL 的主脚本
 - `cookies/`：示例 cookie 存放（请不要提交真实 cookie 到仓库）
 - `requirements.txt`：Python 依赖
-- `config.json`：配置文件，包含数据库连接、线程数、价格历史等配置
+- `config.json`：配置文件，包含数据库连接、线程数、价格历史、代理池等配置
+- `PROXY_RATE_LIMIT_README.md`：代理池和智能速率限制功能详细说明 ⭐**v0.4.0新增**
 - `PRICE_HISTORY_README.md`：价格历史功能详细说明和联查询示例 ⭐**v0.3.0新增**
 - `MULTI_THREAD_README.md`：多线程功能详细说明
 - `CHANGELOG.md`：详细版本更新日志
 
 ## 快速开始
 
-### 🔥 多线程 + 价格历史爬取（v0.3.0 推荐）
+### 🔥 智能速率限制 + 多线程爬取（v0.4.0 推荐）
 
 ```powershell
-# 启用价格历史记录，使用5个线程爬取1000页
-python .\crawler\buff_to_mysql_async.py --max-pages 1000 --threads 5
+# 使用智能速率限制，自动避免429错误
+python .\crawler\buff_to_mysql_async.py --max-pages 500 --threads 3
 
-# 高性能配置：10个线程爬取2000页，记录价格历史
+# 高性能配置：启用代理池 + 智能速率限制
 python .\crawler\buff_to_mysql_async.py --max-pages 2000 --threads 10
 
 # 保守配置：3个线程爬取500页（避免被封IP）

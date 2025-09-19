@@ -1,13 +1,19 @@
 {
-  "max_pages": 20,
+  "max_pages": 100,
   "start_page": 1,
   "concurrency": 6,
-  "threads": 5,
+  "threads": 1,
   "no_db": false,
   "enable_price_history": true,
   "cookie_file": "./cookies/cookies.txt",
   "chrome_path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "proxy_file": null,
+  "enable_proxy_pool": false,
+  "enable_rate_limiting": true, //启用智能速率限制（默认启用）建议线程/速率二选一
+  "initial_concurrency": 6,
+  "min_concurrency": 1,
+  "max_concurrency": 20,
+  "proxy_health_check_interval": 300,
   "db": {
     "host": "localhost",
     "port": 3306,

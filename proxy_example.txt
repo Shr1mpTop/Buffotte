@@ -1,0 +1,11 @@
+# 示例代理文件
+# 每行一个代理，格式: http://ip:port 或 https://ip:port
+# 如果有用户名密码，格式: http://username:password@ip:port
+
+# 示例代理（请替换为真实的代理）
+# http://proxy1.example.com:8080
+# http://user:pass@proxy2.example.com:3128
+# https://proxy3.example.com:8080
+
+# 注意：这些是示例代理，无法使用
+# 请替换为您实际的代理服务器地址
