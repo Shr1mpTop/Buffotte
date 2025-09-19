@@ -4,6 +4,7 @@
   "concurrency": 6,
   "threads": 5,
   "no_db": false,
+  "enable_price_history": true,
   "cookie_file": "./cookies/cookies.txt",
   "chrome_path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "proxy_file": null,

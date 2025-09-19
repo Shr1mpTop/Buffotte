@@ -94,7 +94,7 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3)
             raise
 
 
-async def writer_loop(queue: asyncio.Queue, db_conf, table: str):
+async def writer_loop(queue: asyncio.Queue, db_conf, table: str, enable_price_history: bool = True):
     if pymysql is None:
         print('未安装 pymysql，写入数据库不可用')
         return
@@ -106,6 +106,8 @@ async def writer_loop(queue: asyncio.Queue, db_conf, table: str):
     cur = conn.cursor()
     cur.execute("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" % db_conf['database'])
     conn.select_db(db_conf['database'])
+    
+    # 创建主表
     cur.execute("""
     CREATE TABLE IF NOT EXISTS `%s` (
       `id` BIGINT PRIMARY KEY,
@@ -124,35 +126,89 @@ async def writer_loop(queue: asyncio.Queue, db_conf, table: str):
       `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     """ % table)
+    
+    # 创建价格历史表
+    if enable_price_history:
+        price_history_table = f"{table}_price_history"
+        cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS `{price_history_table}` (
+          `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+          `item_id` BIGINT NOT NULL,
+          `sell_reference_price` DECIMAL(16,6),
+          `sell_min_price` DECIMAL(16,6),
+          `buy_max_price` DECIMAL(16,6),
+          `sell_num` INT,
+          `buy_num` INT,
+          `transacted_num` INT,
+          `recorded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX `idx_item_time` (`item_id`, `recorded_at`),
+          INDEX `idx_recorded_at` (`recorded_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """)
+        print(f'价格历史表 {price_history_table} 已准备就绪')
 
     insert_sql = (
         "INSERT INTO `{table}` (`id`,`appid`,`game`,`name`,`market_hash_name`,`steam_market_url`,`sell_reference_price`,`sell_min_price`,`buy_max_price`,`sell_num`,`buy_num`,`transacted_num`,`goods_info`) "
         "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
         "ON DUPLICATE KEY UPDATE `appid`=VALUES(`appid`), `game`=VALUES(`game`), `name`=VALUES(`name`), `market_hash_name`=VALUES(`market_hash_name`), `steam_market_url`=VALUES(`steam_market_url`), `sell_reference_price`=VALUES(`sell_reference_price`), `sell_min_price`=VALUES(`sell_min_price`), `buy_max_price`=VALUES(`buy_max_price`), `sell_num`=VALUES(`sell_num`), `buy_num`=VALUES(`buy_num`), `transacted_num`=VALUES(`transacted_num`), `goods_info`=VALUES(`goods_info`)"
     ).format(table=table)
+    
+    # 价格历史表插入SQL
+    price_history_sql = None
+    if enable_price_history:
+        price_history_sql = f"""
+        INSERT INTO `{price_history_table}` 
+        (`item_id`, `sell_reference_price`, `sell_min_price`, `buy_max_price`, `sell_num`, `buy_num`, `transacted_num`)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
 
     batch = []
+    price_history_batch = []
     try:
         while True:
             item = await queue.get()
             if item is None:
                 break
             goods_json = json.dumps(item.get('goods_info') or {}, ensure_ascii=False)
-            tup = (int(item.get('id')), int(item.get('appid') or 0), item.get('game'), item.get('name'), item.get('market_hash_name'), item.get('steam_market_url'), float(item.get('sell_reference_price') or 0), float(item.get('sell_min_price') or 0), float(item.get('buy_max_price') or 0), int(item.get('sell_num') or 0), int(item.get('buy_num') or 0), int(item.get('transacted_num') or 0), goods_json)
-            batch.append(tup)
+            item_id = int(item.get('id'))
+            
+            # 主表数据
+            main_tuple = (item_id, int(item.get('appid') or 0), item.get('game'), item.get('name'), item.get('market_hash_name'), item.get('steam_market_url'), float(item.get('sell_reference_price') or 0), float(item.get('sell_min_price') or 0), float(item.get('buy_max_price') or 0), int(item.get('sell_num') or 0), int(item.get('buy_num') or 0), int(item.get('transacted_num') or 0), goods_json)
+            batch.append(main_tuple)
+            
+            # 价格历史数据
+            if enable_price_history:
+                price_tuple = (item_id, float(item.get('sell_reference_price') or 0), float(item.get('sell_min_price') or 0), float(item.get('buy_max_price') or 0), int(item.get('sell_num') or 0), int(item.get('buy_num') or 0), int(item.get('transacted_num') or 0))
+                price_history_batch.append(price_tuple)
+            
             if len(batch) >= 200:
                 try:
+                    # 写入主表
                     cur.executemany(insert_sql, batch)
+                    
+                    # 写入价格历史表
+                    if enable_price_history and price_history_batch:
+                        cur.executemany(price_history_sql, price_history_batch)
+                    
                     conn.commit()
-                    print(f'writer: 写入 {len(batch)} 条记录')
+                    print(f'writer: 写入 {len(batch)} 条记录' + (f'，{len(price_history_batch)} 条价格历史' if enable_price_history else ''))
                 except Exception as e:
                     print('writer 写入错误', e)
                     conn.rollback()
                 batch = []
+                price_history_batch = []
+                
+        # 处理剩余数据
         if batch:
-            cur.executemany(insert_sql, batch)
-            conn.commit()
-            print(f'writer: 写入剩余 {len(batch)} 条记录')
+            try:
+                cur.executemany(insert_sql, batch)
+                if enable_price_history and price_history_batch:
+                    cur.executemany(price_history_sql, price_history_batch)
+                conn.commit()
+                print(f'writer: 写入剩余 {len(batch)} 条记录' + (f'，{len(price_history_batch)} 条价格历史' if enable_price_history else ''))
+            except Exception as e:
+                print('writer 写入剩余数据错误', e)
+                conn.rollback()
     finally:
         cur.close()
         conn.close()
@@ -272,8 +328,8 @@ async def load_config_json(config_path: str = './config.json') -> Dict[str, Any]
 
 async def main_async():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-pages', type=int, default=2000)
-    parser.add_argument('--threads', type=int, default=5, help='爬虫线程数，每个线程负责一部分页面')
+    parser.add_argument('--max-pages', type=int, help='总共要爬取的页面数')
+    parser.add_argument('--threads', type=int, help='爬虫线程数，每个线程负责一部分页面')
     parser.add_argument('--config', type=str, default='./config.json', help='配置文件路径')
     args = parser.parse_args()
 
@@ -323,12 +379,13 @@ async def main_async():
         'no_db': env_bool('BUFF_NO_DB', 'no_db', False),
         'proxy_file': env_str('BUFF_PROXY_FILE', 'proxy_file', None),
         'max_pages': env_int('BUFF_MAX_PAGES', 'max_pages', 2000),
+        'enable_price_history': env_bool('BUFF_ENABLE_PRICE_HISTORY', 'enable_price_history', True),
     }
 
-    # 从命令行参数覆盖配置（最高优先级）
-    if args.threads:
+    # 从命令行参数覆盖配置（最高优先级，仅当用户明确指定时）
+    if args.threads is not None:
         CONFIG['threads'] = args.threads
-    if args.max_pages:
+    if args.max_pages is not None:
         CONFIG['max_pages'] = args.max_pages
 
     # 从 CONFIG 读取 cookie/proxy
@@ -353,10 +410,10 @@ async def main_async():
     # writer (可选)
     writer_task = None
     if not CONFIG.get('no_db'):
-        writer_task = asyncio.create_task(writer_loop(queue, db_conf, CONFIG.get('table')))
+        writer_task = asyncio.create_task(writer_loop(queue, db_conf, CONFIG.get('table'), CONFIG.get('enable_price_history', True)))
 
     # 计算页面分配
-    max_pages = args.max_pages if args.max_pages is not None else CONFIG.get('max_pages', 2000)
+    max_pages = CONFIG.get('max_pages')
     start_page = CONFIG.get('start_page')
     end_page = start_page + max_pages - 1
     threads_count = CONFIG.get('threads')
@@ -366,6 +423,11 @@ async def main_async():
     remaining_pages = max_pages % threads_count
     
     print(f'开始多线程爬取: {threads_count} 个线程，总共 {max_pages} 页 (页面 {start_page}-{end_page})')
+    print(f'配置来源: config.json (max_pages={json_config.get("max_pages", "未设置")})')
+    if args.max_pages is not None:
+        print(f'命令行覆盖: --max-pages {args.max_pages}')
+    if args.threads is not None:
+        print(f'命令行覆盖: --threads {args.threads}')
     
     # 创建线程池并分配任务
     with ThreadPoolExecutor(max_workers=threads_count) as executor:
@@ -470,7 +532,7 @@ async def main_async_single_thread():
     # writer (可选)
     writer_task = None
     if not CONFIG.get('no_db'):
-        writer_task = asyncio.create_task(writer_loop(queue, db_conf, CONFIG.get('table')))
+        writer_task = asyncio.create_task(writer_loop(queue, db_conf, CONFIG.get('table'), True))  # 单线程版本默认启用价格历史
 
     # HTTP client pool
     limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
