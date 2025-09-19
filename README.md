@@ -1,54 +1,235 @@
- # Buffotte v0.4.0
-A Website showing stats of CS2 NFT stats &amp; noting your own transaction plan.
+# 🎮 Buffotte - CS:GO饰品价格分析系统
+
+**版本：v0.5.0**
+
+一个完整的CS:GO饰品价格数据采集、分析和可视化系统，包含网页爬虫、数据存储和Web界面。
+
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.8+-green.svg)
+![Node.js](https://img.shields.io/badge/node.js-16+-green.svg)
+![Vue.js](https://img.shields.io/badge/vue.js-3+-green.svg)
+
+## ✨ 功能特性
+
+### 🕷️ 数据采集
+- **智能爬虫**：异步多线程爬取Buff饰品数据
+- **代理池支持**：自动管理代理，提高采集稳定性
+- **智能限流**：自适应速率控制，避免被封禁
+- **增量更新**：支持价格历史记录
+
+### 📊 数据分析
+- **实时价格分布**：饼状图展示不同价格区间的饰品分布
+- **统计信息**：总数量、平均价格、最高/最低价格等
+- **响应式设计**：适配桌面和移动设备
+
+### 🏗️ 技术架构
+- **后端**：Node.js + Express + MySQL
+- **前端**：Vue 3 + Vite + ECharts
+- **爬虫**：Python + asyncio + httpx
+- **数据库**：MySQL with 价格历史表
+
+## 🚀 快速开始
+
+### 环境要求
+- Python 3.8+
+- Node.js 16+
+- MySQL 5.7+
+
+### 1. 克隆项目
+```bash
+git clone https://github.com/Shr1mpTop/Buffotte.git
+cd Buffotte
+```
+
+### 2. 配置数据库
+```bash
+# 创建MySQL数据库
+mysql -u root -p
+CREATE DATABASE buffotte CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+```
+
+### 3. 运行爬虫（可选）
+```bash
+# 安装Python依赖
+pip install -r requirements.txt
+
+# 配置cookies（如需要）
+# 编辑 cookies/cookies.txt
+
+# 运行爬虫
+python crawler/buff_to_mysql_async.py --max-pages 100
+```
+
+### 4. 启动后端服务
+```bash
+cd backend
+npm install
+npm start
+```
+后端服务运行在：http://localhost:3001
+
+### 5. 启动前端服务
+```bash
+cd frontend
+npm install
+npm run dev
+```
+前端界面访问：http://localhost:3000
+
+## 📁 项目结构
+
+```
+Buffotte/
+├── 📁 backend/              # Node.js后端
+│   ├── server.js            # Express服务器
+│   ├── package.json         # 后端依赖
+│   └── .env                 # 环境配置
+├── 📁 frontend/             # Vue3前端
+│   ├── src/
+│   │   ├── App.vue          # 主应用组件
+│   │   ├── components/      # Vue组件
+│   │   └── style.css        # 样式文件
+│   ├── package.json         # 前端依赖
+│   └── vite.config.js       # Vite配置
+├── 📁 crawler/              # Python爬虫
+│   └── buff_to_mysql_async.py  # 异步爬虫主程序
+├── 📁 cookies/              # Cookie文件
+├── config.json              # 爬虫配置
+├── requirements.txt         # Python依赖
+├── start-backend.bat        # Windows后端启动脚本
+├── start-frontend.bat       # Windows前端启动脚本
+└── README.md                # 项目说明
+```
+
+## 🛠️ 配置说明
+
+### 数据库配置
+编辑 `backend/.env` 文件：
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_DATABASE=buffotte
+PORT=3001
+```
+
+### 爬虫配置
+编辑 `config.json` 文件：
+```json
+{
+  "max_pages": 100,
+  "threads": 1,
+  "enable_price_history": true,
+  "db": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "123456",
+    "database": "buffotte"
+  }
+}
+```
+
+## 📖 API文档
+
+### GET /api/health
+健康检查接口
+```json
+{
+  "success": true,
+  "message": "Buffotte Backend API 运行正常",
+  "timestamp": "2025-01-20T10:00:00.000Z"
+}
+```
+
+### GET /api/stats
+获取总体统计数据
+```json
+{
+  "success": true,
+  "data": {
+    "totalItems": 12345,
+    "avgPrice": 123.45,
+    "minPrice": 0.03,
+    "maxPrice": 50000.00,
+    "totalSellOrders": 98765,
+    "totalBuyOrders": 54321
+  }
+}
+```
+
+### GET /api/price-distribution
+获取价格分布数据
+```json
+{
+  "success": true,
+  "data": [
+    {"name": "¥0-10", "value": 8520},
+    {"name": "¥10-50", "value": 2840},
+    {"name": "¥50-100", "value": 620},
+    {"name": "¥100-500", "value": 280},
+    {"name": "¥500-1000", "value": 60},
+    {"name": "¥1000+", "value": 25}
+  ]
+}
+```
+
+## 🎯 版本更新日志
+
+### v0.5.0 - Web界面发布 (2025-09-20)
+- 🌐 **全新Web界面**：基于Vue 3 + ECharts的现代化界面
+- 📊 **价格分布可视化**：饼状图展示不同价格区间的饰品分布
+- 📈 **实时统计面板**：显示总饰品数、平均价格、价格范围等关键指标
+- 🎨 **响应式设计**：完美适配桌面和移动设备
+- ⚡ **高性能架构**：Node.js后端 + Vue前端的现代化技术栈
+- � **RESTful API**：提供完整的数据接口，支持第三方集成
+
+### v0.4.0 - 代理池 + 智能速率限制
+- � **代理池管理**：支持代理轮换、健康检查、自动故障切换
+- 🧠 **智能速率限制**：根据429错误自动调整并发数，避免被封禁
+
+### v0.3.0 - 价格历史数据支持
+- 📊 **价格历史记录**：新增独立价格历史表，记录每次爬取的价格变化
+- 🔍 **历史数据分析**：支持价格趋势分析、市场波动监控
+
+### v0.2.0 - 多线程异步爬虫
+- ✨ **多线程支持**：实现多线程 + 异步并发的双重优化
+- 🚀 **性能大幅提升**：5个线程可实现5倍性能提升
+
+## 🎯 未来计划
+
+- [ ] 添加更多图表类型（柱状图、趋势图）
+- [ ] 实现饰品搜索和筛选功能
+- [ ] 添加价格预警功能
+- [ ] 支持多个游戏的饰品数据
+- [ ] 添加用户系统和收藏功能
+- [ ] 移动端APP开发
+
+## 🤝 贡献指南
+
+1. Fork 本仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 创建 Pull Request
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## ⚠️ 免责声明
+
+本项目仅供学习和研究使用。请遵守相关网站的使用条款和法律法规。
+
+## 📞 联系方式
+
+- GitHub: [@Shr1mpTop](https://github.com/Shr1mpTop)
+- 项目主页: [https://github.com/Shr1mpTop/Buffotte](https://github.com/Shr1mpTop/Buffotte)
+
 ---
-Buffotte 是一个用于抓取并存储 `buff.163.com`（CS:GO/CS2 饰品市场）商品数据的轻量级爬虫与数据接入工具。项目目标是把网页端的商品快照抓取下来，保存到 MySQL 中，方便后续的数据分析、策略回测和交易记录管理。
----
 
-## 🚀 版本更新日志
-
-### v0.4.0 - 代理池 + 智能速率限制 (2025.09.20)
-- 🔄 **代理池管理**：支持代理轮换、健康检查、自动故障切换 ⭐**重要功能**
-- 🧠 **智能速率限制**：根据429错误自动调整并发数，避免被封禁 ⭐**重要功能**
-- 📊 **实时监控**：提供代理池和速率限制的详细统计信息
-- ⚡ **动态调整**：遇到限制时自动降低并发，成功时逐步恢复
-- 🛡️ **防封策略**：指数退避、延迟机制、错误统计等多重保护
-- 🔧 **灵活配置**：支持独立启用代理池或速率限制功能
-- 📋 **详细文档**：提供完整的配置说明和最佳实践指南
-
-### v0.3.0 - 价格历史数据支持 (2025.09.20)
-- 📊 **价格历史记录**：新增独立价格历史表 `items_price_history`，记录每次爬取的价格变化 ⭐**重要功能**
-- 🔍 **历史数据分析**：支持价格趋势分析、市场波动监控、投资机会发现
-- 💾 **双表设计**：主表保持最新数据，历史表记录所有价格变化，支持高效联查询
-- ⚙️ **灵活控制**：通过 `enable_price_history` 配置项控制是否启用价格历史功能
-- 📋 **丰富查询**：提供多种联查询示例，支持价格趋势、波动分析、投资策略等场景
-- 🗄️ **数据完整性**：保持原有数据结构完全兼容，渐进式升级
-- 🔧 **配置优先级修复**：修复命令行参数默认值覆盖config.json的问题，现在正确支持配置文件默认值 ⭐**重要修复**
-
-### v0.2.0 - 多线程异步爬虫 (2025.09.20)
-- ✨ **新增多线程支持**：实现多线程 + 异步并发的双重优化
-- 🚀 **性能大幅提升**：5个线程可实现5倍性能提升（5线程×6并发=30个同时请求）
-- 🎯 **智能页面分配**：自动将页面范围平均分配给各个线程
-- 🔒 **线程安全设计**：使用线程安全的数据管理器，避免数据竞争
-- ⚙️ **灵活配置**：新增 `--threads` 参数，支持环境变量配置
-- 📋 **配置文件支持**：支持config.json配置文件，多级配置优先级
-- 🔍 **详细监控**：实时显示每个线程的工作进度和状态
-- 🔄 **向下兼容**：保留原有单线程版本，所有配置保持兼容
-
-### v0.1.0 - 基础功能
-- 基于网站内部 API 批量抓取商品列表数据
-- 支持 cookie（登录态）以获取需要登录才能查看的页面
-- 异步并发抓取 + 单写入线程批量写入 MySQL（避免并发写冲突）
-- 支持将抓取结果写入 MySQL（ON DUPLICATE KEY UPDATE 做到幂等写入）
-
-## 仓库结构
-- `crawler/`：主要抓取脚本，`buff_to_mysql_async.py` 为异步并发抓取并写入 MySQL 的主脚本
-- `cookies/`：示例 cookie 存放（请不要提交真实 cookie 到仓库）
-- `requirements.txt`：Python 依赖
-- `config.json`：配置文件，包含数据库连接、线程数、价格历史、代理池等配置
-- `PROXY_RATE_LIMIT_README.md`：代理池和智能速率限制功能详细说明 ⭐**v0.4.0新增**
-- `PRICE_HISTORY_README.md`：价格历史功能详细说明和联查询示例 ⭐**v0.3.0新增**
-- `MULTI_THREAD_README.md`：多线程功能详细说明
-- `CHANGELOG.md`：详细版本更新日志
+⭐ 如果这个项目对你有帮助，请给它一个星标！
 
 ## 快速开始
 

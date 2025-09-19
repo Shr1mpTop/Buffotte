@@ -1,5 +1,28 @@
-# cookies
+# 依赖目录
+node_modules/
+__pycache__/
+# 日志文件
+*.log
+logs/
+# 环境变量文件
+.env
+# 编辑器和IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 cookies.txt
-# envs
-.idea
-.vscode
+# 缓存
+.cache/
+.parcel-cache/
+.npm/
+.yarn/
+
+# Vite缓存
+.vite/
+# 备份文件
+*.bak
+*.backup
+
