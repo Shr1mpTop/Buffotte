@@ -1,4 +1,17 @@
-# Changelog
+# ChangeLog
+## [0.3.0] - 2025-09-20
+
+### 📊 Added - 价格历史数据支持
+- **价格历史表**: 新增独立的 `items_price_history` 表记录所有价格变化
+- **双表设计**: 主表保持最新数据，历史表记录完整价格变化轨迹
+- **高效索引**: 为 item_id + recorded_at 组合添加索引，优化查询性能
+- **配置控制**: 新增 `enable_price_history` 配置项控制是否启用价格历史
+- **环境变量**: `BUFF_ENABLE_PRICE_HISTORY` 环境变量支持
+
+### 🔧 Fixed - 配置系统重要修复
+- **配置优先级修复**: 修复命令行参数默认值覆盖config.json的重要问题 ⭐**重要修复**
+- **智能参数处理**: 现在只有用户明确指定的命令行参数才会覆盖配置文件
+- **配置来源显示**: 运行时显示配置来源和参数覆盖情况，便于调试和验证
 
 All notable changes to this project will be documented in this file.
 

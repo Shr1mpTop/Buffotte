@@ -109,18 +109,15 @@ python .\crawler\buff_to_mysql_async.py --max-pages 500 --threads 3
    CREATE DATABASE IF NOT EXISTS buffotte CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
    ```
 
-   - 创建数据库（示例）
-   ```sql
-   CREATE DATABASE IF NOT EXISTS buffotte CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-   ```
-
    **配置优先级**：命令行参数 > 环境变量 > config.json > 默认值
 
    - 本项目支持多种配置方式，优先级从高到低：
-     1. 命令行参数（如 `--threads 8`）
-     2. 环境变量（如 `BUFF_THREADS=8`）
-     3. config.json 文件配置
-     4. 程序默认值
+     1. **命令行参数**（如 `--threads 8 --max-pages 1000`）最高优先级
+     2. **环境变量**（如 `BUFF_THREADS=8`）
+     3. **config.json 文件配置**（如 `"threads": 5`）
+     4. **程序默认值**（如 threads=5, max_pages=2000）
+
+   ⭐ **重要更新**：现在不指定命令行参数时，会正确使用config.json中的默认值，而不是程序硬编码的默认值。
 
    **环境变量列表**：
 
@@ -165,17 +162,20 @@ python .\crawler\buff_to_mysql_async.py --max-pages 500 --threads 3
 
    **多线程版本（推荐）：**
    ```powershell
-   # 使用config.json默认配置
+   # 使用config.json默认配置（200页，5线程）
+   python .\crawler\buff_to_mysql_async.py
+   
+   # 只覆盖页面数，线程数使用config.json默认值
    python .\crawler\buff_to_mysql_async.py --max-pages 1000
+   
+   # 只覆盖线程数，页面数使用config.json默认值
+   python .\crawler\buff_to_mysql_async.py --threads 3
    
    # 指定配置文件和覆盖参数
    python .\crawler\buff_to_mysql_async.py --config .\config.json --max-pages 1000 --threads 5
    
    # 高性能配置：10个线程爬取2000页
    python .\crawler\buff_to_mysql_async.py --max-pages 2000 --threads 10
-   
-   # 仅测试：4个线程爬取20页
-   python .\crawler\buff_to_mysql_async.py --max-pages 20 --threads 4
    ```
    
    **单线程版本（兼容）：**
