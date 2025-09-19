@@ -350,7 +350,6 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3,
             # 某些情况下 API 可能返回 "items": null，确保返回空列表而不是 None
             items = j.get('data', {}).get('items')
             result = items or []
-            print(f'[线程-{thread_id}] 获取第 {page} 页数据成功，包含 {len(result)} 件物品 (耗时: {response_time:.2f}s)')
             return result
             
         except httpx.HTTPStatusError as e:

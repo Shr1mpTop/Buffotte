@@ -9,7 +9,7 @@
   "chrome_path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "proxy_file": null,
   "enable_proxy_pool": false,
-  "enable_rate_limiting": true, //启用智能速率限制（默认启用）建议线程/速率二选一
+  "enable_rate_limiting": true,
   "initial_concurrency": 6,
   "min_concurrency": 1,
   "max_concurrency": 20,
