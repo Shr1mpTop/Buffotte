@@ -22,14 +22,15 @@ async function refreshItemFromCrawler(itemId, itemName) {
     // 添加配置文件路径
     args.push('--config', path.join(projectRoot, 'config.json'));
     
-    console.log(`执行爬虫命令: python ${crawlerPath} ${args.join(' ')}`);
+    console.log(`执行爬虫命令: conda run -n buffotte python ${crawlerPath} ${args.join(' ')}`);
     console.log(`工作目录: ${projectRoot}`);
     
-    const crawlerProcess = spawn('python', [crawlerPath, ...args], {
+    const crawlerProcess = spawn('conda', ['run', '-n', 'buffotte', 'python', crawlerPath, ...args], {
       cwd: projectRoot,
       env: {
         ...process.env,
-        PYTHONPATH: projectRoot
+        PYTHONPATH: projectRoot,
+        PYTHONIOENCODING: 'utf-8'
       }
     });
     
@@ -37,13 +38,13 @@ async function refreshItemFromCrawler(itemId, itemName) {
     let errorOutput = '';
     
     crawlerProcess.stdout.on('data', (data) => {
-      const text = data.toString();
+      const text = data.toString('utf8');
       output += text;
       console.log('爬虫输出:', text.trim());
     });
     
     crawlerProcess.stderr.on('data', (data) => {
-      const text = data.toString();
+      const text = data.toString('utf8');
       errorOutput += text;
       console.error('爬虫错误:', text.trim());
     });

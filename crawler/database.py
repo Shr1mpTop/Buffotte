@@ -78,7 +78,20 @@ async def writer_loop(queue: asyncio.Queue, db_conf: Dict[str, Any], table: str,
     insert_sql = (
         "INSERT INTO `{table}` (`id`,`appid`,`game`,`name`,`market_hash_name`,`steam_market_url`,`sell_reference_price`,`sell_min_price`,`buy_max_price`,`sell_num`,`buy_num`,`transacted_num`,`goods_info`) "
         "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
-        "ON DUPLICATE KEY UPDATE `appid`=VALUES(`appid`), `game`=VALUES(`game`), `name`=VALUES(`name`), `market_hash_name`=VALUES(`market_hash_name`), `steam_market_url`=VALUES(`steam_market_url`), `sell_reference_price`=VALUES(`sell_reference_price`), `sell_min_price`=VALUES(`sell_min_price`), `buy_max_price`=VALUES(`buy_max_price`), `sell_num`=VALUES(`sell_num`), `buy_num`=VALUES(`buy_num`), `transacted_num`=VALUES(`transacted_num`), `goods_info`=VALUES(`goods_info`)"
+        "ON DUPLICATE KEY UPDATE "
+        "`appid`=VALUES(`appid`), "
+        "`game`=VALUES(`game`), "
+        "`name`=VALUES(`name`), "
+        "`market_hash_name`=VALUES(`market_hash_name`), "
+        "`steam_market_url`=VALUES(`steam_market_url`), "
+        "`sell_reference_price`=VALUES(`sell_reference_price`), "
+        "`sell_min_price`=VALUES(`sell_min_price`), "
+        "`buy_max_price`=VALUES(`buy_max_price`), "
+        "`sell_num`=VALUES(`sell_num`), "
+        "`buy_num`=VALUES(`buy_num`), "
+        "`transacted_num`=VALUES(`transacted_num`), "
+        "`goods_info`=VALUES(`goods_info`), "
+        "`updated_at`=NOW()"
     ).format(table=table)
     
     # 价格历史表插入SQL

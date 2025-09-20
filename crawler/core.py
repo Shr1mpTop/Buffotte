@@ -12,6 +12,7 @@ import httpx
 
 # API配置
 API_URL = 'https://buff.163.com/api/market/goods'
+ITEM_DETAIL_URL = 'https://buff.163.com/api/market/goods/info'
 HEADERS = {
     'Accept': 'application/json, text/javascript, */*; q=0.01',
     'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
@@ -125,20 +126,65 @@ async def search_item_by_name(item_name: str, cookies: dict) -> Optional[str]:
         return None
 
 
+async def fetch_item_by_id(item_id: str, cookies: dict = None) -> Optional[Dict[str, Any]]:
+    """直接通过物品ID获取详细信息"""
+    try:
+        async with httpx.AsyncClient(headers=HEADERS, cookies=cookies or {}, timeout=30.0) as client:
+            params = {
+                'goods_id': item_id,
+                'game': 'csgo'
+            }
+            
+            print(f'直接获取物品详情: ID={item_id}')
+            response = await client.get(ITEM_DETAIL_URL, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get('code') != 'OK':
+                print(f'获取物品详情失败: {data.get("code")} {data.get("msg")}')
+                return None
+            
+            item_data = data.get('data')
+            if item_data:
+                print(f'成功获取物品详情: {item_data.get("name", "未知")} (ID: {item_id})')
+                return item_data
+            else:
+                print(f'物品不存在: ID={item_id}')
+                return None
+                
+    except Exception as e:
+        print(f'获取物品详情异常: {e}')
+        return None
+
+
 async def fetch_single_item_by_search(item_id: str = None, item_name: str = None, cookies: dict = None) -> Optional[Dict[str, Any]]:
-    """通过搜索API获取单个饰品的详细信息"""
+    """通过ID或搜索API获取单个饰品的详细信息"""
+    
+    # 优先通过ID直接获取
+    if item_id:
+        print(f'尝试通过ID直接获取: {item_id}')
+        item_data = await fetch_item_by_id(item_id, cookies)
+        if item_data:
+            return item_data
+        else:
+            print(f'通过ID获取失败，尝试搜索方式: {item_name or "未提供名称"}')
+    
+    # 如果ID获取失败或未提供ID，使用搜索方式
+    if not item_name:
+        print('错误: 没有可用的搜索条件')
+        return None
+        
     try:
         async with httpx.AsyncClient(headers=HEADERS, cookies=cookies or {}, timeout=30.0) as client:
             params = {
                 'game': 'csgo',
                 'page_num': '1',
-                'use_suggestion': '0'
+                'use_suggestion': '0',
+                'page_size': 20,
+                'search': item_name
             }
             
-            # 如果有名称，添加搜索参数
-            if item_name:
-                params['search'] = item_name
-            
+            print(f'搜索参数: {params}')
             response = await client.get(API_URL, params=params)
             response.raise_for_status()
             data = response.json()
@@ -148,30 +194,51 @@ async def fetch_single_item_by_search(item_id: str = None, item_name: str = None
                 return None
             
             items = data.get('data', {}).get('items', [])
+            print(f'搜索到 {len(items)} 个结果')
             
             # 查找目标饰品
             target_item = None
+            
+            # 如果指定了ID，优先找到匹配ID的物品
             if item_id:
-                # 按ID查找
                 for item in items:
                     if str(item.get('id')) == str(item_id):
                         target_item = item
+                        print(f'ID匹配找到: {item.get("name")} (ID: {item.get("id")})')
                         break
-            elif item_name:
-                # 按名称查找
+            
+            # 如果没有通过ID找到，或者没有提供ID，使用名称匹配
+            if not target_item:
+                # 优先进行精确匹配
                 for item in items:
-                    if item.get('name') == item_name or item.get('market_hash_name') == item_name:
+                    if (item.get('name') == item_name or 
+                        item.get('market_hash_name') == item_name):
                         target_item = item
+                        print(f'精确匹配找到: {item.get("name")}')
                         break
-                # 如果没有精确匹配，取第一个
+                
+                # 如果没有精确匹配，进行模糊匹配
+                if not target_item:
+                    search_lower = item_name.lower()
+                    for item in items:
+                        item_name_lower = item.get('name', '').lower()
+                        market_name_lower = item.get('market_hash_name', '').lower()
+                        if (search_lower in item_name_lower or 
+                            search_lower in market_name_lower):
+                            target_item = item
+                            print(f'模糊匹配找到: {item.get("name")}')
+                            break
+                
+                # 如果还没找到，取第一个
                 if not target_item and items:
                     target_item = items[0]
+                    print(f'使用第一个结果: {target_item.get("name")}')
             
             if not target_item:
                 print(f'未找到饰品: ID={item_id}, Name={item_name}')
                 return None
             
-            print(f'找到饰品: {target_item.get("name", "未知")} (ID: {target_item.get("id")})')
+            print(f'最终选择: {target_item.get("name", "未知")} (ID: {target_item.get("id")})')
             return target_item
             
     except Exception as e:

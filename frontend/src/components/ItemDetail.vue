@@ -28,8 +28,10 @@
     </div>
     
     <div class="item-actions">
-      <button @click="refreshItem" :disabled="refreshing" class="refresh-btn">
-        {{ refreshing ? '刷新中...' : '🔄 刷新数据' }}
+      <button @click="refreshItem" :disabled="refreshing" class="refresh-btn" :class="{ 'refreshing': refreshing }">
+        <span v-if="!refreshing" class="refresh-icon">🔄</span>
+        <span v-else class="loading-spinner">⏳</span>
+        {{ refreshing ? '刷新中...' : '刷新数据' }}
       </button>
       <a 
         v-if="item.steam_market_url" 
@@ -39,6 +41,19 @@
       >
         🎮 Steam市场
       </a>
+    </div>
+    
+    <!-- 刷新结果提示 -->
+    <div v-if="refreshMessage" class="refresh-message" :class="refreshMessageType">
+      {{ refreshMessage }}
+    </div>
+    
+    <!-- 价格变化提示 -->
+    <div v-if="priceChange" class="price-change" :class="priceChange.diff > 0 ? 'price-up' : 'price-down'">
+      价格变化: {{ priceChange.diff > 0 ? '+' : '' }}¥{{ Math.abs(priceChange.diff).toFixed(2) }}
+      <div class="price-change-detail">
+        {{ priceChange.before }} → {{ priceChange.after }}
+      </div>
     </div>
   </div>
   
@@ -63,28 +78,59 @@ export default {
   emits: ['item-updated'],
   setup(props, { emit }) {
     const refreshing = ref(false)
+    const refreshMessage = ref('')
+    const refreshMessageType = ref('') // 'success', 'warning', 'error'
+    const priceChange = ref(null)
 
     // 刷新饰品数据
     const refreshItem = async () => {
       if (!props.item || refreshing.value) return
 
       refreshing.value = true
+      refreshMessage.value = ''
+      priceChange.value = null
+      
+      console.log(`开始刷新物品数据: ID=${props.item.id}, Name=${props.item.name}`)
+      
       try {
         const response = await axios.post('/api/refresh-item', {
           id: props.item.id,
           name: props.item.name
         })
         
-        if (response.data.success) {
-          emit('item-updated', response.data.data)
+        const result = response.data
+        
+        if (result.success) {
+          // 更新数据
+          emit('item-updated', result.data)
+          
+          // 显示刷新结果
+          refreshMessage.value = result.message
+          refreshMessageType.value = result.priceChanged ? 'success' : 'warning'
+          
+          // 显示价格变化
+          if (result.priceChange) {
+            priceChange.value = result.priceChange
+          }
+          
+          console.log('刷新成功:', result.message)
         } else {
-          throw new Error(response.data.message || '刷新失败')
+          refreshMessage.value = result.message || '刷新失败'
+          refreshMessageType.value = 'error'
+          console.error('刷新失败:', result)
         }
       } catch (error) {
         console.error('刷新饰品数据失败:', error)
-        alert('刷新失败: ' + error.message)
+        refreshMessage.value = error.response?.data?.message || '网络请求失败'
+        refreshMessageType.value = 'error'
       } finally {
         refreshing.value = false
+        
+        // 3秒后清除消息
+        setTimeout(() => {
+          refreshMessage.value = ''
+          priceChange.value = null
+        }, 5000)
       }
     }
 
@@ -97,6 +143,9 @@ export default {
 
     return {
       refreshing,
+      refreshMessage,
+      refreshMessageType,
+      priceChange,
       refreshItem,
       formatTime
     }
@@ -218,6 +267,61 @@ export default {
 .steam-link:hover {
   background: #2a475e;
   transform: translateY(-1px);
+}
+
+.refresh-message {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.refresh-message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.refresh-message.warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.refresh-message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f1b0b7;
+}
+
+.price-change {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.price-change.increase {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.price-change.decrease {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f1b0b7;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .no-item {
