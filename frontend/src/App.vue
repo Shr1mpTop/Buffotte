@@ -5,6 +5,17 @@
       <p>实时CS:GO饰品价格分布统计</p>
     </header>
 
+    <!-- 搜索栏 -->
+    <div class="search-section">
+      <SearchBox @item-selected="onItemSelected" />
+    </div>
+
+    <!-- 饰品详情 -->
+    <ItemDetail 
+      :item="selectedItem" 
+      @item-updated="onItemUpdated"
+    />
+
     <!-- 加载状态 -->
     <div v-if="loading" class="loading">
       <p>正在加载数据...</p>
@@ -53,17 +64,22 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import PriceChart from './components/PriceChart.vue'
+import SearchBox from './components/SearchBox.vue'
+import ItemDetail from './components/ItemDetail.vue'
 
 export default {
   name: 'App',
   components: {
-    PriceChart
+    PriceChart,
+    SearchBox,
+    ItemDetail
   },
   setup() {
     const loading = ref(true)
     const error = ref(null)
     const stats = ref({})
     const chartData = ref([])
+    const selectedItem = ref(null)
 
     // 获取统计数据
     const fetchStats = async () => {
@@ -113,6 +129,18 @@ export default {
       }
     }
 
+    // 选择饰品
+    const onItemSelected = (item) => {
+      selectedItem.value = item
+    }
+
+    // 饰品数据更新
+    const onItemUpdated = (updatedItem) => {
+      selectedItem.value = updatedItem
+      // 可以选择重新加载统计数据
+      fetchStats()
+    }
+
     onMounted(() => {
       loadData()
     })
@@ -121,7 +149,10 @@ export default {
       loading,
       error,
       stats,
-      chartData
+      chartData,
+      selectedItem,
+      onItemSelected,
+      onItemUpdated
     }
   }
 }

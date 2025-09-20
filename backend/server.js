@@ -41,6 +41,191 @@ async function testConnection() {
 
 // API 路由
 
+// 搜索饰品接口
+app.get('/api/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim().length < 2) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+    
+    const searchTerm = `%${q.trim()}%`;
+    const query = `
+      SELECT 
+        id,
+        name,
+        market_hash_name,
+        sell_min_price,
+        sell_reference_price,
+        steam_market_url
+      FROM items 
+      WHERE name LIKE ? OR market_hash_name LIKE ?
+      ORDER BY sell_reference_price DESC
+      LIMIT 20
+    `;
+    
+    const [rows] = await pool.execute(query, [searchTerm, searchTerm]);
+    
+    res.json({
+      success: true,
+      data: rows
+    });
+  } catch (error) {
+    console.error('搜索饰品失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '搜索失败',
+      error: error.message
+    });
+  }
+});
+
+// 获取单个饰品详情
+app.get('/api/item/:identifier', async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    
+    // 判断是ID还是名称
+    const isId = /^\d+$/.test(identifier);
+    
+    let query, params;
+    if (isId) {
+      query = 'SELECT * FROM items WHERE id = ?';
+      params = [parseInt(identifier)];
+    } else {
+      query = 'SELECT * FROM items WHERE name = ? OR market_hash_name = ?';
+      params = [identifier, identifier];
+    }
+    
+    const [rows] = await pool.execute(query, params);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '未找到该饰品'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: rows[0]
+    });
+  } catch (error) {
+    console.error('获取饰品详情失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取饰品详情失败',
+      error: error.message
+    });
+  }
+});
+
+// 刷新单个饰品数据
+app.post('/api/refresh-item', async (req, res) => {
+  try {
+    const { id, name } = req.body;
+    
+    if (!id && !name) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供饰品ID或名称'
+      });
+    }
+    
+    // 首先尝试通过爬虫更新数据
+    try {
+      await refreshItemFromCrawler(id, name);
+    } catch (crawlerError) {
+      console.warn('爬虫更新失败，使用现有数据:', crawlerError.message);
+    }
+    
+    // 获取更新后的数据
+    let query, params;
+    if (id) {
+      query = 'SELECT * FROM items WHERE id = ?';
+      params = [parseInt(id)];
+    } else {
+      query = 'SELECT * FROM items WHERE name = ? OR market_hash_name = ?';
+      params = [name, name];
+    }
+    
+    const [rows] = await pool.execute(query, params);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '未找到该饰品'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: rows[0],
+      message: '数据已刷新'
+    });
+  } catch (error) {
+    console.error('刷新饰品数据失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '刷新失败',
+      error: error.message
+    });
+  }
+});
+
+// 爬虫刷新函数（简化版本）
+async function refreshItemFromCrawler(itemId, itemName) {
+  const { spawn } = require('child_process');
+  const path = require('path');
+  
+  return new Promise((resolve, reject) => {
+    // 构建爬虫命令
+    const crawlerPath = path.join(__dirname, '../crawler/buffcrawl.py');
+    const args = ['--single-item'];
+    
+    if (itemId) {
+      args.push('--item-id', itemId.toString());
+    } else if (itemName) {
+      args.push('--item-name', itemName);
+    }
+    
+    const crawlerProcess = spawn('python', [crawlerPath, ...args], {
+      cwd: path.dirname(crawlerPath)
+    });
+    
+    let output = '';
+    let errorOutput = '';
+    
+    crawlerProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    crawlerProcess.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+    
+    crawlerProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log('爬虫更新成功:', output);
+        resolve(output);
+      } else {
+        console.error('爬虫更新失败:', errorOutput);
+        reject(new Error(`爬虫进程退出码: ${code}, 错误: ${errorOutput}`));
+      }
+    });
+    
+    // 设置超时
+    setTimeout(() => {
+      crawlerProcess.kill();
+      reject(new Error('爬虫更新超时'));
+    }, 30000); // 30秒超时
+  });
+}
+
 // 获取饰品价格分布数据
 app.get('/api/price-distribution', async (req, res) => {
   try {

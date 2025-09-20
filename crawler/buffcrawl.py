@@ -361,12 +361,13 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3,
                     await rate_limiter.record_rate_limit()
                 
                 # 429错误时使用指数退避
-                wait_time = 1 + 2**attempt + random.random()
-                print(f'[线程-{thread_id}] 等待 {wait_time:.1f} 秒后重试...')
+                #wait_time = 1 + 2**attempt + random.random()
+                wait_time = 1
+                print(f'线程 {thread_id} 等待 {wait_time:.1f} 秒后重试...')
                 await asyncio.sleep(wait_time)
                 continue
             else:
-                print(f'[线程-{thread_id}] 第 {page} 页HTTP错误: {e.response.status_code}')
+                print(f'[线程 {thread_id}] 第 {page} 页HTTP错误: {e.response.status_code}')
                 if proxy_pool and proxy_url:
                     await proxy_pool.record_error(proxy_url, f"http_{e.response.status_code}")
                 if rate_limiter:
@@ -383,7 +384,7 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3,
                 await rate_limiter.record_error(error_type)
             
             if attempt < max_retries:
-                wait_time = 0.5 + attempt + random.random()
+                wait_time = 0.5
                 await asyncio.sleep(wait_time)
                 continue
             raise
@@ -627,12 +628,196 @@ async def load_config_json(config_path: str = './config.json') -> Dict[str, Any]
     return {}
 
 
+async def update_single_item(item_id: str = None, item_name: str = None, config_path: str = './config.json'):
+    """单个饰品更新函数"""
+    if not item_id and not item_name:
+        print('错误: 必须提供饰品ID或名称')
+        return
+    
+    print(f'开始更新单个饰品: ID={item_id}, Name={item_name}')
+    
+    # 加载配置
+    json_config = await load_config_json(config_path)
+    
+    def env_str(name, json_key=None, default=None):
+        v = os.environ.get(name)
+        if v is not None:
+            return v
+        elif json_key and json_key in json_config:
+            return json_config[json_key]
+        else:
+            return default
+    
+    def env_int(name, json_key=None, default=0):
+        v = os.environ.get(name)
+        try:
+            if v is not None:
+                return int(v)
+            elif json_key and json_key in json_config:
+                return int(json_config[json_key])
+            else:
+                return int(default)
+        except Exception:
+            return int(default)
+    
+    def env_bool(name, json_key=None, default=False):
+        v = os.environ.get(name)
+        if v is None:
+            return json_config.get(json_key, default) if json_key else default
+        return str(v).lower() in ('1', 'true', 'yes', 'on')
+    
+    CONFIG = {
+        'host': env_str('BUFF_DB_HOST', None, json_config.get('db', {}).get('host', 'localhost')),
+        'port': env_int('BUFF_DB_PORT', None, json_config.get('db', {}).get('port', 3306)),
+        'user': env_str('BUFF_DB_USER', None, json_config.get('db', {}).get('user', 'root')),
+        'password': env_str('BUFF_DB_PASSWORD', None, json_config.get('db', {}).get('password', '123456')),
+        'database': env_str('BUFF_DB_DATABASE', None, json_config.get('db', {}).get('database', 'buffotte')),
+        'table': env_str('BUFF_DB_TABLE', None, json_config.get('db', {}).get('table', 'items')),
+        'cookie_file': env_str('BUFF_COOKIE_FILE', 'cookie_file', './cookies/cookies.txt'),
+        'enable_price_history': env_bool('BUFF_ENABLE_PRICE_HISTORY', 'enable_price_history', True),
+    }
+    
+    # 加载cookies
+    cookies = {}
+    if CONFIG.get('cookie_file'):
+        try:
+            cookies = await load_cookie_file(CONFIG.get('cookie_file'))
+        except Exception as e:
+            print(f'加载cookie文件失败: {e}')
+    
+    # 数据库配置
+    db_conf = {
+        'host': CONFIG.get('host'),
+        'port': CONFIG.get('port'),
+        'user': CONFIG.get('user'),
+        'password': CONFIG.get('password'),
+        'database': CONFIG.get('database')
+    }
+    
+    # 如果提供了饰品名称，先搜索获取ID
+    target_item_id = item_id
+    if item_name and not item_id:
+        target_item_id = await search_item_by_name(item_name, cookies)
+        if not target_item_id:
+            print(f'未找到饰品: {item_name}')
+            return
+    
+    # 创建异步队列用于数据库写入
+    queue = asyncio.Queue(maxsize=100)
+    
+    # 启动数据库写入任务
+    writer_task = asyncio.create_task(
+        writer_loop(queue, db_conf, CONFIG.get('table'), CONFIG.get('enable_price_history', True))
+    )
+    
+    try:
+        # 获取饰品详细信息
+        item_data = await fetch_single_item(target_item_id, cookies)
+        if item_data:
+            await queue.put(item_data)
+            print(f'成功获取饰品数据: {item_data.get("name", "未知")}')
+        else:
+            print(f'获取饰品数据失败: ID={target_item_id}')
+    except Exception as e:
+        print(f'更新饰品失败: {e}')
+    finally:
+        # 发送结束信号
+        await queue.put(None)
+        await writer_task
+        print('单个饰品更新完成')
+
+
+async def search_item_by_name(item_name: str, cookies: dict) -> Optional[str]:
+    """通过名称搜索饰品ID"""
+    try:
+        async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, timeout=30.0) as client:
+            # 使用搜索API
+            params = {
+                'game': 'csgo',
+                'page_num': '1',
+                'search': item_name,
+                'use_suggestion': '0'
+            }
+            
+            response = await client.get(API_URL, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get('code') != 'OK':
+                print(f'搜索API返回错误: {data.get("code")} {data.get("msg")}')
+                return None
+            
+            items = data.get('data', {}).get('items', [])
+            if not items:
+                return None
+            
+            # 查找精确匹配的饰品
+            for item in items:
+                if item.get('name') == item_name or item.get('market_hash_name') == item_name:
+                    return str(item.get('id'))
+            
+            # 如果没有精确匹配，返回第一个结果
+            return str(items[0].get('id'))
+            
+    except Exception as e:
+        print(f'搜索饰品失败: {e}')
+        return None
+
+
+async def fetch_single_item(item_id: str, cookies: dict) -> Optional[Dict[str, Any]]:
+    """获取单个饰品的详细信息"""
+    try:
+        async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, timeout=30.0) as client:
+            # 首先通过商品列表API获取基本信息
+            params = {
+                'game': 'csgo',
+                'page_num': '1',
+                'use_suggestion': '0'
+            }
+            
+            response = await client.get(API_URL, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get('code') != 'OK':
+                print(f'API返回错误: {data.get("code")} {data.get("msg")}')
+                return None
+            
+            items = data.get('data', {}).get('items', [])
+            
+            # 查找目标饰品
+            target_item = None
+            for item in items:
+                if str(item.get('id')) == str(item_id):
+                    target_item = item
+                    break
+            
+            # 如果在第一页没找到，可能需要搜索更多页面
+            if not target_item:
+                print(f'在当前页面未找到饰品ID: {item_id}')
+                return None
+            
+            return target_item
+            
+    except Exception as e:
+        print(f'获取饰品详情失败: {e}')
+        return None
+
+
 async def main_async():
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-pages', type=int, help='总共要爬取的页面数')
     parser.add_argument('--threads', type=int, help='爬虫线程数，每个线程负责一部分页面')
     parser.add_argument('--config', type=str, default='./config.json', help='配置文件路径')
+    parser.add_argument('--single-item', action='store_true', help='单个饰品更新模式')
+    parser.add_argument('--item-id', type=str, help='要更新的饰品ID')
+    parser.add_argument('--item-name', type=str, help='要更新的饰品名称')
     args = parser.parse_args()
+
+    # 如果是单个饰品更新模式
+    if args.single_item:
+        await update_single_item(args.item_id, args.item_name, args.config)
+        return
 
     # 首先加载config.json配置
     json_config = await load_config_json(args.config)

@@ -1,6 +1,6 @@
 {
   "name": "buffotte-backend",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Buffotte 饰品价格分析后端",
   "main": "server.js",
   "scripts": {

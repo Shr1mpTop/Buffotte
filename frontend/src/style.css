@@ -34,6 +34,12 @@ body {
   opacity: 0.9;
 }
 
+.search-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
 .dashboard {
   display: grid;
   grid-template-columns: 1fr 2fr;
