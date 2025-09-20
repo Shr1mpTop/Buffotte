@@ -36,6 +36,7 @@
 <script>
 import { ref, watch } from 'vue'
 import axios from 'axios'
+import '../css/SearchBox.css'
 
 export default {
   name: 'SearchBox',
@@ -113,104 +114,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.search-container {
-  position: relative;
-  width: 100%;
-  max-width: 400px;
-}
-
-.search-box {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-input {
-  width: 100%;
-  padding: 12px 45px 12px 15px;
-  border: 2px solid #e1e5e9;
-  border-radius: 25px;
-  font-size: 16px;
-  outline: none;
-  transition: all 0.3s ease;
-  background: white;
-}
-
-.search-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.search-icon {
-  position: absolute;
-  right: 15px;
-  color: #666;
-  pointer-events: none;
-}
-
-.search-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #e1e5e9;
-  border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-  max-height: 300px;
-  overflow-y: auto;
-  z-index: 1000;
-  margin-top: 5px;
-}
-
-.search-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 15px;
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background-color 0.2s;
-}
-
-.search-item:hover {
-  background-color: #f8f9fa;
-}
-
-.search-item:last-child {
-  border-bottom: none;
-}
-
-.item-name {
-  font-weight: 500;
-  color: #333;
-  flex: 1;
-  margin-right: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.item-price {
-  font-weight: bold;
-  color: #667eea;
-  font-size: 14px;
-}
-
-.search-loading {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #e1e5e9;
-  border-radius: 10px;
-  padding: 15px;
-  text-align: center;
-  color: #666;
-  margin-top: 5px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-</style>

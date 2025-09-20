@@ -11,6 +11,7 @@
 <script>
 import { ref, computed, watch } from 'vue'
 import VChart from 'vue-echarts'
+import '../css/PriceChart.css'
 
 export default {
   name: 'PriceChart',
@@ -80,10 +81,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.chart-container {
-  width: 100%;
-  height: 400px;
-}
-</style>

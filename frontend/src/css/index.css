@@ -1,0 +1,5 @@
+/* 组件样式统一导入文件 */
+/* 导入所有组件的CSS文件 */
+@import './ItemDetail.css';
+@import './SearchBox.css';
+@import './PriceChart.css';

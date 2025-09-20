@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import './style.css'
+import './css/index.css'
 
 // 引入 ECharts
 import { use } from 'echarts/core'
