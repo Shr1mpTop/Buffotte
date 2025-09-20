@@ -112,6 +112,26 @@ async def writer_loop(queue: asyncio.Queue, db_conf: Dict[str, Any], table: str,
             if item is None:
                 break
             
+            # 检查是否为flush信号
+            if isinstance(item, dict) and item.get('type') == 'flush':
+                if batch:
+                    try:
+                        # 写入主表
+                        cur.executemany(insert_sql, batch)
+                        
+                        # 写入价格历史表
+                        if enable_price_history and price_history_batch:
+                            cur.executemany(price_history_sql, price_history_batch)
+                        
+                        conn.commit()
+                        print(f'writer: flush - 写入 {len(batch)} 条记录' + (f'，{len(price_history_batch)} 条价格历史' if enable_price_history else ''))
+                    except Exception as e:
+                        print('writer flush 写入错误', e)
+                        conn.rollback()
+                    batch = []
+                    price_history_batch = []
+                continue
+            
             goods_json = json.dumps(item.get('goods_info') or {}, ensure_ascii=False)
             item_id = int(item.get('id'))
             

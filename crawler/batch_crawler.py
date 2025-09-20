@@ -6,10 +6,8 @@ import asyncio
 import argparse
 import os
 import sys
-import threading
 import random
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
@@ -25,70 +23,49 @@ except ImportError:
     sys.exit(1)
 
 
-# 线程安全的数据队列管理器
-class ThreadSafeDataManager:
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._data_buffer = []
-        self._db_queue = None
+async def crawl_pages_range(start_page: int, end_page: int, config: dict, 
+                           cookies: dict, data_queue: asyncio.Queue, failed_pages: list):
+    """单线程异步爬取函数，负责指定范围的页面"""
+    print(f'开始爬取页面 {start_page}-{end_page}')
     
-    def set_db_queue(self, queue):
-        self._db_queue = queue
-    
-    async def add_items(self, items):
-        """添加爬取到的数据"""
-        if self._db_queue:
-            for item in items:
-                await self._db_queue.put(item)
-    
-    def add_items_sync(self, items):
-        """线程安全的同步添加方法"""
-        with self._lock:
-            self._data_buffer.extend(items)
-    
-    async def flush_buffer(self):
-        """将缓冲区数据刷新到异步队列"""
-        with self._lock:
-            if self._data_buffer and self._db_queue:
-                for item in self._data_buffer:
-                    await self._db_queue.put(item)
-                count = len(self._data_buffer)
-                self._data_buffer.clear()
-                return count
-        return 0
-
-
-async def crawl_pages_range(thread_id: int, start_page: int, end_page: int, config: dict, 
-                           cookies: dict, data_manager: ThreadSafeDataManager):
-    """单个线程的异步爬取函数，负责指定范围的页面"""
-    print(f'线程 {thread_id}: 开始爬取页面 {start_page}-{end_page}')
-    
-    # 每个线程使用独立的HTTP客户端
+    # 使用独立的HTTP客户端
     limits = httpx.Limits(max_keepalive_connections=10, max_connections=50)
     
     async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, limits=limits, timeout=30.0) as client:
         concurrency = config.get('concurrency', 6)
         sem = asyncio.Semaphore(concurrency)
+        pages_processed = 0
         
         async def worker(page: int):
+            nonlocal pages_processed
             async with sem:
                 try:
                     items = await fetch_page(client, page)
                 except PermissionError:
-                    print(f'线程 {thread_id} - page {page}: Login Required - 跳过')
+                    print(f'page {page}: Login Required - 记录为失败')
+                    failed_pages.append(page)
                     return
                 except Exception as e:
-                    print(f'线程 {thread_id} - page {page}: 错误 {e}')
+                    print(f'page {page}: 错误 {e} - 记录为失败')
+                    failed_pages.append(page)
                     return
                 
                 # 保护性检查：如果 items 为空或为 None，跳过
                 if not items:
-                    print(f'线程 {thread_id} - page {page}: no items, skip')
+                    print(f'page {page}: no items, skip')
                     return
                 
-                # 使用数据管理器添加数据
-                await data_manager.add_items(items)
-                print(f'线程 {thread_id} - page {page}: 获取到 {len(items)} 条记录')
+                # 添加数据到队列
+                for item in items:
+                    await data_queue.put(item)
+                print(f'page {page}: 获取到 {len(items)} 条记录')
+                
+                pages_processed += 1
+                # 每50页写入一次数据库
+                if pages_processed % 50 == 0:
+                    print(f'已处理 {pages_processed} 页，正在写入数据库...')
+                    # 发送flush信号
+                    await data_queue.put({'type': 'flush'})
         
         # 创建所有页面的任务
         tasks = []
@@ -99,29 +76,50 @@ async def crawl_pages_range(thread_id: int, start_page: int, end_page: int, conf
         
         # 等待所有任务完成
         await asyncio.gather(*tasks, return_exceptions=True)
-        print(f'线程 {thread_id}: 完成爬取页面 {start_page}-{end_page}')
+        print(f'完成爬取页面 {start_page}-{end_page}')
 
 
-def run_crawler_thread(thread_id: int, start_page: int, end_page: int, config: dict, 
-                      cookies: dict, data_manager: ThreadSafeDataManager):
-    """在线程中运行异步爬虫的包装函数"""
-    # 为每个线程创建新的事件循环
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, data_queue: asyncio.Queue):
+    """重新爬取失败的页面"""
+    if not failed_pages:
+        print('没有失败的页面需要重试')
+        return
     
-    try:
-        loop.run_until_complete(
-            crawl_pages_range(thread_id, start_page, end_page, config, cookies, data_manager)
-        )
-    finally:
-        loop.close()
+    print(f'开始重试 {len(failed_pages)} 个失败页面: {failed_pages}')
+    
+    limits = httpx.Limits(max_keepalive_connections=10, max_connections=50)
+    
+    async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, limits=limits, timeout=30.0) as client:
+        concurrency = config.get('concurrency', 6)
+        sem = asyncio.Semaphore(concurrency)
+        
+        async def retry_worker(page: int):
+            async with sem:
+                try:
+                    items = await fetch_page(client, page)
+                except Exception as e:
+                    print(f'重试 page {page}: 仍然失败 {e}')
+                    return
+                
+                if not items:
+                    print(f'重试 page {page}: no items')
+                    return
+                
+                # 添加数据到队列
+                for item in items:
+                    await data_queue.put(item)
+                print(f'重试 page {page}: 成功获取到 {len(items)} 条记录')
+        
+        tasks = [asyncio.create_task(retry_worker(page)) for page in failed_pages]
+        await asyncio.gather(*tasks, return_exceptions=True)
+    
+    print('失败页面重试完成')
 
 
 async def main():
     """批量爬虫主函数"""
     parser = argparse.ArgumentParser(description='Buffotte 批量爬虫')
     parser.add_argument('--max-pages', type=int, help='总共要爬取的页面数')
-    parser.add_argument('--threads', type=int, help='爬虫线程数，每个线程负责一部分页面')
     parser.add_argument('--config', type=str, default='./config.json', help='配置文件路径')
     args = parser.parse_args()
 
@@ -170,7 +168,6 @@ async def main():
         'table': env_str('BUFF_DB_TABLE', None, json_config.get('db', {}).get('table', 'items')),
         'start_page': env_int('BUFF_START_PAGE', 'start_page', 1),
         'concurrency': env_int('BUFF_CONCURRENCY', 'concurrency', 6),
-        'threads': env_int('BUFF_THREADS', 'threads', 5),
         'cookie_file': env_str('BUFF_COOKIE_FILE', 'cookie_file', os.path.join(project_root, 'cookies', 'cookies.txt')),
         'no_db': env_bool('BUFF_NO_DB', 'no_db', False),
         'max_pages': env_int('BUFF_MAX_PAGES', 'max_pages', 2000),
@@ -178,8 +175,6 @@ async def main():
     }
 
     # 从命令行参数覆盖配置（最高优先级，仅当用户明确指定时）
-    if args.threads is not None:
-        CONFIG['threads'] = args.threads
     if args.max_pages is not None:
         CONFIG['max_pages'] = args.max_pages
 
@@ -197,68 +192,30 @@ async def main():
 
     db_conf = get_db_config_from_dict(CONFIG)
 
-    # 创建线程安全的数据管理器
-    data_manager = ThreadSafeDataManager()
-    
     # 创建异步队列用于数据库写入
     queue: asyncio.Queue = asyncio.Queue(maxsize=10000)
-    data_manager.set_db_queue(queue)
 
     # writer (可选)
     writer_task = None
     if not CONFIG.get('no_db'):
         writer_task = asyncio.create_task(writer_loop(queue, db_conf, CONFIG.get('table'), CONFIG.get('enable_price_history', True)))
 
-    # 计算页面分配
+    # 计算页面范围
     max_pages = CONFIG.get('max_pages')
     start_page = CONFIG.get('start_page')
     end_page = start_page + max_pages - 1
-    threads_count = CONFIG.get('threads')
     
-    # 将页面平均分配给各个线程
-    pages_per_thread = max_pages // threads_count
-    remaining_pages = max_pages % threads_count
+    failed_pages = []
     
-    print(f'开始多线程爬取: {threads_count} 个线程，总共 {max_pages} 页 (页面 {start_page}-{end_page})')
+    print(f'开始单线程爬取: 总共 {max_pages} 页 (页面 {start_page}-{end_page})')
     
-    # 创建线程池并分配任务
-    with ThreadPoolExecutor(max_workers=threads_count) as executor:
-        futures = []
-        current_start = start_page
-        
-        for thread_id in range(threads_count):
-            # 计算当前线程负责的页面范围
-            current_pages = pages_per_thread + (1 if thread_id < remaining_pages else 0)
-            current_end = current_start + current_pages - 1
-            
-            print(f'线程 {thread_id + 1}: 负责页面 {current_start}-{current_end} (共 {current_pages} 页)')
-            
-            # 提交线程任务
-            future = executor.submit(
-                run_crawler_thread, 
-                thread_id + 1, 
-                current_start, 
-                current_end, 
-                CONFIG, 
-                cookies, 
-                data_manager
-            )
-            futures.append(future)
-            
-            current_start = current_end + 1
-        
-        # 等待所有线程完成
-        completed_threads = 0
-        for future in as_completed(futures):
-            try:
-                future.result()  # 获取结果，如果有异常会抛出
-                completed_threads += 1
-                print(f'已完成 {completed_threads}/{threads_count} 个线程')
-            except Exception as e:
-                print(f'线程执行出错: {e}')
-                completed_threads += 1
-
-    print('所有爬取线程已完成')
+    # 单线程爬取
+    await crawl_pages_range(start_page, end_page, CONFIG, cookies, queue, failed_pages)
+    
+    print('主爬取完成')
+    
+    # 重试失败的页面
+    await retry_failed_pages(failed_pages, CONFIG, cookies, queue)
     
     # 发送结束信号给 writer
     await queue.put(None)
