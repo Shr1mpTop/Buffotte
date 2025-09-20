@@ -1,11 +1,27 @@
 # 🎮 Buffotte - CS:GO饰品价格分析系统
 
-**版本：v0.6.0**
+**版本：v0.6.1**
 
 一个完整的CS:GO饰品价格数据采集、分析和可视化系统，包含网页爬虫、数据存储和Web界面。
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://i## 🎯 版本更新日志
+
+### v0.6.1 - 模块化重构 (2025-01-26)
+- 🔧 **代码重构**：将爬虫和后端代码进行模块化拆分
+- 📦 **爬虫模块化**：
+  - `crawler/core.py` - 核心爬虫功能
+  - `crawler/database.py` - 数据库操作
+  - `crawler/single_item_updater.py` - 单品更新
+  - `crawler/batch_crawler.py` - 批量爬取
+  - `crawler/main.py` - 统一入口
+- 🏗️ **后端模块化**：
+  - `backend/routes/` - 路由模块化
+  - `backend/services/` - 服务层分离
+  - `backend/database/` - 数据库连接管理
+  - `backend/config/` - 配置管理
+- 🐛 **路径修复**：修复搜索功能中的路径解析问题
+- 📚 **部署优化**：添加自动部署脚本和依赖管理
 
 ### v0.6.0 - 智能搜索功能 (2025-09-20)
 - 🔍 **智能搜索**：新增饰品模糊搜索功能，支持实时建议和自动完成
