@@ -23,6 +23,11 @@ router.get('/', async (req, res) => {
         market_hash_name,
         sell_min_price,
         sell_reference_price,
+        buy_max_price,
+        sell_num,
+        buy_num,
+        transacted_num,
+        updated_at,
         steam_market_url
       FROM items 
       WHERE name LIKE ? OR market_hash_name LIKE ?

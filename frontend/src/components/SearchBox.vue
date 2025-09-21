@@ -88,10 +88,23 @@ export default {
     }
 
     // 选择搜索项
-    const selectItem = (item) => {
+    const selectItem = async (item) => {
       searchQuery.value = item.name
       searchResults.value = []
       showDropdown.value = false
+
+      try {
+        // fetch full item details to ensure fields like sell_min_price exist
+        const resp = await axios.get(`/api/item/${encodeURIComponent(item.id)}`)
+        if (resp.data && resp.data.success && resp.data.data) {
+          emit('item-selected', resp.data.data)
+          return
+        }
+      } catch (err) {
+        console.warn('fetch full item failed, fallback to list item', err)
+      }
+
+      // fallback: emit the list item if full fetch failed
       emit('item-selected', item)
     }
 
