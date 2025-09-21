@@ -59,6 +59,13 @@ app.listen(port, async () => {
   const connected = await testConnection();
   if (connected) {
     console.log('系统就绪');
+    // 确保历史表存在
+    try {
+      const { ensurePriceHistoryTable } = require('./database/connection');
+      await ensurePriceHistoryTable('items_price_history');
+    } catch (e) {
+      console.error('ensurePriceHistoryTable failed:', e && e.message);
+    }
   } else {
     console.log('警告: 数据库连接失败，部分功能可能不可用');
   }

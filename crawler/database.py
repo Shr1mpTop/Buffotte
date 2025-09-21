@@ -124,7 +124,7 @@ async def writer_loop(queue: asyncio.Queue, db_conf: Dict[str, Any], table: str,
                             cur.executemany(price_history_sql, price_history_batch)
                         
                         conn.commit()
-                        print(f'writer: flush - 写入 {len(batch)} 条记录' + (f'，{len(price_history_batch)} 条价格历史' if enable_price_history else ''))
+                        print(f'writer: flush - writing {len(batch)} record' + (f', {len(price_history_batch)} price history' if enable_price_history else ''))
                     except Exception as e:
                         print('writer flush 写入错误', e)
                         conn.rollback()
@@ -176,7 +176,7 @@ async def writer_loop(queue: asyncio.Queue, db_conf: Dict[str, Any], table: str,
                         cur.executemany(price_history_sql, price_history_batch)
                     
                     conn.commit()
-                    print(f'writer: 写入 {len(batch)} 条记录' + (f'，{len(price_history_batch)} 条价格历史' if enable_price_history else ''))
+                    print(f'writer: writing {len(batch)} record' + (f', {len(price_history_batch)} price history' if enable_price_history else ''))
                 except Exception as e:
                     print('writer 写入错误', e)
                     conn.rollback()
@@ -190,9 +190,9 @@ async def writer_loop(queue: asyncio.Queue, db_conf: Dict[str, Any], table: str,
                 if enable_price_history and price_history_batch:
                     cur.executemany(price_history_sql, price_history_batch)
                 conn.commit()
-                print(f'writer: 写入剩余 {len(batch)} 条记录' + (f'，{len(price_history_batch)} 条价格历史' if enable_price_history else ''))
+                print(f'writer: writing remaining {len(batch)} record' + (f', {len(price_history_batch)} price history' if enable_price_history else ''))
             except Exception as e:
-                print('writer 写入剩余数据错误', e)
+                print('writer write remaining error', e)
                 conn.rollback()
     finally:
         cur.close()

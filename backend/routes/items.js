@@ -44,6 +44,52 @@ router.get('/:identifier', async (req, res) => {
   }
 });
 
+// 获取饰品价格历史
+router.get('/:identifier/history', async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    const limit = parseInt(req.query.limit) || 500;
+
+    // 判断是否为 ID
+    const isId = /^\d+$/.test(identifier);
+
+    let itemId = null;
+    if (isId) {
+      itemId = parseInt(identifier);
+    } else {
+      // 通过 name 或 market_hash_name 查找 id
+      const [rows] = await pool.execute('SELECT id FROM items WHERE name = ? OR market_hash_name = ? LIMIT 1', [identifier, identifier]);
+      if (rows.length === 0) {
+        return res.status(404).json({ success: false, message: '未找到该饰品' });
+      }
+      itemId = rows[0].id;
+    }
+
+    // 查询历史表
+    try {
+      // 为避免某些 MySQL 驱动/版本在 prepared statement 上对 LIMIT 占位符出现错误，
+      // 我们将 LIMIT 以数字拼接到 SQL（已保证 limit 为整数）。
+      const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 500;
+      const sql = `SELECT sell_min_price, sell_reference_price, buy_max_price, recorded_at FROM items_price_history WHERE item_id = ? ORDER BY recorded_at ASC LIMIT ${safeLimit}`;
+      const [histRows] = await pool.execute(sql, [itemId]);
+
+      res.json({ success: true, data: histRows });
+    } catch (err) {
+      // 如果历史表不存在或其它可恢复的错误，返回空数组而非 500
+      console.error('history query error:', err && err.code, err && err.message, err && err.stack);
+      if (err && (err.code === 'ER_NO_SUCH_TABLE' || (err.message && err.message.includes('doesn\'t exist')))) {
+        // 返回空数据，前端会显示“暂无历史价格数据”占位
+        return res.json({ success: true, data: [] });
+      }
+      // 其它错误仍返回 500
+      throw err;
+    }
+  } catch (error) {
+    console.error('获取价格历史失败:', error);
+    res.status(500).json({ success: false, message: '获取价格历史失败', error: error.message });
+  }
+});
+
 // 刷新单个饰品数据
 router.post('/refresh', async (req, res) => {
   try {

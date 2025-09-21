@@ -7,7 +7,7 @@ import aiofiles
 import json
 import time
 import random
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import httpx
 
 # API配置
@@ -39,8 +39,14 @@ async def load_cookie_file(path: str) -> Dict[str, str]:
     return cookies
 
 
-async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3) -> List[Dict[str, Any]]:
-    """获取单页数据"""
+async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3) -> Tuple[Optional[List[Dict[str, Any]]], Optional[int]]:
+    """获取单页数据。
+
+    返回值为 `(items, status_code)`:
+    - 成功时返回 `(list, None)`（list 可能为空）
+    - 请求失败并伴随 HTTP 状态码时返回 `(None, status_code)`（例如 429）
+    - 其他异常或重试耗尽时返回 `(None, None)` 表示通用失败
+    """
     for attempt in range(1, max_retries + 1):
         try:
             params = {'game': 'csgo', 'page_num': str(page), 'use_suggestion': '0'}
@@ -63,30 +69,37 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3)
             # 某些情况下 API 可能返回 "items": null
             items = j.get('data', {}).get('items')
             result = items or []
-            return result
+            return result, None
             
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                print(f'第 {page} 页遇到429速率限制 (尝试 {attempt}/{max_retries})')
+            status = getattr(e.response, 'status_code', None)
+            if status == 429:
+                # 把 429 信息改为简洁英文显示
+                print(f'page{page}: retrial {attempt}/{max_retries}')
+                # 不在调试台显示等待信息，直接等待
                 wait_time = 1 + 2**attempt + random.random()
-                print(f'等待 {wait_time:.1f} 秒后重试...')
                 await asyncio.sleep(wait_time)
+                # 当内部重试耗尽后，这里会返回 (None, 429)
+                if attempt == max_retries:
+                    return None, 429
                 continue
             else:
-                print(f'第 {page} 页HTTP错误: {e.response.status_code}')
-                raise
+                print(f'第 {page} 页HTTP错误: {status}')
+                # 非429的HTTP错误视为失败，返回 (None, status)
+                return None, status
                 
         except Exception as e:
             print(f'第 {page} 页请求异常: {e} (尝试 {attempt}/{max_retries})')
-            
             if attempt < max_retries:
                 wait_time = 0.5 + attempt + random.random()
                 await asyncio.sleep(wait_time)
                 continue
-            raise
+            # 重试耗尽，返回 (None, None) 表示该页需要在全局重试阶段重试
+            print(f'第 {page} 页请求异常，重试耗尽')
+            return None, None
     
     print(f'第 {page} 页获取失败，已重试 {max_retries} 次')
-    return []
+    return None, None
 
 
 async def search_item_by_name(item_name: str, cookies: dict) -> Optional[str]:

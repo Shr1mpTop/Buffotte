@@ -1,5 +1,5 @@
 {
-  "max_pages": 100,
+  "max_pages": 1273,
   "start_page": 1,
   "concurrency": 6,
   "threads": 1,

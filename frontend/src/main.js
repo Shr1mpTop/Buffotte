@@ -11,17 +11,22 @@ import {
   LegendComponent
 } from 'echarts/components'
 import {
-  PieChart
+  PieChart,
+  LineChart
 } from 'echarts/charts'
 import {
   CanvasRenderer
 } from 'echarts/renderers'
+import { GridComponent, DataZoomComponent } from 'echarts/components'
 
 use([
   TitleComponent,
   TooltipComponent,
   LegendComponent,
   PieChart,
+  LineChart,
+  GridComponent,
+  DataZoomComponent,
   CanvasRenderer
 ])
 

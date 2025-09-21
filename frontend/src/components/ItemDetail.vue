@@ -55,6 +55,19 @@
         {{ priceChange.before }} → {{ priceChange.after }}
       </div>
     </div>
+    <!-- 价格历史图（非等距时间轴） -->
+    <div class="price-history-section" v-if="historySeries && historySeries.length">
+      <h4>历史价格走势</h4>
+      <PriceHistoryChart :series="historySeries" />
+    </div>
+
+    <div class="price-history-loading" v-else-if="historyLoading">
+      加载历史价格中...
+    </div>
+
+    <div class="price-history-empty" v-else>
+      <p>暂无历史价格数据。</p>
+    </div>
   </div>
   
   <div v-else class="no-item">
@@ -64,9 +77,10 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import axios from 'axios'
 import '../css/ItemDetail.css'
+import PriceHistoryChart from './PriceHistoryChart.vue'
 
 export default {
   name: 'ItemDetail',
@@ -77,11 +91,16 @@ export default {
     }
   },
   emits: ['item-updated'],
+  components: {
+    PriceHistoryChart
+  },
   setup(props, { emit }) {
     const refreshing = ref(false)
     const refreshMessage = ref('')
     const refreshMessageType = ref('') // 'success', 'warning', 'error'
     const priceChange = ref(null)
+  const historySeries = ref([])
+  const historyLoading = ref(false)
 
     // 刷新饰品数据
     const refreshItem = async () => {
@@ -135,6 +154,36 @@ export default {
       }
     }
 
+    // 加载价格历史
+    const loadHistory = async () => {
+      if (!props.item) return
+      historyLoading.value = true
+      historySeries.value = []
+      try {
+        const id = props.item.id
+        const resp = await axios.get(`/api/item/${encodeURIComponent(id)}/history`)
+        if (resp.data && resp.data.success && Array.isArray(resp.data.data)) {
+          historySeries.value = resp.data.data.map(r => ({ time: r.recorded_at, price: parseFloat(r.sell_min_price) }))
+        } else {
+          // backend returned no data or unsuccessful
+          historySeries.value = []
+        }
+      } catch (e) {
+        console.error('加载历史价格失败', e)
+        historySeries.value = []
+      } finally {
+        historyLoading.value = false
+      }
+    }
+      
+    // 监听 item 变化，加载历史
+    watch(() => props.item, (v) => {
+      if (v) loadHistory()
+      else {
+        historySeries.value = []
+      }
+    }, { immediate: true })
+
     // 格式化时间
     const formatTime = (timeString) => {
       if (!timeString) return '未知'
@@ -149,6 +198,7 @@ export default {
       priceChange,
       refreshItem,
       formatTime
+      , historySeries, historyLoading, loadHistory
     }
   }
 }

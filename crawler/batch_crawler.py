@@ -23,10 +23,28 @@ except ImportError:
     sys.exit(1)
 
 
+class FlushManager:
+    def __init__(self, queue: asyncio.Queue, threshold: int = 200):
+        self.queue = queue
+        self.threshold = int(threshold or 200)
+        self._count = 0
+        self._lock = asyncio.Lock()
+
+    async def push_items(self, items):
+        # 将 items 放入队列，并根据阈值触发 flush 信号
+        async with self._lock:
+            for item in items:
+                await self.queue.put(item)
+            self._count += len(items)
+            if self._count >= self.threshold:
+                await self.queue.put({'type': 'flush'})
+                self._count = 0
+
+
 async def crawl_pages_range(start_page: int, end_page: int, config: dict, 
-                           cookies: dict, data_queue: asyncio.Queue, failed_pages: list):
+                           cookies: dict, data_queue: asyncio.Queue, failed_pages: list, flush_manager: FlushManager):
     """单线程异步爬取函数，负责指定范围的页面"""
-    print(f'开始爬取页面 {start_page}-{end_page}')
+    print(f'start crawling pages {start_page}-{end_page}')
     
     # 使用独立的HTTP客户端
     limits = httpx.Limits(max_keepalive_connections=10, max_connections=50)
@@ -40,7 +58,8 @@ async def crawl_pages_range(start_page: int, end_page: int, config: dict,
             nonlocal pages_processed
             async with sem:
                 try:
-                    items = await fetch_page(client, page)
+                    # 全局首次爬取阶段：只尝试一次（遇到429/其他错误时不反复重试）
+                    items, status = await fetch_page(client, page, max_retries=1)
                 except PermissionError:
                     print(f'page {page}: Login Required - 记录为失败')
                     failed_pages.append(page)
@@ -49,23 +68,30 @@ async def crawl_pages_range(start_page: int, end_page: int, config: dict,
                     print(f'page {page}: 错误 {e} - 记录为失败')
                     failed_pages.append(page)
                     return
-                
-                # 保护性检查：如果 items 为空或为 None，跳过
-                if not items:
-                    print(f'page {page}: no items, skip')
+                # 如果 fetch_page 返回 None，表示请求在重试后失败，需要记录以便在重试阶段再次尝试
+                if items is None:
+                    # items is None -> status may indicate HTTP code like 429, or None for generic failure
+                    if status is not None:
+                        print(f'page{page}: {status} failed')
+                    else:
+                        print(f'page{page}: failed')
+                    failed_pages.append(page)
+                    return
+
+                # items 可能是空列表（表示该页确实没有数据），这不是错误
+                if isinstance(items, list) and len(items) == 0:
+                    print(f'page {page}: no items (空结果)')
                     return
                 
-                # 添加数据到队列
-                for item in items:
-                    await data_queue.put(item)
-                print(f'page {page}: 获取到 {len(items)} 条记录')
+                # 添加数据到队列（通过 flush_manager 保证每达到阈值触发一次写入）
+                await flush_manager.push_items(items)
+                # 简洁输出：pageX: N, done!
+                print(f'page{page}: {len(items)}, done!')
                 
                 pages_processed += 1
-                # 每50页写入一次数据库
+                # 保留按页统计日志
                 if pages_processed % 50 == 0:
-                    print(f'已处理 {pages_processed} 页，正在写入数据库...')
-                    # 发送flush信号
-                    await data_queue.put({'type': 'flush'})
+                    print(f'已处理 {pages_processed} 页')
         
         # 创建所有页面的任务
         tasks = []
@@ -74,46 +100,81 @@ async def crawl_pages_range(start_page: int, end_page: int, config: dict,
             # 错开启动时间
             await asyncio.sleep(random.uniform(0.01, 0.2))
         
-        # 等待所有任务完成
+    # 等待所有任务完成
         await asyncio.gather(*tasks, return_exceptions=True)
-        print(f'完成爬取页面 {start_page}-{end_page}')
+        print(f'finish main crawl of {end_page - start_page + 1} pages')
 
 
-async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, data_queue: asyncio.Queue):
-    """重新爬取失败的页面"""
-    if not failed_pages:
-        print('没有失败的页面需要重试')
-        return
-    
-    print(f'开始重试 {len(failed_pages)} 个失败页面: {failed_pages}')
-    
+async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, data_queue: asyncio.Queue, flush_manager: FlushManager):
+    """重新爬取失败的页面（直接修改传入的 failed_pages 列表）
+
+    行为：
+    - 进入死循环，轮询当前 failed_pages 的快照进行重试
+    - 某页重试成功则从 failed_pages 中删除该页
+    - 每轮失败后退避等待，直到 failed_pages 为空为止（或手动中断）
+    """
     limits = httpx.Limits(max_keepalive_connections=10, max_connections=50)
-    
-    async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, limits=limits, timeout=30.0) as client:
-        concurrency = config.get('concurrency', 6)
-        sem = asyncio.Semaphore(concurrency)
-        
-        async def retry_worker(page: int):
-            async with sem:
-                try:
-                    items = await fetch_page(client, page)
-                except Exception as e:
-                    print(f'重试 page {page}: 仍然失败 {e}')
-                    return
-                
-                if not items:
-                    print(f'重试 page {page}: no items')
-                    return
-                
-                # 添加数据到队列
-                for item in items:
-                    await data_queue.put(item)
-                print(f'重试 page {page}: 成功获取到 {len(items)} 条记录')
-        
-        tasks = [asyncio.create_task(retry_worker(page)) for page in failed_pages]
-        await asyncio.gather(*tasks, return_exceptions=True)
-    
-    print('失败页面重试完成')
+
+    attempt = 1
+
+    while True:
+        if not failed_pages:
+            print('没有失败的页面需要重试，重试阶段结束')
+            return
+
+        current_pages = list(failed_pages)  # 快照
+        print('\n---retry---')
+
+        async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, limits=limits, timeout=30.0) as client:
+            concurrency = config.get('concurrency', 6)
+            sem = asyncio.Semaphore(concurrency)
+
+            async def retry_worker(page: int):
+                async with sem:
+                    try:
+                        # 在重试阶段允许内部重试策略，fetch_page 返回 (items, status)
+                        items, status = await fetch_page(client, page)
+                    except Exception:
+                        print(f'page{page}: failed')
+                        return
+
+                    if items is None:
+                        # 重试仍失败，若有 status 则显示
+                        if status is not None:
+                            print(f'page{page}: {status} failed')
+                        else:
+                            print(f'page{page}: failed')
+                        return
+
+                    if isinstance(items, list) and len(items) == 0:
+                        print(f'page{page}: 0, done!')
+                        try:
+                            failed_pages.remove(page)
+                        except ValueError:
+                            pass
+                        return
+
+                    # 成功获取到数据，将数据写入并从 failed_pages 中移除
+                    await flush_manager.push_items(items)
+                    print(f'page{page}: {len(items)}, done!')
+                    try:
+                        failed_pages.remove(page)
+                    except ValueError:
+                        pass
+
+            tasks = [asyncio.create_task(retry_worker(page)) for page in current_pages]
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 如果仍有失败页，继续重试（不在调试台打印退避等待）
+        if failed_pages:
+            print(f'retry page{failed_pages}')
+            backoff = min(60, 2 ** attempt + random.random())
+            await asyncio.sleep(backoff)
+            attempt += 1
+            continue
+
+    print('all failed pages retried successfully')
+    return
 
 
 async def main():
@@ -184,16 +245,20 @@ async def main():
     if cookie_path and os.path.exists(cookie_path):
         try:
             cookies = await load_cookie_file(cookie_path)
-            print(f'成功加载cookies: {len(cookies)} 个')
+            print(f'loaded cookies: {len(cookies)}')
         except Exception as e:
-            print(f'加载cookie文件失败: {e}')
+            print(f'load cookie failed: {e}')
     else:
-        print(f'Cookie文件不存在，使用空cookies: {cookie_path}')
+        print(f'cookie file not found, using empty cookies: {cookie_path}')
 
     db_conf = get_db_config_from_dict(CONFIG)
 
     # 创建异步队列用于数据库写入
     queue: asyncio.Queue = asyncio.Queue(maxsize=10000)
+
+    # flush 管理器，控制每达到阈值触发一次数据库写入
+    flush_every = env_int('BUFF_FLUSH_EVERY', 'flush_every', 200)
+    flush_manager = FlushManager(queue, threshold=flush_every)
 
     # writer (可选)
     writer_task = None
@@ -207,21 +272,21 @@ async def main():
     
     failed_pages = []
     
-    print(f'开始单线程爬取: 总共 {max_pages} 页 (页面 {start_page}-{end_page})')
+    print(f'start single-thread crawl: total {max_pages} pages (pages {start_page}-{end_page})')
     
-    # 单线程爬取
-    await crawl_pages_range(start_page, end_page, CONFIG, cookies, queue, failed_pages)
+    # 单线程爬取（全局阶段：每页仅尝试一次，失败记录到 failed_pages）
+    await crawl_pages_range(start_page, end_page, CONFIG, cookies, queue, failed_pages, flush_manager)
     
-    print('主爬取完成')
+    print('main crawl finished')
     
-    # 重试失败的页面
-    await retry_failed_pages(failed_pages, CONFIG, cookies, queue)
+    # 进入重试阶段：死循环重试 failed_pages，直到清空
+    await retry_failed_pages(failed_pages, CONFIG, cookies, queue, flush_manager)
     
     # 发送结束信号给 writer
     await queue.put(None)
     if writer_task:
         await writer_task
-        print('数据库写入完成')
+    print('database write finished')
 
 
 if __name__ == '__main__':
