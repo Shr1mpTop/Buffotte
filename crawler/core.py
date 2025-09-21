@@ -74,31 +74,26 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3)
         except httpx.HTTPStatusError as e:
             status = getattr(e.response, 'status_code', None)
             if status == 429:
-                # 把 429 信息改为简洁英文显示
-                print(f'page{page}: retrial {attempt}/{max_retries}')
-                # 不在调试台显示等待信息，直接等待
+                # 当遭遇 429 时，内部短暂等待后重试（不打印中间 retrial 日志）
                 wait_time = 1 + 2**attempt + random.random()
                 await asyncio.sleep(wait_time)
-                # 当内部重试耗尽后，这里会返回 (None, 429)
                 if attempt == max_retries:
                     return None, 429
                 continue
             else:
-                print(f'第 {page} 页HTTP错误: {status}')
                 # 非429的HTTP错误视为失败，返回 (None, status)
                 return None, status
                 
-        except Exception as e:
-            print(f'第 {page} 页请求异常: {e} (尝试 {attempt}/{max_retries})')
+        except Exception:
+            # 遇到非HTTP异常时在内部进行短暂退避重试（不打印错误信息）
             if attempt < max_retries:
                 wait_time = 0.5 + attempt + random.random()
                 await asyncio.sleep(wait_time)
                 continue
-            # 重试耗尽，返回 (None, None) 表示该页需要在全局重试阶段重试
-            print(f'第 {page} 页请求异常，重试耗尽')
+            # 重试耗尽，返回 (None, None) 由上层统一处理（全局重试阶段）
             return None, None
     
-    print(f'第 {page} 页获取失败，已重试 {max_retries} 次')
+    return None, None
     return None, None
 
 

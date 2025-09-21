@@ -7,6 +7,7 @@ import argparse
 import os
 import sys
 import random
+import time
 from pathlib import Path
 
 # 添加项目根目录到Python路径
@@ -61,20 +62,15 @@ async def crawl_pages_range(start_page: int, end_page: int, config: dict,
                     # 全局首次爬取阶段：只尝试一次（遇到429/其他错误时不反复重试）
                     items, status = await fetch_page(client, page, max_retries=1)
                 except PermissionError:
-                    print(f'page {page}: Login Required - 记录为失败')
+                    # 登录相关错误：记录为失败，但不打印详细信息
                     failed_pages.append(page)
                     return
-                except Exception as e:
-                    print(f'page {page}: 错误 {e} - 记录为失败')
+                except Exception:
+                    # 其他异常：记录为失败，不打印异常内容
                     failed_pages.append(page)
                     return
                 # 如果 fetch_page 返回 None，表示请求在重试后失败，需要记录以便在重试阶段再次尝试
                 if items is None:
-                    # items is None -> status may indicate HTTP code like 429, or None for generic failure
-                    if status is not None:
-                        print(f'page{page}: {status} failed')
-                    else:
-                        print(f'page{page}: failed')
                     failed_pages.append(page)
                     return
 
@@ -117,13 +113,15 @@ async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, da
 
     attempt = 1
 
+    attempt = 1
+    # 循环重试直到 failed_pages 清空
     while True:
         if not failed_pages:
             print('没有失败的页面需要重试，重试阶段结束')
             return
 
         current_pages = list(failed_pages)  # 快照
-        print('\n---retry---')
+        print(f'--- retry round {attempt}, remaining {len(current_pages)} pages ---')
 
         async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, limits=limits, timeout=30.0) as client:
             concurrency = config.get('concurrency', 6)
@@ -132,29 +130,20 @@ async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, da
             async def retry_worker(page: int):
                 async with sem:
                     try:
-                        # 在重试阶段允许内部重试策略，fetch_page 返回 (items, status)
-                        items, status = await fetch_page(client, page)
+                        items, status = await fetch_page(client, page, max_retries=1)
                     except Exception:
-                        print(f'page{page}: failed')
                         return
 
                     if items is None:
-                        # 重试仍失败，若有 status 则显示
-                        if status is not None:
-                            print(f'page{page}: {status} failed')
-                        else:
-                            print(f'page{page}: failed')
                         return
 
                     if isinstance(items, list) and len(items) == 0:
-                        print(f'page{page}: 0, done!')
                         try:
                             failed_pages.remove(page)
                         except ValueError:
                             pass
                         return
 
-                    # 成功获取到数据，将数据写入并从 failed_pages 中移除
                     await flush_manager.push_items(items)
                     print(f'page{page}: {len(items)}, done!')
                     try:
@@ -165,16 +154,17 @@ async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, da
             tasks = [asyncio.create_task(retry_worker(page)) for page in current_pages]
             await asyncio.gather(*tasks, return_exceptions=True)
 
-        # 如果仍有失败页，继续重试（不在调试台打印退避等待）
+        # 每轮结束打印失败页汇总
         if failed_pages:
-            print(f'retry page{failed_pages}')
+            print(f'failed pages: {failed_pages}')
+            # 退避等待后继续下一轮
             backoff = min(60, 2 ** attempt + random.random())
             await asyncio.sleep(backoff)
             attempt += 1
             continue
-
-    print('all failed pages retried successfully')
-    return
+        else:
+            print('retry finished, no failed pages')
+            return
 
 
 async def main():
@@ -187,6 +177,8 @@ async def main():
     # 确定配置文件路径
     if not args.config.startswith('/') and not ':\\' in args.config:
         args.config = os.path.join(project_root, args.config)
+
+    start_time = time.time()
 
     # 首先加载config.json配置
     json_config = await load_config_json(args.config)
@@ -286,7 +278,11 @@ async def main():
     await queue.put(None)
     if writer_task:
         await writer_task
+    total_seconds = int(time.time() - start_time)
+    minutes = total_seconds // 60
+    seconds = total_seconds % 60
     print('database write finished')
+    print(f'crawl_time: {minutes}min{seconds}s')
 
 
 if __name__ == '__main__':
