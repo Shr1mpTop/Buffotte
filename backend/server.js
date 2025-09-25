@@ -33,6 +33,13 @@ app.get('/api/price-distribution', (req, res, next) => {
   statsRoutes(req, res, next);
 });
 
+// 致力指数兼容性路由
+app.get('/api/zhili-index', (req, res, next) => {
+  // 重定向到新的路由结构
+  req.url = '/zhili-index';
+  statsRoutes(req, res, next);
+});
+
 // 健康检查接口
 app.get('/api/health', (req, res) => {
   res.json({

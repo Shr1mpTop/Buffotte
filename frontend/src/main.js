@@ -12,7 +12,9 @@ import {
 } from 'echarts/components'
 import {
   PieChart,
-  LineChart
+  LineChart,
+  BarChart,
+  ScatterChart
 } from 'echarts/charts'
 import {
   CanvasRenderer
@@ -25,6 +27,8 @@ use([
   LegendComponent,
   PieChart,
   LineChart,
+  BarChart,
+  ScatterChart,
   GridComponent,
   DataZoomComponent,
   CanvasRenderer

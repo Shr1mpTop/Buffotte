@@ -24,6 +24,10 @@ except ImportError:
     sys.exit(1)
 
 
+# 全局进度计数器
+progress_counter = {'completed': 0, 'total': 0}
+
+
 class FlushManager:
     def __init__(self, queue: asyncio.Queue, threshold: int = 200):
         self.queue = queue
@@ -47,6 +51,10 @@ async def crawl_concurrent(start_page: int, end_page: int, config: dict,
     """并发爬取函数，使用智能任务分配"""
     print(f'start concurrent crawling pages {start_page}-{end_page} with {len(cookies_list)} accounts')
 
+    # 设置进度计数器
+    progress_counter['total'] = end_page - start_page + 1
+    progress_counter['completed'] = 0
+
     # 加载代理池
     proxies = await load_proxies()
     print(f'loaded {len(proxies)} proxies')
@@ -69,6 +77,7 @@ async def crawl_concurrent(start_page: int, end_page: int, config: dict,
     async def crawl_with_account(account_index: int, account_cookies: dict):
         """每个账户的智能爬取任务"""
         pages_processed = 0
+        print(f'account {account_index}: starting crawl task')
 
         while True:
             # 检查账户状态
@@ -87,8 +96,10 @@ async def crawl_concurrent(start_page: int, end_page: int, config: dict,
             # 尝试获取页面任务
             try:
                 page = page_queue.get_nowait()
+                print(f'account {account_index}: got page {page}')
             except asyncio.QueueEmpty:
                 # 没有更多页面，退出
+                print(f'account {account_index}: no more pages, exiting')
                 break
 
             # 标记账户为忙碌
@@ -97,17 +108,25 @@ async def crawl_concurrent(start_page: int, end_page: int, config: dict,
             # 选择代理
             proxy = get_random_proxy(proxies)
             if not proxy:
-                print(f'account {account_index}, page {page}: no proxy available')
+                print(f'account {account_index}, page {page}: no proxy available (proxies count: {len(proxies)})')
                 failed_pages.append(page)
                 account_states[account_index]['status'] = 'idle'
                 continue
 
             # HTTP客户端
             limits = httpx.Limits(max_keepalive_connections=1, max_connections=1)
-
+            
+            # 配置代理（如果有的话）
+            transport = None
+            # 暂时禁用代理，使用直连测试
+            # if proxy:
+            #     from httpx import AsyncHTTPTransport
+            #     proxy_url = f'http://{proxy}'
+            #     transport = AsyncHTTPTransport(proxy=proxy_url)
+            
             try:
-                async with httpx.AsyncClient(headers=HEADERS, cookies=account_cookies, limits=limits, timeout=30.0) as client:
-                    items, status = await fetch_page(client, page, max_retries=1, proxy=None)  # 暂时直连
+                async with httpx.AsyncClient(headers=HEADERS, cookies=account_cookies, limits=limits, timeout=30.0, transport=transport) as client:
+                    items, status = await fetch_page(client, page, max_retries=1, proxy=None)  # proxy 已经在 transport 中配置
 
                     if status == 429:
                         # 遭遇429，立即冷却账户30秒
@@ -115,6 +134,15 @@ async def crawl_concurrent(start_page: int, end_page: int, config: dict,
                         account_states[account_index]['status'] = 'cooldown'
                         account_states[account_index]['cooldown_until'] = current_time + cooldown_time
                         print(f'account {account_index}: 429 detected, cooldown {cooldown_time}s')
+                        failed_pages.append(page)
+                        continue
+
+                    if status == 403:
+                        # 遭遇403 Action Forbidden，冷却账户60秒
+                        cooldown_time = 60
+                        account_states[account_index]['status'] = 'cooldown'
+                        account_states[account_index]['cooldown_until'] = current_time + cooldown_time
+                        print(f'account {account_index}: 403 Action Forbidden detected, cooldown {cooldown_time}s')
                         failed_pages.append(page)
                         continue
 
@@ -129,8 +157,12 @@ async def crawl_concurrent(start_page: int, end_page: int, config: dict,
 
                     # 成功处理
                     await flush_manager.push_items(items)
-                    print(f'page{page}: {len(items)} done')
                     pages_processed += 1
+                    
+                    # 更新全局进度
+                    progress_counter['completed'] += 1
+                    if progress_counter['completed'] % 10 == 0 or progress_counter['completed'] == progress_counter['total']:
+                        print(f'进度: {progress_counter["completed"]}/{progress_counter["total"]} 页 ({progress_counter["completed"]/progress_counter["total"]*100:.1f}%)')
 
             except PermissionError:
                 print(f'account {account_index}, page {page}: Login Required')
@@ -177,9 +209,15 @@ async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, da
             proxy = get_random_proxy(proxies)
             proxy_url = f'http://{proxy}' if proxy else None
             
-            async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, limits=limits, timeout=30.0) as client:
+            # 配置代理（如果有的话）
+            transport = None
+            if proxy_url:
+                from httpx import AsyncHTTPTransport
+                transport = AsyncHTTPTransport(proxy=proxy_url)
+            
+            async with httpx.AsyncClient(headers=HEADERS, cookies=cookies, limits=limits, timeout=30.0, transport=transport) as client:
                 try:
-                    items, status = await fetch_page(client, page, max_retries=1, proxy=proxy_url)
+                    items, status = await fetch_page(client, page, max_retries=1, proxy=None)  # proxy 已经在 transport 中配置
                 except Exception:
                     continue
 
@@ -194,7 +232,6 @@ async def retry_failed_pages(failed_pages: list, config: dict, cookies: dict, da
                     continue
 
                 await flush_manager.push_items(items)
-                print(f'page{page}: {len(items)}, done! (retry)')
                 try:
                     failed_pages.remove(page)
                 except ValueError:

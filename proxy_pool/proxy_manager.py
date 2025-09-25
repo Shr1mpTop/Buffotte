@@ -12,12 +12,12 @@ class ProxyManager:
         self.proxies = []  # 代理列表，每个元素是 {'ip_port': 'ip:port', 'fail_count': 0, 'last_test': 0}
         self.max_fail_count = 1
         self.test_interval = 30  # 30秒测试一次
-        self.fetch_interval = 300  # 5分钟获取一次新代理（如果需要）
-        self.target_pool_size = 50  # 目标代理池大小
+        self.fetch_interval = 180  # 5分钟获取一次新代理（如果需要）
+        self.target_pool_size = 20  # 目标代理池大小
         self.test_url = 'http://httpbin.org/ip'
         self.status_file = 'proxy_pool/proxy_pool_status.json'
 
-    async def fetch_proxies(self, count=50):
+    async def fetch_proxies(self, count=20):
         """异步获取代理列表"""
         url = 'https://proxy.scdn.io/api/get_proxy.php'
         params = {

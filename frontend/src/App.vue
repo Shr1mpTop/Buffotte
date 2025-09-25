@@ -28,6 +28,11 @@
 
     <!-- 主要内容 -->
     <div v-if="!loading && !error" class="dashboard">
+      <!-- 致力指数 -->
+      <div class="chart-card">
+        <ZhiliIndexChart :data="zhiliIndexData.history || []" @range-change="onRangeChange" />
+      </div>
+
       <!-- 统计卡片 -->
       <div class="stats-card">
         <div class="card-title">📊 数据统计</div>
@@ -66,19 +71,22 @@ import axios from 'axios'
 import PriceChart from './components/PriceChart.vue'
 import SearchBox from './components/SearchBox.vue'
 import ItemDetail from './components/ItemDetail.vue'
+import ZhiliIndexChart from './components/ZhiliIndexChart.vue'
 
 export default {
   name: 'App',
   components: {
     PriceChart,
     SearchBox,
-    ItemDetail
+    ItemDetail,
+    ZhiliIndexChart
   },
   setup() {
     const loading = ref(true)
     const error = ref(null)
     const stats = ref({})
     const chartData = ref([])
+    const zhiliIndexData = ref({})
     const selectedItem = ref(null)
 
     // 获取统计数据
@@ -111,6 +119,21 @@ export default {
       }
     }
 
+    // 获取致力指数数据
+    const fetchZhiliIndex = async () => {
+      try {
+        const response = await axios.get('/api/zhili-index')
+        if (response.data.success) {
+          zhiliIndexData.value = response.data.data
+        } else {
+          throw new Error(response.data.message || '获取致力指数数据失败')
+        }
+      } catch (err) {
+        console.error('获取致力指数数据失败:', err)
+        error.value = '获取致力指数数据失败: ' + err.message
+      }
+    }
+
     // 加载所有数据
     const loadData = async () => {
       try {
@@ -119,7 +142,8 @@ export default {
         
         await Promise.all([
           fetchStats(),
-          fetchPriceDistribution()
+          fetchPriceDistribution(),
+          fetchZhiliIndex()
         ])
       } catch (err) {
         console.error('加载数据失败:', err)
@@ -141,6 +165,12 @@ export default {
       fetchStats()
     }
 
+    // 时间范围改变
+    const onRangeChange = (range) => {
+      console.log('时间范围改变:', range)
+      // 可以在这里处理范围变化，比如重新获取数据
+    }
+
     onMounted(() => {
       loadData()
     })
@@ -150,9 +180,11 @@ export default {
       error,
       stats,
       chartData,
+      zhiliIndexData,
       selectedItem,
       onItemSelected,
-      onItemUpdated
+      onItemUpdated,
+      onRangeChange
     }
   }
 }

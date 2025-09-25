@@ -75,19 +75,16 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3,
     - 请求失败并伴随 HTTP 状态码时返回 `(None, status_code)`（例如 429）
     - 其他异常或重试耗尽时返回 `(None, None)` 表示通用失败
     """
+    print(f'fetch_page: starting request for page {page}')
     for attempt in range(1, max_retries + 1):
         try:
             params = {'game': 'csgo', 'page_num': str(page), 'use_suggestion': '0'}
             
             start_time = time.time()
-            # 如果有代理，使用代理（暂时注释掉，使用直连测试）
-            # if proxy:
-            #     proxy_url = f'http://{proxy}'
-            #     # httpx AsyncClient不支持proxies参数，需要使用其他方法
-            #     r = await client.get(API_URL, params=params, timeout=30.0)
-            # else:
+            print(f'fetch_page: attempt {attempt}, sending request...')
             r = await client.get(API_URL, params=params, timeout=30.0)
             response_time = time.time() - start_time
+            print(f'fetch_page: got response in {response_time:.2f}s, status: {r.status_code}')
             
             r.raise_for_status()
             j = r.json()
@@ -97,12 +94,17 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3,
                 if isinstance(msg, str) and 'Login Required' in msg:
                     raise PermissionError('Login Required')
 
+                # 对于Action Forbidden错误，返回特定的状态码让上层处理
+                if j.get('code') == 'Action Forbidden':
+                    return None, 403  # 403 Forbidden
+                
                 print(f'API返回错误: {j.get("code")} {msg}')
                 raise RuntimeError(f"API 返回非 OK: {j.get('code')} {msg}")
 
             # 某些情况下 API 可能返回 "items": null
             items = j.get('data', {}).get('items')
             result = items or []
+            print(f'fetch_page: success, got {len(result)} items')
             return result, None
             
         except httpx.HTTPStatusError as e:
