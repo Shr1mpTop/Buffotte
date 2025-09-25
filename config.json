@@ -1,10 +1,10 @@
 {
-  "max_pages": 50,
+  "max_pages": 1274,
   "start_page": 1,
-  "concurrency": 6,
   "no_db": false,
   "enable_price_history": true,
-  "cookie_file": "./cookies/cookies.txt",
+  "cookie_file": "./cookies/cookies1.txt",
+  "chrome_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "db": {
     "host": "localhost",
     "port": 3306,

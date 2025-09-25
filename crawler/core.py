@@ -7,6 +7,7 @@ import aiofiles
 import json
 import time
 import random
+import os
 from typing import List, Dict, Any, Optional, Tuple
 import httpx
 
@@ -22,24 +23,51 @@ HEADERS = {
 }
 
 
+async def load_proxies(proxy_file: str = 'proxy_pool/proxy_pool_status.json') -> List[str]:
+    """加载代理池"""
+    proxies = []
+    try:
+        with open(proxy_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            for proxy in data.get('proxies', []):
+                if proxy.get('fail_count', 0) == 0:  # 只使用健康的代理
+                    proxies.append(proxy['ip_port'])
+    except Exception as e:
+        print(f'加载代理文件失败: {e}')
+    return proxies
+
+
+def get_random_proxy(proxies: List[str]) -> Optional[str]:
+    """随机选择一个代理"""
+    if proxies:
+        return random.choice(proxies)
+    return None
+
+
 async def load_cookie_file(path: str) -> Dict[str, str]:
-    """加载cookie文件"""
+    """加载cookie文件，支持单个文件或多个文件（用逗号分隔）"""
     cookies = {}
     try:
-        async with aiofiles.open(path, 'r', encoding='utf-8') as f:
-            async for line in f:
-                line = line.strip()
-                if not line or '=' not in line:
-                    continue
-                k, v = line.split('=', 1)
-                cookies[k.strip()] = v.strip()
+        # 支持多个文件路径，用逗号分隔
+        paths = [p.strip() for p in path.split(',') if p.strip()]
+        for cookie_path in paths:
+            if os.path.exists(cookie_path):
+                async with aiofiles.open(cookie_path, 'r', encoding='utf-8') as f:
+                    async for line in f:
+                        line = line.strip()
+                        if not line or '=' not in line:
+                            continue
+                        k, v = line.split('=', 1)
+                        cookies[k.strip()] = v.strip()
+            else:
+                print(f'Cookie文件不存在: {cookie_path}')
     except Exception as e:
         print(f'加载cookie文件失败: {e}')
         print(f'尝试加载路径: {path}')
     return cookies
 
 
-async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3) -> Tuple[Optional[List[Dict[str, Any]]], Optional[int]]:
+async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3, proxy: Optional[str] = None) -> Tuple[Optional[List[Dict[str, Any]]], Optional[int]]:
     """获取单页数据。
 
     返回值为 `(items, status_code)`:
@@ -52,20 +80,26 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3)
             params = {'game': 'csgo', 'page_num': str(page), 'use_suggestion': '0'}
             
             start_time = time.time()
+            # 如果有代理，使用代理（暂时注释掉，使用直连测试）
+            # if proxy:
+            #     proxy_url = f'http://{proxy}'
+            #     # httpx AsyncClient不支持proxies参数，需要使用其他方法
+            #     r = await client.get(API_URL, params=params, timeout=30.0)
+            # else:
             r = await client.get(API_URL, params=params, timeout=30.0)
             response_time = time.time() - start_time
             
             r.raise_for_status()
             j = r.json()
-            
+
             if j.get('code') != 'OK':
                 msg = j.get('msg')
                 if isinstance(msg, str) and 'Login Required' in msg:
                     raise PermissionError('Login Required')
-                
+
                 print(f'API返回错误: {j.get("code")} {msg}')
                 raise RuntimeError(f"API 返回非 OK: {j.get('code')} {msg}")
-            
+
             # 某些情况下 API 可能返回 "items": null
             items = j.get('data', {}).get('items')
             result = items or []
@@ -93,7 +127,6 @@ async def fetch_page(client: httpx.AsyncClient, page: int, max_retries: int = 3)
             # 重试耗尽，返回 (None, None) 由上层统一处理（全局重试阶段）
             return None, None
     
-    return None, None
     return None, None
 
 
