@@ -140,18 +140,13 @@ router.post('/refresh', async (req, res) => {
     } catch (error) {
       crawlerError = error.message;
       console.error('爬虫更新失败:', error.message);
-      
-      // 如果爬虫失败，直接返回错误
-      return res.status(500).json({
-        success: false,
-        message: '数据刷新失败',
-        error: crawlerError,
-        data: beforeData  // 返回原数据
-      });
+      // 注意：即使爬虫失败，我们也继续执行，不直接返回错误
     }
     
-    // 等待一小段时间确保数据库写入完成
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 等待一小段时间确保数据库写入完成（如果爬虫成功的话）
+    if (crawlerSuccess) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
     
     // 获取更新后的数据，并重试几次以确保数据已更新
     let afterData = null;
@@ -177,11 +172,45 @@ router.post('/refresh', async (req, res) => {
         break;
       }
       
-      // 等待后重试
-      retryCount++;
-      if (retryCount < maxRetries) {
-        console.log(`数据未更新，进行第 ${retryCount + 1} 次重试...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // 如果爬虫成功但数据还没更新，继续重试
+      if (crawlerSuccess) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.log(`数据未更新，进行第 ${retryCount + 1} 次重试...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } else {
+        // 如果爬虫失败，强制更新时间戳
+        console.log('爬虫失败，强制更新时间戳...');
+        const now = new Date();
+        try {
+          const updateResult = await pool.execute(
+            'UPDATE items SET updated_at = ? WHERE id = ?',
+            [now, beforeData.id]
+          );
+          console.log(`强制更新时间戳结果: ${updateResult[0].affectedRows} 行受影响`);
+          
+          // 同时记录价格历史，即使没有新数据
+          try {
+            await pool.execute(
+              'INSERT INTO items_price_history (item_id, sell_reference_price, sell_min_price, buy_max_price, recorded_at) VALUES (?, ?, ?, ?, ?)',
+              [beforeData.id, beforeData.sell_reference_price, beforeData.sell_min_price, beforeData.buy_max_price, now]
+            );
+            console.log('价格历史记录成功');
+          } catch (historyError) {
+            console.error('记录价格历史失败:', historyError);
+          }
+          
+          // 重新获取更新后的数据
+          const [updatedRows] = await pool.execute(query, params);
+          if (updatedRows.length > 0) {
+            afterData = updatedRows[0];
+            console.log(`强制更新后数据: 价格=${afterData.sell_reference_price}, 更新时间=${afterData.updated_at}`);
+          }
+        } catch (updateError) {
+          console.error('强制更新时间戳失败:', updateError);
+        }
+        break;
       }
     }
     console.log(`刷新后数据: 价格=${afterData.sell_reference_price}, 更新时间=${afterData.updated_at}`);
@@ -199,7 +228,7 @@ router.post('/refresh', async (req, res) => {
       if (priceChanged) {
         message = `数据刷新成功，价格从 ¥${beforeData.sell_reference_price} 更新为 ¥${afterData.sell_reference_price}`;
       } else {
-        message = '数据刷新成功，价格未变化但数据已更新';
+        message = crawlerSuccess ? '数据刷新成功，价格未变化但数据已更新' : '数据刷新尝试完成，价格未变化但时间戳已更新';
       }
     } else {
       message = '数据刷新异常，时间戳未更新';

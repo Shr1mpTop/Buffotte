@@ -5,22 +5,19 @@ const { crawlerTimeout } = require('../config/database');
 // 爬虫刷新函数（改进版本，修复路径问题）
 async function refreshItemFromCrawler(itemId, itemName) {
   return new Promise((resolve, reject) => {
-    // 构建爬虫命令 - 使用新的模块化入口
+    // 构建爬虫命令 - 使用单个饰品更新器
     const projectRoot = path.join(__dirname, '../..');
-    const crawlerPath = path.join(projectRoot, 'crawler/main.py');
-    const args = ['single'];
+    const crawlerPath = path.join(projectRoot, 'crawler/single_item_updater.py');
+    const args = [];
     
     if (itemId) {
-      args.push(String(itemId));
+      args.push('--item-id', String(itemId));
     } else if (itemName) {
-      args.push(itemName);
+      args.push('--item-name', itemName);
     } else {
       reject(new Error('必须提供物品ID或名称'));
       return;
     }
-    
-    // 添加配置文件路径
-    args.push('--config', path.join(projectRoot, 'config.json'));
     
     console.log(`执行爬虫命令: conda run -n buffotte python ${crawlerPath} ${args.join(' ')}`);
     console.log(`工作目录: ${projectRoot}`);

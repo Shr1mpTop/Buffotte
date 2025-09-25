@@ -76,8 +76,8 @@ async def writer_loop(queue: asyncio.Queue, db_conf: Dict[str, Any], table: str,
         print(f'价格历史表 {price_history_table} 已准备就绪')
 
     insert_sql = (
-        "INSERT INTO `{table}` (`id`,`appid`,`game`,`name`,`market_hash_name`,`steam_market_url`,`sell_reference_price`,`sell_min_price`,`buy_max_price`,`sell_num`,`buy_num`,`transacted_num`,`goods_info`) "
-        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+        "INSERT INTO `{table}` (`id`,`appid`,`game`,`name`,`market_hash_name`,`steam_market_url`,`sell_reference_price`,`sell_min_price`,`buy_max_price`,`sell_num`,`buy_num`,`transacted_num`,`goods_info`,`updated_at`) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW()) "
         "ON DUPLICATE KEY UPDATE "
         "`appid`=VALUES(`appid`), "
         "`game`=VALUES(`game`), "
@@ -135,7 +135,7 @@ async def writer_loop(queue: asyncio.Queue, db_conf: Dict[str, Any], table: str,
             goods_json = json.dumps(item.get('goods_info') or {}, ensure_ascii=False)
             item_id = int(item.get('id'))
             
-            # 主表数据
+            # 主表数据 - 注意：updated_at由NOW()自动设置，不需要在tuple中包含
             main_tuple = (
                 item_id, 
                 int(item.get('appid') or 0), 
