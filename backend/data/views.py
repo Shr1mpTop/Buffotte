@@ -3,16 +3,24 @@ from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.db import connection
-from .models import Item, KlineData
-from .serializers import ItemSerializer, KlineDataSerializer
+from .models import Item, KlineDataHour, KlineDataDay, KlineDataWeek
+from .serializers import ItemSerializer, KlineDataHourSerializer, KlineDataDaySerializer, KlineDataWeekSerializer
 
 class ItemViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Item.objects.all()
     serializer_class = ItemSerializer
 
-class KlineDataViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = KlineData.objects.all().order_by('-timestamp')[:100]  # 最近100条
-    serializer_class = KlineDataSerializer
+class KlineDataHourViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = KlineDataHour.objects.all().order_by('-timestamp')[:100]
+    serializer_class = KlineDataHourSerializer
+
+class KlineDataDayViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = KlineDataDay.objects.all().order_by('-timestamp')[:100]
+    serializer_class = KlineDataDaySerializer
+
+class KlineDataWeekViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = KlineDataWeek.objects.all().order_by('-timestamp')[:100]
+    serializer_class = KlineDataWeekSerializer
 
 @api_view(['GET'])
 def overall_stats(request):
@@ -23,8 +31,8 @@ def overall_stats(request):
             cursor.execute("SELECT COUNT(*) FROM items WHERE BUFF IS NOT NULL AND BUFF != ''")
             total_items = cursor.fetchone()[0]
 
-            # 从kline_data获取平均收盘价
-            cursor.execute("SELECT AVG(close_price) FROM kline_data")
+            # 从kline_data_hour获取平均收盘价
+            cursor.execute("SELECT AVG(close_price) FROM kline_data_hour")
             avg_price_row = cursor.fetchone()
             avg_price = avg_price_row[0] or 0
 

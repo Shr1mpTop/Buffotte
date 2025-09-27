@@ -1,248 +1,492 @@
-# 🎮 Buffotte - CS:GO饰品价格分析系统# 🎮 Buffotte - CS:GO饰品价格分析系统
+# 🎮 Buffotte - CS:GO饰品价格分析系统# 🎮 Buffotte - CS:GO饰品价格分析系统# 🎮 Buffotte - CS:GO饰品价格分析系统
 
 
 
-**版本：v0.8.0****版本：v0.6.1**
+**版本：v1.0.0**
 
 
 
-一个完整的CS:GO饰品价格数据采集、分析和可视化系统，包含网页爬虫、数据存储和Web界面。一个完整的CS:GO饰品价格数据采集、分析和可视化系统，包含网页爬虫、数据存储和Web界面。
+一个完整的CS:GO饰品价格数据采集、分析和可视化系统，采用现代化技术栈构建。**版本：v0.8.0****版本：v0.6.1**
 
 
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-![Python](https://img.shields.io/badge/python-3.8+-green.svg)![Python](https://i## 🎯 版本更新日志
+![Node.js](https://img.shields.io/badge/node.js-18+-green.svg)
 
-![Node.js](https://img.shields.io/badge/node.js-16+-green.svg)
+![Vue.js](https://img.shields.io/badge/vue.js-3+-green.svg)一个完整的CS:GO饰品价格数据采集、分析和可视化系统，包含网页爬虫、数据存储和Web界面。一个完整的CS:GO饰品价格数据采集、分析和可视化系统，包含网页爬虫、数据存储和Web界面。
 
-![Vue.js](https://img.shields.io/badge/vue.js-3+-green.svg)### v0.6.1 - 模块化重构 (2025-09-20)
+![Python](https://img.shields.io/badge/python-3.8+-green.svg)
+
+![MySQL](https://img.shields.io/badge/mysql-8.0+-blue.svg)
+
+
+
+## ✨ 核心功能![License](https://img.shields.io/badge/license-MIT-blue.svg)![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
+
+
+- 📊 **实时数据可视化** - 现代化Vue.js仪表板![Python](https://img.shields.io/badge/python-3.8+-green.svg)![Python](https://i## 🎯 版本更新日志
+
+- 📈 **多周期K线图** - 小时/日/周K线数据展示
+
+- 🤖 **智能数据爬虫** - Python异步多线程采集![Node.js](https://img.shields.io/badge/node.js-16+-green.svg)
+
+- 🔄 **RESTful API** - 完整的后端数据接口
+
+- 🐳 **容器化部署** - Docker一键部署![Vue.js](https://img.shields.io/badge/vue.js-3+-green.svg)### v0.6.1 - 模块化重构 (2025-09-20)
+
+- ⚡ **高性能架构** - Node.js + Vue.js + MySQL
 
 - 🔧 **代码重构**：将爬虫和后端代码进行模块化拆分
 
+## 🏗️ 项目架构
+
 ## ✨ 主要功能- 📦 **爬虫模块化**：
 
-  - `crawler/core.py` - 核心爬虫功能
+```
 
-🔍 **智能搜索** - 模糊搜索饰品，实时显示价格信息    - `crawler/database.py` - 数据库操作
+buffotte/  - `crawler/core.py` - 核心爬虫功能
 
-🕷️ **数据采集** - 异步多线程爬虫，支持代理池和智能限流    - `crawler/single_item_updater.py` - 单品更新
+├── backend/           # Node.js后端服务
 
-📊 **数据分析** - 价格分布可视化，实时统计分析    - `crawler/batch_crawler.py` - 批量爬取
+│   ├── src/🔍 **智能搜索** - 模糊搜索饰品，实时显示价格信息    - `crawler/database.py` - 数据库操作
 
-🌐 **Web界面** - Vue 3 + ECharts 现代化界面    - `crawler/main.py` - 统一入口
+│   │   ├── routes/    # API路由
 
-📈 **价格历史** - 记录价格变化，支持趋势分析  - 🏗️ **后端模块化**：
+│   │   ├── services/  # 业务逻辑🕷️ **数据采集** - 异步多线程爬虫，支持代理池和智能限流    - `crawler/single_item_updater.py` - 单品更新
 
-  - `backend/routes/` - 路由模块化
+│   │   └── utils/     # 工具函数
 
-## 🚀 快速启动  - `backend/services/` - 服务层分离
+│   ├── config/        # 配置文件📊 **数据分析** - 价格分布可视化，实时统计分析    - `crawler/batch_crawler.py` - 批量爬取
 
-  - `backend/database/` - 数据库连接管理
+│   ├── scripts/       # 部署脚本
 
-### 1. 环境要求  - `backend/config/` - 配置管理
+│   ├── Dockerfile     # 容器配置🌐 **Web界面** - Vue 3 + ECharts 现代化界面    - `crawler/main.py` - 统一入口
 
-- Python 3.8+ - 🐛 **路径修复**：修复搜索功能中的路径解析问题
+│   └── package.json
 
-- Node.js 16+- 📚 **部署优化**：添加自动部署脚本和依赖管理
+├── crawler/           # Python数据爬虫📈 **价格历史** - 记录价格变化，支持趋势分析  - 🏗️ **后端模块化**：
 
-- MySQL 5.7+
+│   ├── src/           # 爬虫源码
 
-- Anaconda/Miniconda（推荐）### v0.6.0 - 智能搜索功能 (2025-09-20)
+│   ├── config/        # 爬虫配置  - `backend/routes/` - 路由模块化
 
-- 🔍 **智能搜索**：新增饰品模糊搜索功能，支持实时建议和自动完成
+│   ├── Dockerfile     # 爬虫容器
 
-### 2. 安装依赖- 📊 **详情展示**：显示具体饰品的详细价格信息，包括收购价、售价、成交量
+│   └── requirements.txt## 🚀 快速启动  - `backend/services/` - 服务层分离
 
-```bash- 🔄 **数据刷新**：集成爬虫实现一键刷新饰品最新价格数据
+├── frontend/          # Vue.js前端应用
 
-git clone https://github.com/Shr1mpTop/Buffotte.git- 🎨 **UI优化**：新增搜索框和饰品详情卡片，提升用户体验
+│   ├── src/           # 前端源码  - `backend/database/` - 数据库连接管理
 
-cd Buffotte- ⚡ **API扩展**：新增搜索、饰品详情、数据刷新等RESTful接口
+│   ├── public/        # 静态资源
+
+│   ├── Dockerfile     # 前端容器### 1. 环境要求  - `backend/config/` - 配置管理
+
+│   └── package.json
+
+├── scripts/           # 项目级脚本- Python 3.8+ - 🐛 **路径修复**：修复搜索功能中的路径解析问题
+
+│   ├── dev.sh         # Linux开发脚本
+
+│   └── dev.bat        # Windows开发脚本- Node.js 16+- 📚 **部署优化**：添加自动部署脚本和依赖管理
+
+├── docker/            # Docker配置
+
+├── docs/              # 项目文档- MySQL 5.7+
+
+├── .env.example       # 环境变量模板
+
+├── docker-compose.yml # 容器编排- Anaconda/Miniconda（推荐）### v0.6.0 - 智能搜索功能 (2025-09-20)
+
+└── README.md
+
+```- 🔍 **智能搜索**：新增饰品模糊搜索功能，支持实时建议和自动完成
 
 
+
+## 🚀 快速开始### 2. 安装依赖- 📊 **详情展示**：显示具体饰品的详细价格信息，包括收购价、售价、成交量
+
+
+
+### 环境要求```bash- 🔄 **数据刷新**：集成爬虫实现一键刷新饰品最新价格数据
+
+
+
+- Node.js 18+git clone https://github.com/Shr1mpTop/Buffotte.git- 🎨 **UI优化**：新增搜索框和饰品详情卡片，提升用户体验
+
+- Python 3.8+
+
+- MySQL 8.0+cd Buffotte- ⚡ **API扩展**：新增搜索、饰品详情、数据刷新等RESTful接口
+
+- Docker & Docker Compose (可选)
+
+
+
+### 一键安装
 
 # 创建conda环境### v0.5.0 - Web界面发布 (2025-09-20)
 
-conda create -n buffotte python=3.11- 🌐 **全新Web界面**：基于Vue 3 + ECharts的现代化界面
+```bash
 
-conda activate buffotte- 📊 **价格分布可视化**：饼状图展示不同价格区间的饰品分布
+# 克隆项目conda create -n buffotte python=3.11- 🌐 **全新Web界面**：基于Vue 3 + ECharts的现代化界面
 
-pip install -r requirements.txt- 📈 **实时统计面板**：显示总饰品数、平均价格、价格范围等关键指标
+git clone https://github.com/Shr1mpTop/Buffotte.git
 
-```- 🎨 **响应式设计**：完美适配桌面和移动设备
+cd buffotteconda activate buffotte- 📊 **价格分布可视化**：饼状图展示不同价格区间的饰品分布
+
+
+
+# 安装所有依赖pip install -r requirements.txt- 📈 **实时统计面板**：显示总饰品数、平均价格、价格范围等关键指标
+
+./scripts/dev.sh install
+
+# Windows: scripts\dev.bat install```- 🎨 **响应式设计**：完美适配桌面和移动设备
+
+```
 
 - ⚡ **高性能架构**：Node.js后端 + Vue前端的现代化技术栈
 
+### 配置环境
+
 ### 3. 配置数据库- 🔌 **RESTful API**：提供完整的数据接口，支持第三方集成s.io/badge/python-3.8+-green.svg)
 
-```sql![Node.js](https://img.shields.io/badge/node.js-16+-green.svg)
+```bash
+
+# 复制环境变量```sql![Node.js](https://img.shields.io/badge/node.js-16+-green.svg)
+
+cp .env.example .env
 
 CREATE DATABASE buffotte CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;![Vue.js](https://img.shields.io/badge/vue.js-3+-green.svg)
+
+# 编辑数据库配置
+
+vim .env```
 
 ```
 
 ## ✨ 功能特性
 
+### 初始化数据库
+
 编辑 `config.json` 配置数据库连接信息。
-
-### 🔍 智能搜索
-
-### 4. 启动应用- **饰品搜索**：模糊搜索饰品名称，实时显示建议
-
-- **详情查看**：显示具体饰品的价格、数量、成交信息
-
-#### 🔥 一键启动（推荐）- **数据刷新**：一键刷新获取最新价格（集成爬虫）
 
 ```bash
 
-# Windows用户：双击运行### 🕷️ 数据采集
+# 创建数据库### 🔍 智能搜索
+
+./scripts/dev.sh db:init
+
+### 4. 启动应用- **饰品搜索**：模糊搜索饰品名称，实时显示建议
+
+# 运行数据爬虫
+
+./scripts/dev.sh crawl- **详情查看**：显示具体饰品的价格、数量、成交信息
+
+```
+
+#### 🔥 一键启动（推荐）- **数据刷新**：一键刷新获取最新价格（集成爬虫）
+
+### 启动服务
+
+```bash
+
+```bash
+
+# 一键启动所有服务# Windows用户：双击运行### 🕷️ 数据采集
+
+./scripts/dev.sh start
 
 快速启动.bat- **智能爬虫**：异步多线程爬取Buff饰品数据
 
-- **代理池支持**：自动管理代理，提高采集稳定性
+# 或分别启动
 
-# 或使用菜单式启动器- **智能限流**：自适应速率控制，避免被封禁
+./scripts/dev.sh stop  # 先停止- **代理池支持**：自动管理代理，提高采集稳定性
+
+npm start &           # 后端
+
+npm run dev &         # 前端# 或使用菜单式启动器- **智能限流**：自适应速率控制，避免被封禁
+
+```
 
 start.bat- **增量更新**：支持价格历史记录
 
+访问 http://localhost:5173 查看应用
+
 ```
+
+## 🐳 Docker部署
 
 ### 📊 数据分析
 
-#### 手动启动- **实时价格分布**：饼状图展示不同价格区间的饰品分布
+```bash
+
+# 构建并启动#### 手动启动- **实时价格分布**：饼状图展示不同价格区间的饰品分布
+
+docker-compose up -d
 
 ```bash- **统计信息**：总数量、平均价格、最高/最低价格等
 
-# 启动后端（3001端口）- **响应式设计**：适配桌面和移动设备
+# 查看日志
 
-cd backend && npm install && npm run dev
+docker-compose logs -f# 启动后端（3001端口）- **响应式设计**：适配桌面和移动设备
 
-### 🏗️ 技术架构
 
-# 启动前端（5173端口）  - **后端**：Node.js + Express + MySQL
 
-cd frontend && npm install && npm run dev- **前端**：Vue 3 + Vite + ECharts
+# 停止服务cd backend && npm install && npm run dev
 
-```- **爬虫**：Python + asyncio + httpx
+docker-compose down
 
-- **数据库**：MySQL with 价格历史表
+```### 🏗️ 技术架构
 
-访问 http://localhost:5173 开始使用！
+
+
+## 📊 API文档# 启动前端（5173端口）  - **后端**：Node.js + Express + MySQL
+
+
+
+### 获取总体统计cd frontend && npm install && npm run dev- **前端**：Vue 3 + Vite + ECharts
+
+```
+
+GET /api/stats```- **爬虫**：Python + asyncio + httpx
+
+Response: {
+
+  "total_items": 12345,- **数据库**：MySQL with 价格历史表
+
+  "average_price": 123.45
+
+}访问 http://localhost:5173 开始使用！
+
+```
 
 ## 🚀 快速开始
 
-### 5. 数据采集（可选）
+### 获取K线数据
 
-```bash### 环境要求
+```### 5. 数据采集（可选）
 
-# 基础爬取- Python 3.8+
+GET /api/kline/{type}  # type: hour, day, week
 
-python crawler/main.py batch --max-pages 100- Node.js 16+
+Response: [```bash### 环境要求
 
-- MySQL 5.7+
+  {
 
-# 单个物品更新
+    "timestamp": 1634567890000,# 基础爬取- Python 3.8+
 
-python crawler/main.py single "AK-47 | 红线"### 1. 克隆项目
+    "open_price": 100.0,
+
+    "high_price": 105.0,python crawler/main.py batch --max-pages 100- Node.js 16+
+
+    "low_price": 95.0,
+
+    "close_price": 102.0,- MySQL 5.7+
+
+    "volume": 1000,
+
+    "turnover": 100000.0# 单个物品更新
+
+  }
+
+]python crawler/main.py single "AK-47 | 红线"### 1. 克隆项目
+
+```
 
 ``````bash
 
-git clone https://github.com/Shr1mpTop/Buffotte.git
+### 获取物品列表
 
-## 📁 项目结构cd Buffotte
+```git clone https://github.com/Shr1mpTop/Buffotte.git
 
-```
+GET /api/items
 
-```
+Response: [## 📁 项目结构cd Buffotte
 
-Buffotte/### 2. 配置数据库
+  {
 
-├── 📁 backend/              # Node.js后端服务```bash
+    "id": 1,```
 
-├── 📁 frontend/             # Vue3前端界面  # 创建MySQL数据库
+    "name": "AK-47 | Redline",
 
-├── 📁 crawler/              # Python爬虫模块mysql -u root -p
+    "BUFF": "150.00",```
 
-├── 📁 docs/                 # 📚 详细文档CREATE DATABASE buffotte CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    "C5": "145.00"
 
-├── 📁 cookies/              # Cookie管理```
+  }Buffotte/### 2. 配置数据库
 
-├── config.json              # 配置文件
+]
 
-├── start.bat                # 启动脚本### 3. 运行爬虫（可选）
-
-├── 快速启动.bat              # 一键启动```bash
-
-└── requirements.txt         # Python依赖# 安装Python依赖
-
-```pip install -r requirements.txt
+```├── 📁 backend/              # Node.js后端服务```bash
 
 
 
-## 📚 文档中心# 配置cookies（如需要）
+## 🛠️ 开发指南├── 📁 frontend/             # Vue3前端界面  # 创建MySQL数据库
 
-# 编辑 cookies/cookies.txt
 
-详细文档请查看 [`docs/`](./docs/) 目录：
 
-# 运行爬虫
+### 添加新API├── 📁 crawler/              # Python爬虫模块mysql -u root -p
+
+
+
+1. 在 `backend/src/routes/` 创建路由文件├── 📁 docs/                 # 📚 详细文档CREATE DATABASE buffotte CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+
+2. 在 `backend/src/services/` 实现业务逻辑
+
+3. 在 `server.js` 中注册路由├── 📁 cookies/              # Cookie管理```
+
+
+
+### 数据爬虫开发├── config.json              # 配置文件
+
+
+
+1. 在 `crawler/src/` 添加爬虫脚本├── start.bat                # 启动脚本### 3. 运行爬虫（可选）
+
+2. 更新 `requirements.txt`
+
+3. 在 `scripts/dev.sh` 添加执行命令├── 快速启动.bat              # 一键启动```bash
+
+
+
+### 前端开发└── requirements.txt         # Python依赖# 安装Python依赖
+
+
+
+1. 在 `frontend/src/` 添加组件```pip install -r requirements.txt
+
+2. 使用Vue 3 Composition API
+
+3. 通过 `/api/*` 调用后端接口
+
+
+
+## 📋 开发脚本## 📚 文档中心# 配置cookies（如需要）
+
+
+
+```bash# 编辑 cookies/cookies.txt
+
+# 安装依赖
+
+./scripts/dev.sh install详细文档请查看 [`docs/`](./docs/) 目录：
+
+
+
+# 启动服务# 运行爬虫
+
+./scripts/dev.sh start
 
 | 文档 | 说明 |python crawler/buff_to_mysql_async.py --max-pages 100
 
-|------|------|```
+# 停止服务
 
-| [📖 文档索引](./docs/README.md) | 完整文档导航 |
+./scripts/dev.sh stop|------|------|```
+
+
+
+# 运行爬虫| [📖 文档索引](./docs/README.md) | 完整文档导航 |
+
+./scripts/dev.sh crawl
 
 | [🚀 启动指南](./docs/STARTUP_README.md) | 详细启动说明 |### 4. 启动后端服务
 
-| [🏗️ 架构设计](./docs/ARCHITECTURE_v0.6.1.md) | v0.6.1架构文档 |```bash
+# 初始化数据库
+
+./scripts/dev.sh db:init| [🏗️ 架构设计](./docs/ARCHITECTURE_v0.6.1.md) | v0.6.1架构文档 |```bash
+
+```
 
 | [🔍 搜索功能](./docs/SEARCH_FEATURE_README.md) | 搜索功能说明 |cd backend
 
+## 🎯 版本特性
+
 | [📊 价格历史](./docs/PRICE_HISTORY_README.md) | 价格历史分析 |npm install
 
-| [🌐 部署指南](./docs/WEBSITE_README.md) | 网站部署说明 |npm start
+### v1.0.0 - 现代化重构
 
-```
+- 🏗️ **全新架构** - 模块化后端 + 容器化部署| [🌐 部署指南](./docs/WEBSITE_README.md) | 网站部署说明 |npm start
 
-## 🎯 版本历程后端服务运行在：http://localhost:3001
+- 📊 **多周期K线** - 小时/日/周K线数据支持
+
+- ⚡ **高性能API** - Node.js + MySQL优化```
+
+- 🎨 **现代化前端** - Vue 3 + 响应式设计
+
+- 🐳 **容器化** - Docker完整支持## 🎯 版本历程后端服务运行在：http://localhost:3001
+
+- 📚 **完善文档** - 详细的开发和部署指南
 
 
 
-### v0.6.1 - 模块化重构 (2025-09-20)### 5. 启动前端服务
+### v0.8.0 - 智能并发爬取
 
-- 🔧 **代码重构**：爬虫和后端模块化拆分```bash
+- 🚀 **智能并发** - 多账户状态管理### v0.6.1 - 模块化重构 (2025-09-20)### 5. 启动前端服务
 
-- 🏗️ **架构优化**：routes/services/config 分层设计cd frontend
+- 🛡️ **429处理** - 自动错误恢复
 
-- 🐛 **问题修复**：路径解析、依赖管理优化npm install
+- 📋 **队列管理** - FIFO任务调度- 🔧 **代码重构**：爬虫和后端模块化拆分```bash
+
+
+
+### v0.5.0 - Web界面发布- 🏗️ **架构优化**：routes/services/config 分层设计cd frontend
+
+- 🌐 **Vue界面** - 现代化Web界面
+
+- 📊 **数据可视化** - ECharts图表展示- 🐛 **问题修复**：路径解析、依赖管理优化npm install
+
+- 📈 **实时统计** - 动态数据面板
 
 - 📚 **文档完善**：统一启动脚本和详细文档npm run dev
 
+## 🤝 贡献指南
+
 ```
 
-### v0.6.0 - 智能搜索 (2025-09-20)  前端界面访问：http://localhost:3000
+1. Fork 项目
 
-- 🔍 **智能搜索**：模糊搜索、实时建议、一键刷新
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)### v0.6.0 - 智能搜索 (2025-09-20)  前端界面访问：http://localhost:3000
+
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+
+4. 推送到分支 (`git push origin feature/AmazingFeature`)- 🔍 **智能搜索**：模糊搜索、实时建议、一键刷新
+
+5. 创建 Pull Request
 
 - 📊 **详情展示**：完整价格信息、成交数据## 📁 项目结构
 
+## 📄 许可证
+
 - 🎨 **UI优化**：现代化界面设计
+
+本项目采用 MIT 许可证
 
 ```
 
+## ⚠️ 免责声明
+
 ### v0.5.0 - Web界面 (2025-09-20)Buffotte/
+
+本项目仅供学习和研究使用。请遵守相关网站的使用条款和法律法规。
 
 - 🌐 **全新界面**：Vue 3 + ECharts 可视化├── 📁 backend/              # Node.js后端
 
+## 📞 联系方式
+
 - 📈 **实时统计**：价格分布、数量统计│   ├── server.js            # Express服务器
 
-- ⚡ **高性能**：Node.js + Vue 现代架构│   ├── package.json         # 后端依赖
+- GitHub: [@Shr1mpTop](https://github.com/Shr1mpTop)
 
-│   └── .env                 # 环境配置
+- 项目主页: https://github.com/Shr1mpTop/Buffotte- ⚡ **高性能**：Node.js + Vue 现代架构│   ├── package.json         # 后端依赖
 
-[查看完整更新日志](./CHANGELOG.md)├── 📁 frontend/             # Vue3前端
+
+
+---│   └── .env                 # 环境配置
+
+
+
+⭐ 如果这个项目对你有帮助，请给它一个星标！[查看完整更新日志](./CHANGELOG.md)├── 📁 frontend/             # Vue3前端
 
 │   ├── src/
 

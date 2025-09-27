@@ -13,7 +13,7 @@ class Item(models.Model):
         db_table = 'items'
         managed = False
 
-class KlineData(models.Model):
+class KlineDataHour(models.Model):
     timestamp = models.BigIntegerField(primary_key=True)
     open_price = models.DecimalField(max_digits=10, decimal_places=2)
     high_price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -24,5 +24,33 @@ class KlineData(models.Model):
     collected_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'kline_data'
+        db_table = 'kline_data_hour'
+        managed = False
+
+class KlineDataDay(models.Model):
+    timestamp = models.BigIntegerField(primary_key=True)
+    open_price = models.DecimalField(max_digits=10, decimal_places=2)
+    high_price = models.DecimalField(max_digits=10, decimal_places=2)
+    low_price = models.DecimalField(max_digits=10, decimal_places=2)
+    close_price = models.DecimalField(max_digits=10, decimal_places=2)
+    volume = models.BigIntegerField()
+    turnover = models.DecimalField(max_digits=15, decimal_places=2)
+    collected_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'kline_data_day'
+        managed = False
+
+class KlineDataWeek(models.Model):
+    timestamp = models.BigIntegerField(primary_key=True)
+    open_price = models.DecimalField(max_digits=10, decimal_places=2)
+    high_price = models.DecimalField(max_digits=10, decimal_places=2)
+    low_price = models.DecimalField(max_digits=10, decimal_places=2)
+    close_price = models.DecimalField(max_digits=10, decimal_places=2)
+    volume = models.BigIntegerField()
+    turnover = models.DecimalField(max_digits=15, decimal_places=2)
+    collected_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'kline_data_week'
         managed = False

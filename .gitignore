@@ -1,11 +1,22 @@
 # 依赖目录
 node_modules/
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 # 日志文件
 *.log
 logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # 环境变量文件
 .env
+.env.local
+.env.production
+
 # 编辑器和IDE文件
 .vscode/
 .idea/
@@ -13,21 +24,33 @@ logs/
 *.swo
 *~
 
-cookies.txt
 # 缓存
 .cache/
 .parcel-cache/
 .npm/
 .yarn/
-
-# Vite缓存
 .vite/
+
 # 备份文件
 *.bak
 *.backup
 
+# Cookies文件
+cookies.txt
 cookies1.txt
-cookies2.txt      
-cookies3.txt 
+cookies2.txt
+cookies3.txt
 
+# 代理池状态
 proxy_pool/proxy_pool_status.json
+
+# 数据库文件
+*.sqlite3
+*.db
+
+# Docker数据
+docker/mysql_data/
+
+# 构建产物
+dist/
+build/

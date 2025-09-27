@@ -21,10 +21,10 @@ class KlineCrawler:
         if self.conn:
             self.conn.close()
 
-    def create_kline_table(self):
-        self.cursor.execute(
-            """
-        CREATE TABLE IF NOT EXISTS kline_data (
+    def create_kline_table(self, kline_type='hour'):
+        table_name = f'kline_data_{kline_type}'
+        self.cursor.execute(f'''
+        CREATE TABLE IF NOT EXISTS {table_name} (
             timestamp BIGINT PRIMARY KEY,
             open_price DECIMAL(10,2),
             high_price DECIMAL(10,2),
@@ -34,14 +34,16 @@ class KlineCrawler:
             turnover DECIMAL(15,2),
             collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-        """
-        )
+        ''')
 
-    def fetch_kline_data(self, timestamp=None, type=1, max_time=None):
+    def fetch_kline_data(self, timestamp=None, kline_type='hour', max_time=None):
+        type_map = {'hour': 1, 'day': 2, 'week': 3}
+        kline_type_num = type_map.get(kline_type, 1)
+        
         if timestamp is None:
             timestamp = int(time.time() * 1000)  # 当前时间戳（毫秒）
 
-        url = f"https://api.steamdt.com/user/statistics/v1/kline?timestamp={timestamp}&type={type}"
+        url = f"https://api.steamdt.com/user/statistics/v1/kline?timestamp={timestamp}&type={kline_type_num}"
         if max_time:
             url += f"&maxTime={max_time}"
 
@@ -70,35 +72,37 @@ class KlineCrawler:
 
         if response.status_code == 200:
             data = response.json()
-            print("Kline data fetched successfully")
+            print(f"{kline_type} Kline data fetched successfully")
 
+            table_name = f'kline_data_{kline_type}'
             # 假设 data['data'] 是 list of lists
             if "data" in data and isinstance(data["data"], list):
                 for item in data["data"]:
                     if len(item) >= 7:
                         ts, open_p, high_p, low_p, close_p, vol, turn = item[:7]
                         self.cursor.execute(
-                            """
-                        INSERT IGNORE INTO kline_data (timestamp, open_price, high_price, low_price, close_price, volume, turnover)
+                            f"""
+                        INSERT IGNORE INTO {table_name} (timestamp, open_price, high_price, low_price, close_price, volume, turnover)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
                         """,
                             (int(ts), open_p, high_p, low_p, close_p, int(vol), turn),
                         )
                 self.conn.commit()
-                print(f"Inserted {len(data['data'])} records")
+                print(f"Inserted {len(data['data'])} records into {table_name}")
             else:
                 print("Unexpected data format")
                 print(json.dumps(data, indent=4, ensure_ascii=False))
 
             return data
         else:
-            print(f"Failed to fetch data: {response.status_code}")
+            print(f"Failed to fetch {kline_type} data: {response.status_code}")
             return None
 
     def run(self):
         self.connect_db()
-        self.create_kline_table()
-        self.fetch_kline_data()
+        for kline_type in ['hour', 'day', 'week']:
+            self.create_kline_table(kline_type)
+            self.fetch_kline_data(kline_type=kline_type)
         self.disconnect_db()
 
 
