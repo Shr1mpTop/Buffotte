@@ -1,10 +1,9 @@
 {
-  "# NOTE": "This file has been sanitized. Move secrets to environment variables or a secure secret manager.",
-  "smtp_server": "smtp.example.com",
+  "smtp_server": "smtp.qq.com",
   "smtp_port": 587,
   "use_tls": true,
-  "username": "your_smtp_username_or_env_VAR",
-  "password": "<DO NOT COMMIT - use env var or secret manager>",
-  "from_address": "from@example.com",
+  "username": "1356738145@qq.com",
+  "password": "iyatwuioxboghfad",
+  "from_address": "1356738145@qq.com",
   "to_address": "HEZH0014@e.ntu.edu.sg"
 }

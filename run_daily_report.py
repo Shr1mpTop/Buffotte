@@ -170,11 +170,24 @@ def send_html_report(email_cfg_path, subject, html_body, inline_image_paths=None
     if all(env_cfg.get(k) for k in ['smtp_server', 'smtp_port', 'username', 'password', 'from_address', 'to_address']):
         cfg = env_cfg
     else:
-        if not os.path.exists(email_cfg_path):
-            print('Email config not found and env vars not set; skipping email send')
-            return False
-        with open(email_cfg_path, 'r', encoding='utf-8') as f:
-            cfg = json.load(f)
+        # try explicit config file first
+        if os.path.exists(email_cfg_path):
+            with open(email_cfg_path, 'r', encoding='utf-8') as f:
+                cfg = json.load(f)
+        else:
+            # fallback to archived config if present (useful for deployment/testing)
+            archived = os.path.join(os.path.dirname(email_cfg_path), 'archive', 'removed_email_config.json')
+            if os.path.exists(archived):
+                try:
+                    with open(archived, 'r', encoding='utf-8') as f:
+                        cfg = json.load(f)
+                    print('Loaded SMTP config from archive/removed_email_config.json')
+                except Exception as e:
+                    print('Failed loading archived email config:', e)
+                    return False
+            else:
+                print('Email config not found and env vars not set; skipping email send')
+                return False
         required = ['smtp_server', 'smtp_port', 'username', 'password', 'from_address', 'to_address']
         if not all(k in cfg for k in required):
             print('Email config missing required fields and env vars not set; skipping email send')
