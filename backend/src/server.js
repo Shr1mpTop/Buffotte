@@ -63,9 +63,23 @@ app.get('/api/kline/:type', async (req, res) => {
     }
 
     const tableName = `kline_data_${type}`;
-    const [rows] = await pool.execute(
-      `SELECT * FROM ${tableName} ORDER BY timestamp DESC LIMIT 100`
-    );
+    let query = `SELECT * FROM ${tableName}`;
+
+    // 根据K线类型设置过滤条件，只返回正式数据
+    if (type === 'hour') {
+      // 小时K：只保留每小时55:10北京时间的数据
+      query += ` WHERE (timestamp % 3600) = 3310`; // 55:10 = 55*60 + 10 = 3310秒
+    } else if (type === 'day') {
+      // 日K：只保留每天15:55:10的数据（这是数据库中的正式数据）
+      query += ` WHERE (timestamp % 86400) = 57310`; // 15:55:10 = 15*3600 + 55*60 + 10 = 57310秒
+    } else if (type === 'week') {
+      // 周K：只保留每周3天15:55:10的数据（这是数据库中最多的正式数据）
+      query += ` WHERE (timestamp % 604800) = 316510`; // 3天15:55:10 = 3*86400 + 15*3600 + 55*60 + 10 = 316510秒
+    }
+
+    query += ` ORDER BY timestamp DESC LIMIT 100`;
+
+    const [rows] = await pool.execute(query);
 
     res.json(rows);
   } catch (error) {
@@ -86,9 +100,44 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
+// 清理过期临时数据的函数
+async function cleanupExpiredTempData() {
+  try {
+    const now = Math.floor(Date.now() / 1000); // 当前时间戳（秒）
+
+    // 清理小时K线中过期的临时数据（保留55:10数据，删除其他数据超过1小时的记录）
+    const hourThreshold = now - 3600; // 1小时前
+    await pool.execute(
+      `DELETE FROM kline_data_hour WHERE (timestamp % 3600) != 3310 AND timestamp < ?`,
+      [hourThreshold]
+    );
+
+    // 清理日K线中过期的临时数据（保留15:55:10数据，删除其他数据超过24小时的记录）
+    const dayThreshold = now - 86400; // 24小时前
+    await pool.execute(
+      `DELETE FROM kline_data_day WHERE (timestamp % 86400) != 57310 AND timestamp < ?`,
+      [dayThreshold]
+    );
+
+    // 清理周K线中过期的临时数据（保留3天15:55:10数据，删除其他数据超过7天的记录）
+    const weekThreshold = now - 604800; // 7天前
+    await pool.execute(
+      `DELETE FROM kline_data_week WHERE (timestamp % 604800) != 316510 AND timestamp < ?`,
+      [weekThreshold]
+    );
+
+    console.log('临时数据清理完成');
+  } catch (error) {
+    console.error('清理临时数据失败:', error);
+  }
+}
+
 // 刷新数据API - 触发爬虫更新数据
 app.post('/api/refresh', async (req, res) => {
   try {
+    // 先清理过期临时数据
+    await cleanupExpiredTempData();
+
     const { spawn } = require('child_process');
 
     console.log('开始执行数据刷新...');
@@ -126,5 +175,12 @@ app.post('/api/refresh', async (req, res) => {
 // 启动服务器
 app.listen(port, async () => {
   await initDB();
+
+  // 设置定期清理任务 - 每小时清理一次过期临时数据
+  setInterval(async () => {
+    console.log('开始定期清理过期临时数据...');
+    await cleanupExpiredTempData();
+  }, 60 * 60 * 1000); // 每小时执行一次
+
   console.log(`Server running at http://localhost:${port}`);
 });
