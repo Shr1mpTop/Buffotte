@@ -23,7 +23,7 @@ import smtplib
 from email.message import EmailMessage
 import matplotlib.pyplot as plt
 
-from .kline_crawler import KlineCrawler
+from kline_crawler import KlineCrawler
 
 MODELS_DIR = 'models'
 DB_CONFIG = 'config.json'
@@ -198,82 +198,18 @@ def predict_next_days(model, scaler, df, feat_cols, days=5):
     return results
 
 
-def plot_and_save(df, results, out_png):
-    import matplotlib.dates as mdates
-    from mplfinance.original_flavor import candlestick_ohlc
-
-    # Get last 30 days
-    df_plot = df.tail(30).copy()
-    df_plot['Date'] = pd.to_datetime(df_plot['timestamp'], unit='s')
-    df_plot.set_index('Date', inplace=True)
-
-    # Prepare data for candlestick: [(date, open, high, low, close), ...]
-    quotes = []
-    for idx, row in df_plot.iterrows():
-        quotes.append((mdates.date2num(idx), row['open_price'], row['high_price'], row['low_price'], row['close_price']))
-
-    # Generate future data
-    last_row = df_plot.iloc[-1]
-    future_quotes = []
-    current_close = last_row['close_price']
-    last_date = df_plot.index[-1]
-    for i, r in enumerate(results):
-        pred_return = r['predicted_daily_return']
-        new_close = current_close * (1 + pred_return)
-        new_open = current_close
-        new_high = max(new_open, new_close)
-        new_low = min(new_open, new_close)
-        future_date = last_date + pd.Timedelta(days=i+1)
-        future_quotes.append((mdates.date2num(future_date), new_open, new_high, new_low, new_close))
-        current_close = new_close
-
-    fig, ax = plt.subplots(figsize=(12, 8))
-
-    # Prepare data for candlestick
-    quotes = []
-    prev_close = None
-    for idx, row in df_plot.iterrows():
-        quotes.append((mdates.date2num(idx), row['open_price'], row['high_price'], row['low_price'], row['close_price'], prev_close))
-        prev_close = row['close_price']
-
-    # Plot historical candlesticks with colors based on close > prev_close
-    for q in quotes:
-        date, open_p, high, low, close, prev_c = q
-        if prev_c is not None:
-            body_color = 'r' if close > prev_c else 'g'
-        else:
-            body_color = 'b'  # first day
-        wick_color = 'black'  # wick always black
-        # Draw wick: lower shadow and upper shadow
-        body_low = min(open_p, close)
-        body_high = max(open_p, close)
-        ax.plot([date, date], [low, body_low], color=wick_color, linewidth=1)  # lower shadow
-        ax.plot([date, date], [body_high, high], color=wick_color, linewidth=1)  # upper shadow
-        # Draw body
-        body_bottom = body_low
-        body_height = body_high - body_low
-        ax.bar(date, body_height, width=0.6, bottom=body_bottom, color=body_color, alpha=0.8)
-
-    # Plot future as dashed candlesticks
-    for i in range(len(future_quotes)):
-        date, open_p, high, low, close = future_quotes[i]
-        body_low = min(open_p, close)
-        body_high = max(open_p, close)
-        # Draw wick
-        ax.plot([date, date], [low, body_low], color='gray', linestyle='--', linewidth=1)  # lower shadow
-        ax.plot([date, date], [body_high, high], color='gray', linestyle='--', linewidth=1)  # upper shadow
-        # Draw body
-        body_bottom = body_low
-        body_height = body_high - body_low
-        ax.bar(date, body_height, width=0.6, bottom=body_bottom, color='blue', alpha=0.5)
-
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    ax.xaxis.set_major_locator(mdates.DayLocator())
-    plt.xticks(rotation=45)
-    ax.set_title('Market Candlestick Chart with 7-Day Prediction')
-    ax.set_ylabel('Price')
-    ax.grid(True)
-    plt.tight_layout()
+def plot_and_save(results, out_png):
+    days = [r['day'] for r in results]
+    vals = [r['predicted_daily_return'] for r in results]
+    dirs = [r['direction'] for r in results]
+    plt.figure(figsize=(8,4))
+    cols = ['green' if v>0 else 'red' if v<0 else 'gray' for v in vals]
+    plt.bar(days, vals, color=cols)
+    plt.axhline(0, color='k', linewidth=0.6)
+    plt.xlabel('day')
+    plt.ylabel('predicted daily return')
+    plt.title('Next days predicted daily returns')
+    plt.grid(True, axis='y')
     plt.savefig(out_png)
     plt.close()
 
@@ -386,7 +322,7 @@ def main():
 
     # 5) plot
     out_png = os.path.join(MODELS_DIR, f'next_week_prediction_{timestamp}.png')
-    plot_and_save(df, results, out_png)
+    plot_and_save(results, out_png)
 
     # 6) email
     subject = f'Market forecast {datetime.now(timezone.utc).date().isoformat()}'

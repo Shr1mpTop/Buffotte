@@ -154,7 +154,7 @@ class KlineCrawler:
             # 如果 ts 看起来像毫秒（大于 1e11），把它转为秒
             if ts > 1e11:
                 ts = int(ts / 1000)
-            open_p, high_p, low_p, close_p = item[1], item[2], item[3], item[4]
+            open_p, close_p, high_p, low_p = item[1], item[2], item[3], item[4]
             vol = int(item[5])
             turnover = float(item[6])
             out.append((ts, open_p, high_p, low_p, close_p, vol, turnover))

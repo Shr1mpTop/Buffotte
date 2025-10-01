@@ -1,29 +1,29 @@
 {
-  "generated_at": "20251001T185447Z",
+  "generated_at": "20251001T191441Z",
   "predictions": [
     {
       "day": 1,
-      "predicted_daily_return": -0.00487540553008651,
+      "predicted_daily_return": -0.004227295258735404,
       "direction": "down"
     },
     {
       "day": 2,
-      "predicted_daily_return": -0.007695847187565386,
+      "predicted_daily_return": -0.006067344505013685,
       "direction": "down"
     },
     {
       "day": 3,
-      "predicted_daily_return": -0.008005539160942205,
+      "predicted_daily_return": -0.007159186259034436,
       "direction": "down"
     },
     {
       "day": 4,
-      "predicted_daily_return": -0.008209392204852242,
+      "predicted_daily_return": -0.007878258580549784,
       "direction": "down"
     },
     {
       "day": 5,
-      "predicted_daily_return": -0.008430123468856214,
+      "predicted_daily_return": -0.008044524885286607,
       "direction": "down"
     }
   ]
