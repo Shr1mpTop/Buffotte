@@ -28,6 +28,7 @@ from .kline_crawler import KlineCrawler
 MODELS_DIR = 'models'
 DB_CONFIG = 'config.json'
 EMAIL_CONFIG = 'email_config.json'
+LLM_CONFIG = 'llm_config.json'
 
 
 def fetch_and_insert(db_config_path, days=5):
@@ -357,6 +358,69 @@ def send_html_report(email_cfg_path, subject, html_body, inline_image_paths=None
         return False
 
 
+def run_ai_analysis(df, predictions, chart_path):
+    """
+    Run AI multi-agent analysis workflow.
+    
+    Returns tuple: (ai_results, html_report_path, json_report_path) or (None, None, None) if disabled
+    """
+    # Check if LLM config exists and AI analysis is enabled
+    if not os.path.exists(LLM_CONFIG):
+        print('LLM config not found, skipping AI analysis')
+        return None, None, None
+    
+    try:
+        with open(LLM_CONFIG, 'r', encoding='utf-8') as f:
+            llm_cfg = json.load(f)
+    except Exception as e:
+        print(f'Failed to load LLM config: {e}')
+        return None, None, None
+    
+    # Check if API key is set
+    api_key_env = llm_cfg.get('llm', {}).get('api_key_env', 'GEMINI_API_KEY')
+    if not os.getenv(api_key_env):
+        print(f'Warning: {api_key_env} not set in environment, skipping AI analysis')
+        return None, None, None
+    
+    try:
+        # Import workflow (lazy import to avoid errors if dependencies missing)
+        from llm.workflow import AnalysisWorkflow
+        
+        # Initialize workflow
+        model_name = llm_cfg.get('llm', {}).get('model', 'gemini-2.0-flash-exp')
+        workflow = AnalysisWorkflow(model_name=model_name)
+        
+        # Run analysis
+        enable_news = llm_cfg.get('workflow', {}).get('enable_news_search', False)
+        ai_results = workflow.run_full_analysis(
+            historical_data=df.tail(30).copy(),
+            predictions=predictions,
+            chart_path=chart_path,
+            enable_news_search=enable_news
+        )
+        
+        # Save results
+        output_dir = llm_cfg.get('workflow', {}).get('output_dir', MODELS_DIR)
+        json_path = workflow.save_results(output_dir=output_dir)
+        
+        # Generate HTML report if enabled
+        html_path = None
+        if llm_cfg.get('workflow', {}).get('generate_html', True):
+            html_path = workflow.generate_html_report(output_dir=output_dir)
+        
+        return ai_results, html_path, json_path
+        
+    except ImportError as e:
+        print(f'AI analysis dependencies not installed: {e}')
+        print('Install with: pip install google-generativeai pillow')
+        return None, None, None
+    except Exception as e:
+        print(f'AI analysis failed: {e}')
+        import traceback
+        traceback.print_exc()
+        return None, None, None
+
+
 def main():
     # 1) fetch and insert latest data
     if not os.path.exists(DB_CONFIG):
@@ -388,20 +452,50 @@ def main():
     out_png = os.path.join(MODELS_DIR, f'next_week_prediction_{timestamp}.png')
     plot_and_save(df, results, out_png)
 
-    # 6) email
+    # 6) Run AI analysis
+    print('\n' + '='*60)
+    print('🤖 Starting AI Multi-Agent Analysis...')
+    print('='*60)
+    ai_results, ai_html_path, ai_json_path = run_ai_analysis(df, results, out_png)
+    
+    # 7) Prepare email body
     subject = f'Market forecast {datetime.now(timezone.utc).date().isoformat()}'
     first = results[0]
     body = f"Tomorrow prediction: {first['direction']} (expected return {first['predicted_daily_return']:.5f})\n\nFull 5-day:\n"
     for r in results:
         body += f"day {r['day']}: {r['direction']} ({r['predicted_daily_return']:.5f})\n"
 
-    # Create simple HTML body
+    # Add AI analysis summary if available
+    if ai_results:
+        body += f"\n{'='*50}\n"
+        body += "🤖 AI ANALYSIS SUMMARY\n"
+        body += f"{'='*50}\n"
+        summary = ai_results.get('summary', {})
+        body += f"Recommendation: {summary.get('recommendation', 'N/A').upper()}\n"
+        body += f"Confidence: {summary.get('confidence', 0)*100:.0f}%\n"
+        body += f"Market Sentiment: {summary.get('market_sentiment', 'N/A')}\n"
+        body += f"Risk Level: {summary.get('risk_level', 'N/A')}\n\n"
+        body += "Key Findings:\n"
+        for finding in summary.get('key_findings', [])[:3]:
+            body += f"• {finding}\n"
+        body += f"\n📄 Full AI report attached\n"
+
+    # Create HTML body
     inline = [out_png] if os.path.exists(out_png) else []
     html = '<html><body><pre>' + (body.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')) + '</pre>'
     if inline:
         html += '<br><img src="{{INLINE_IMAGE_0}}" alt="chart" />'
     html += '</body></html>'
-    send_html_report(EMAIL_CONFIG, subject, html, inline_image_paths=inline, attachments=[out_png, out_json])
+    
+    # Prepare attachments
+    attachments = [out_png, out_json]
+    if ai_html_path and os.path.exists(ai_html_path):
+        attachments.append(ai_html_path)
+    if ai_json_path and os.path.exists(ai_json_path):
+        attachments.append(ai_json_path)
+    
+    # 8) Send email
+    send_html_report(EMAIL_CONFIG, subject, html, inline_image_paths=inline, attachments=attachments)
 
 
 if __name__ == '__main__':

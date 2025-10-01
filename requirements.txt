@@ -11,3 +11,5 @@ lightgbm
 matplotlib
 SQLAlchemy
 mplfinance
+google-generativeai
+pillow
