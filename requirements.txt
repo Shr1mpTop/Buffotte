@@ -10,3 +10,4 @@ joblib
 lightgbm
 matplotlib
 SQLAlchemy
+mplfinance

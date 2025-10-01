@@ -1,7 +1,7 @@
 param(
     [string]$TaskName = "BuffotteDailyReport",
     [string]$PythonExe = "$PWD\.venv\Scripts\python.exe",
-    [string]$ScriptPath = "$PWD\run_daily_report.py",
+    [string]$ScriptPath = "$PWD\src\run_daily_report.py",
     [string]$StartTime = "23:58"
 )
 

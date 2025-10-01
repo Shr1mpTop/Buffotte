@@ -23,7 +23,7 @@ import smtplib
 from email.message import EmailMessage
 import matplotlib.pyplot as plt
 
-from kline_crawler import KlineCrawler
+from .kline_crawler import KlineCrawler
 
 MODELS_DIR = 'models'
 DB_CONFIG = 'config.json'
@@ -49,12 +49,8 @@ def fetch_and_insert(db_config_path, days=5):
 
     force_update = bool(cfg.get('force_update', False))
     history_days = int(cfg.get('history_days', days))
-    use_local_time = bool(cfg.get('use_local_time', False))
 
-    if use_local_time:
-        now_ref = datetime.now().astimezone()
-    else:
-        now_ref = datetime.now(timezone.utc)
+    now_ref = datetime.now(timezone.utc)
 
     try:
         crawler.connect_db()
@@ -202,18 +198,60 @@ def predict_next_days(model, scaler, df, feat_cols, days=5):
     return results
 
 
-def plot_and_save(results, out_png):
-    days = [r['day'] for r in results]
-    vals = [r['predicted_daily_return'] for r in results]
-    dirs = [r['direction'] for r in results]
-    plt.figure(figsize=(8,4))
-    cols = ['green' if v>0 else 'red' if v<0 else 'gray' for v in vals]
-    plt.bar(days, vals, color=cols)
-    plt.axhline(0, color='k', linewidth=0.6)
-    plt.xlabel('day')
-    plt.ylabel('predicted daily return')
-    plt.title('Next days predicted daily returns')
-    plt.grid(True, axis='y')
+def plot_and_save(df, results, out_png):
+    import matplotlib.dates as mdates
+    from mplfinance.original_flavor import candlestick_ohlc
+
+    # Get last 30 days
+    df_plot = df.tail(30).copy()
+    df_plot['Date'] = pd.to_datetime(df_plot['timestamp'], unit='s')
+    df_plot.set_index('Date', inplace=True)
+
+    # Prepare data for candlestick: [(date, open, high, low, close), ...]
+    quotes = []
+    for idx, row in df_plot.iterrows():
+        quotes.append((mdates.date2num(idx), row['open_price'], row['high_price'], row['low_price'], row['close_price']))
+
+    # Generate future data
+    last_row = df_plot.iloc[-1]
+    future_quotes = []
+    current_close = last_row['close_price']
+    last_date = df_plot.index[-1]
+    for i, r in enumerate(results):
+        pred_return = r['predicted_daily_return']
+        new_close = current_close * (1 + pred_return)
+        new_open = current_close
+        new_high = max(new_open, new_close)
+        new_low = min(new_open, new_close)
+        future_date = last_date + pd.Timedelta(days=i+1)
+        future_quotes.append((mdates.date2num(future_date), new_open, new_high, new_low, new_close))
+        current_close = new_close
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    # Plot historical candlesticks
+    candlestick_ohlc(ax, quotes, width=0.6, colorup='r', colordown='g', alpha=0.8)
+
+    # Plot future as dashed lines
+    future_dates = [q[0] for q in future_quotes]
+    future_opens = [q[1] for q in future_quotes]
+    future_highs = [q[2] for q in future_quotes]
+    future_lows = [q[3] for q in future_quotes]
+    future_closes = [q[4] for q in future_quotes]
+
+    # Plot open-close lines
+    for i in range(len(future_quotes)):
+        ax.plot([future_dates[i], future_dates[i]], [future_opens[i], future_closes[i]], color='blue', linestyle='--', linewidth=2)
+        # High-low lines
+        ax.plot([future_dates[i], future_dates[i]], [future_lows[i], future_highs[i]], color='blue', linestyle='--', linewidth=1)
+
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    ax.xaxis.set_major_locator(mdates.DayLocator())
+    plt.xticks(rotation=45)
+    ax.set_title('Market Candlestick Chart with 7-Day Prediction')
+    ax.set_ylabel('Price')
+    ax.grid(True)
+    plt.tight_layout()
     plt.savefig(out_png)
     plt.close()
 
@@ -240,19 +278,8 @@ def send_html_report(email_cfg_path, subject, html_body, inline_image_paths=None
             with open(email_cfg_path, 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
         else:
-            # fallback to archived config if present (useful for deployment/testing)
-            archived = os.path.join(os.path.dirname(email_cfg_path), 'archive', 'removed_email_config.json')
-            if os.path.exists(archived):
-                try:
-                    with open(archived, 'r', encoding='utf-8') as f:
-                        cfg = json.load(f)
-                    print('Loaded SMTP config from archive/removed_email_config.json')
-                except Exception as e:
-                    print('Failed loading archived email config:', e)
-                    return False
-            else:
-                print('Email config not found and env vars not set; skipping email send')
-                return False
+            print('Email config not found and env vars not set; skipping email send')
+            return False
         required = ['smtp_server', 'smtp_port', 'username', 'password', 'from_address', 'to_address']
         if not all(k in cfg for k in required):
             print('Email config missing required fields and env vars not set; skipping email send')
@@ -308,22 +335,6 @@ def send_html_report(email_cfg_path, subject, html_body, inline_image_paths=None
         return False
 
 
-def send_email_with_attachment(email_cfg_path, subject, body, attachments=None):
-    # compatibility wrapper: create a simple HTML with first attachment inline if png
-    inline = []
-    if attachments:
-        for p in attachments:
-            if p.lower().endswith('.png'):
-                inline.append(p)
-                break
-    # simple HTML body
-    html = '<html><body><pre>' + (body.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')) + '</pre>'
-    if inline:
-        html += '<br><img src="{{INLINE_IMAGE_0}}" alt="chart" />'
-    html += '</body></html>'
-    return send_html_report(email_cfg_path, subject, html, inline_image_paths=inline, attachments=attachments)
-
-
 def main():
     # 1) fetch and insert latest data
     if not os.path.exists(DB_CONFIG):
@@ -353,7 +364,7 @@ def main():
 
     # 5) plot
     out_png = os.path.join(MODELS_DIR, f'next_week_prediction_{timestamp}.png')
-    plot_and_save(results, out_png)
+    plot_and_save(df, results, out_png)
 
     # 6) email
     subject = f'Market forecast {datetime.now(timezone.utc).date().isoformat()}'
@@ -362,7 +373,13 @@ def main():
     for r in results:
         body += f"day {r['day']}: {r['direction']} ({r['predicted_daily_return']:.5f})\n"
 
-    send_email_with_attachment(EMAIL_CONFIG, subject, body, attachments=[out_png, out_json])
+    # Create simple HTML body
+    inline = [out_png] if os.path.exists(out_png) else []
+    html = '<html><body><pre>' + (body.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')) + '</pre>'
+    if inline:
+        html += '<br><img src="{{INLINE_IMAGE_0}}" alt="chart" />'
+    html += '</body></html>'
+    send_html_report(EMAIL_CONFIG, subject, html, inline_image_paths=inline, attachments=[out_png, out_json])
 
 
 if __name__ == '__main__':

@@ -1,14 +1,14 @@
 {
-  "generated_at": "20251001T183837Z",
+  "generated_at": "20251001T185447Z",
   "predictions": [
     {
       "day": 1,
-      "predicted_daily_return": -0.004875405530086509,
+      "predicted_daily_return": -0.00487540553008651,
       "direction": "down"
     },
     {
       "day": 2,
-      "predicted_daily_return": -0.007695847187565388,
+      "predicted_daily_return": -0.007695847187565386,
       "direction": "down"
     },
     {
