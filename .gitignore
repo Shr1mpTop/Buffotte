@@ -91,6 +91,7 @@ run/
 # Secrets and config (do not commit credentials)
 email_config.json
 config.json
+llm_config.json
 api-keys.txt
 *.secret
 .env

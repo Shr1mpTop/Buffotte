@@ -2,7 +2,7 @@
   "llm": {
     "provider": "google",
     "model": "gemini-2.0-flash-exp",
-    "api_key": "AIzaSyBZ_aohGl9p2oSpVefDY6IIcXNLbzEVxlM",
+    "api_key": "YOUR_GOOGLE_GEMINI_API_KEY_HERE",
     "temperature": {
       "data_analyst": 0.3,
       "market_analyst": 0.5,

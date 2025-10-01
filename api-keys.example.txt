@@ -1,0 +1,9 @@
+# API Keys Configuration Example
+# Copy this file to api-keys.txt and fill in your actual API keys
+
+# Google Gemini API Key
+# Get it from: https://aistudio.google.com/apikey
+GOOGLE_GEMINI_API_KEY=YOUR_GOOGLE_GEMINI_API_KEY_HERE
+
+# Add other API keys below as needed
+# ANOTHER_API_KEY=your_key_here
