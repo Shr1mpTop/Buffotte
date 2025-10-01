@@ -2,7 +2,7 @@
   "smtp_server": "smtp.qq.com",
   "smtp_port": 587,
   "use_tls": true,
-  "username": "1356738145@qq.com",
+  "username": "HeZhili",
   "password": "iyatwuioxboghfad",
   "from_address": "1356738145@qq.com",
   "to_address": "HEZH0014@e.ntu.edu.sg"

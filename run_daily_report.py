@@ -15,7 +15,7 @@ Notes:
 import os
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import joblib
 import pandas as pd
 import numpy as np
@@ -30,24 +30,89 @@ DB_CONFIG = 'config.json'
 EMAIL_CONFIG = 'email_config.json'
 
 
-def fetch_and_insert(db_config_path):
+def fetch_and_insert(db_config_path, days=5):
+    """Fetch kline data for the previous `days` days at 23:55 (UTC) and insert into DB.
+
+    Note: we assume the API accepts a timestamp parameter and will return the kline data
+    corresponding to that timestamp. We use UTC 23:55 for each day; change if you need
+    a different timezone.
+    """
     crawler = KlineCrawler(db_config_path=db_config_path)
-    data = crawler.fetch_recent()  # uses current time
-    rows = KlineCrawler.parse_data_rows(data) if data else []
-    inserted = 0
-    if rows:
-        try:
-            crawler.connect_db()
-            crawler.create_kline_table(ktype='day')
-            inserted = crawler.insert_rows(rows, ktype='day')
-        except Exception as e:
-            print('DB insert failed:', e)
-        finally:
+    total_inserted = 0
+
+    # Read optional automation config from the same config file
+    try:
+        with open(db_config_path, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+    except Exception:
+        cfg = {}
+
+    force_update = bool(cfg.get('force_update', False))
+    history_days = int(cfg.get('history_days', days))
+    use_local_time = bool(cfg.get('use_local_time', False))
+
+    if use_local_time:
+        now_ref = datetime.now().astimezone()
+    else:
+        now_ref = datetime.now(timezone.utc)
+
+    try:
+        crawler.connect_db()
+        crawler.create_kline_table(ktype='day')
+
+        for d in range(1, history_days + 1):
+            target_date = (now_ref - timedelta(days=d)).date()
+            # Construct 23:55:10 in Shanghai time (UTC+8), then convert to UTC for API
+            shanghai_tz = timezone(timedelta(hours=8))
+            target_dt_shanghai = datetime(target_date.year, target_date.month, target_date.day, 23, 55, 10, tzinfo=shanghai_tz)
+            # API expects UTC timestamp; convert
+            ts = int(target_dt_shanghai.astimezone(timezone.utc).timestamp())
+            data = crawler.fetch_recent(timestamp_s=ts)
+            # write raw API response to logs for auditing
             try:
-                crawler.disconnect_db()
-            except Exception:
+                os.makedirs('logs', exist_ok=True)
+                log_path = os.path.join('logs', f'fetch_{target_date.isoformat()}_{ts}.json')
+                with open(log_path, 'w', encoding='utf-8') as lf:
+                    json.dump(data, lf, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print('Failed to write fetch log:', e)
+            rows = KlineCrawler.parse_data_rows(data) if data else []
+            if not rows:
+                print(f'No rows returned for {target_date.isoformat()} 23:55:10 Shanghai (ts={ts})')
+                continue
+
+            # Filter rows to only include those with Shanghai time 23:55:10
+            filtered_rows = []
+            for r in rows:
+                ts_row = int(r[0])
+                dt_utc = datetime.fromtimestamp(ts_row, tz=timezone.utc)
+                dt_shanghai = dt_utc + timedelta(hours=8)
+                if dt_shanghai.hour == 23 and dt_shanghai.minute == 55 and dt_shanghai.second == 10:
+                    filtered_rows.append(r)
+
+            if not filtered_rows:
+                print(f'No rows with 23:55:10 Shanghai time for {target_date.isoformat()}')
+                continue
+
+            if not force_update:
+                # Since we filtered to only 23:55:10, we can proceed
                 pass
-    return inserted
+
+            try:
+                inserted = crawler.insert_rows(filtered_rows, ktype='day')
+                print(f'Inserted {inserted} rows for {target_date.isoformat()} 23:55:10 Shanghai')
+                total_inserted += inserted
+            except Exception as e:
+                print(f'DB insert failed for {target_date.isoformat()}:', e)
+    except Exception as e:
+        print('DB operation failed:', e)
+    finally:
+        try:
+            crawler.disconnect_db()
+        except Exception:
+            pass
+
+    return total_inserted
 
 
 def find_model_and_scaler():
@@ -264,7 +329,7 @@ def main():
     if not os.path.exists(DB_CONFIG):
         print('DB config not found:', DB_CONFIG)
         return
-    inserted = fetch_and_insert(DB_CONFIG)
+    inserted = fetch_and_insert(DB_CONFIG, days=5)
     print('Inserted rows:', inserted)
 
     # 2) load recent df and featurize

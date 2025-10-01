@@ -51,7 +51,15 @@ class KlineCrawler:
         self.cursor = None
         if db_config_path:
             with open(db_config_path, "r", encoding="utf-8") as f:
-                self.db_config = json.load(f)
+                full_config = json.load(f)
+            # Only keep pymysql connection parameters
+            db_keys = {'host', 'user', 'username', 'password', 'database', 'db', 'port', 'charset'}
+            self.db_config = {k: v for k, v in full_config.items() if k in db_keys}
+            # Handle username/user alias
+            if 'username' in self.db_config and 'user' not in self.db_config:
+                self.db_config['user'] = self.db_config.pop('username')
+            if 'db' in self.db_config and 'database' not in self.db_config:
+                self.db_config['database'] = self.db_config.pop('db')
         self.session = session or requests.Session()
 
     def _build_headers(self) -> dict:
