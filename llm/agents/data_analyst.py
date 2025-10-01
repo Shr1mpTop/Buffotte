@@ -97,10 +97,20 @@ class DataAnalystAgent(BaseAgent):
         
         # Summarize historical data
         if df is not None and not df.empty:
+            # Convert timestamps to readable dates
+            from datetime import datetime
+            start_date = datetime.fromtimestamp(df['timestamp'].min()).strftime('%Y年%m月%d日')
+            end_date = datetime.fromtimestamp(df['timestamp'].max()).strftime('%Y年%m月%d日')
+            
+            # Prepare recent 5 days with readable dates
+            recent_5 = df.tail(5).copy()
+            recent_5['日期'] = recent_5['timestamp'].apply(lambda x: datetime.fromtimestamp(x).strftime('%Y-%m-%d'))
+            recent_5_display = recent_5[['日期', 'close_price', 'volume']].to_string(index=False)
+            
             df_summary = f"""
 近30天历史数据摘要：
 - 数据记录数: {len(df)}条
-- 时间范围: {df['timestamp'].min()} 至 {df['timestamp'].max()}
+- 时间范围: {start_date} 至 {end_date}
 - 收盘价范围: {df['close_price'].min():.2f} - {df['close_price'].max():.2f}
 - 平均收盘价: {df['close_price'].mean():.2f}
 - 价格标准差: {df['close_price'].std():.2f}
@@ -109,7 +119,7 @@ class DataAnalystAgent(BaseAgent):
 - 平均日交易量: {df['volume'].mean():.0f}
 
 最近5天收盘价:
-{df.tail(5)[['timestamp', 'close_price', 'volume']].to_string(index=False)}
+{recent_5_display}
 """
         else:
             df_summary = "历史数据不可用"

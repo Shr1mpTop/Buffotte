@@ -18,14 +18,36 @@ from llm.agents.fund_manager import FundManagerAgent
 class AnalysisWorkflow:
     """Orchestrates multi-agent analysis workflow."""
     
-    def __init__(self, gemini_api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash-exp"):
+    def __init__(self, gemini_api_key: Optional[str] = None, model_name: str = "gemini-2.5-flash", config_path: Optional[str] = None):
         """
         Initialize workflow with agents.
         
         Args:
-            gemini_api_key: Google Gemini API key
+            gemini_api_key: Google Gemini API key. If None, will try to load from config or env var.
             model_name: Gemini model to use
+            config_path: Path to llm_config.json. If provided, will load API key and settings from config.
         """
+        # Try to load from config file if provided
+        if config_path and os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                llm_config = config.get('llm', {})
+                # Try to get API key from config (direct key or env var name)
+                if not gemini_api_key:
+                    api_key_value = llm_config.get('api_key')
+                    if api_key_value:
+                        # Check if it looks like an actual key (starts with AIza) or env var name
+                        if api_key_value.startswith('AIza'):
+                            gemini_api_key = api_key_value
+                        else:
+                            gemini_api_key = os.getenv(api_key_value)
+                # Use model from config if not specified
+                if model_name == "gemini-2.5-flash" and 'model' in llm_config:
+                    model_name = llm_config['model']
+            except Exception as e:
+                print(f"Warning: Failed to load config from {config_path}: {e}")
+        
         # Initialize LLM client
         self.client = GeminiClient(api_key=gemini_api_key, model_name=model_name)
         
@@ -335,13 +357,19 @@ class AnalysisWorkflow:
 <body>
     <div class="header">
         <h1>🤖 BUFF饰品市场AI分析报告</h1>
-        <div class="timestamp">生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+        <div class="timestamp">生成时间: {datetime.now(timezone.utc).astimezone().strftime('%Y年%m月%d日 %H:%M:%S')}</div>
     </div>
     
     <div class="recommendation-box">
         <h2>📊 投资建议</h2>
         <div class="recommendation">{recommendation}</div>
         <div class="confidence">信心度: {confidence:.0f}%</div>
+    </div>
+    
+    <div class="section">
+        <span class="agent-badge badge-manager">💼 基金经理</span>
+        <h2>🎯 最终投资策略建议（重点）</h2>
+        <div class="report-content">{manager_result.get('report', '报告不可用')}</div>
     </div>
     
     <div class="section">
@@ -360,12 +388,6 @@ class AnalysisWorkflow:
         <span class="agent-badge badge-market">📰 市场分析师</span>
         <h2>市场分析报告</h2>
         <div class="report-content">{market_result.get('report', '报告不可用')}</div>
-    </div>
-    
-    <div class="section">
-        <span class="agent-badge badge-manager">💼 基金经理</span>
-        <h2>投资策略建议</h2>
-        <div class="report-content">{manager_result.get('report', '报告不可用')}</div>
     </div>
     
     <div class="footer">

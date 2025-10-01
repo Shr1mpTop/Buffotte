@@ -65,15 +65,37 @@ def main():
     print("🧪 LLM Multi-Agent Analysis Test")
     print("="*70)
     
-    # Check API key
-    if not os.getenv('GEMINI_API_KEY'):
-        print("\n❌ Error: GEMINI_API_KEY not set in environment")
-        print("\nPlease set your API key:")
-        print("  Windows: $env:GEMINI_API_KEY = 'your-key-here'")
-        print("  Linux/Mac: export GEMINI_API_KEY='your-key-here'")
-        return 1
+    # Try to load API key from config file first
+    api_key = None
+    config_path = 'llm_config.json'
     
-    print("\n✓ API Key found")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            api_key_value = config.get('llm', {}).get('api_key')
+            if api_key_value and api_key_value.startswith('AIza'):
+                api_key = api_key_value
+                print("\n✓ API Key loaded from config file")
+        except Exception as e:
+            print(f"\nWarning: Failed to load config: {e}")
+    
+    # Fall back to environment variable
+    if not api_key:
+        api_key = os.getenv('GEMINI_API_KEY')
+        if api_key:
+            print("\n✓ API Key found in environment")
+    
+    # Check if we have an API key
+    if not api_key:
+        print("\n❌ Error: No API key found")
+        print("\nPlease either:")
+        print("  1. Add 'api_key' to llm_config.json:")
+        print('     "api_key": "AIza..."')
+        print("  2. Or set environment variable:")
+        print("     Windows: $env:GEMINI_API_KEY = 'your-key-here'")
+        print("     Linux/Mac: export GEMINI_API_KEY='your-key-here'")
+        return 1
     
     # Generate sample data
     print("\n📊 Generating sample data...")
@@ -105,7 +127,7 @@ def main():
     # Initialize workflow
     print("\n🤖 Initializing AI workflow...")
     try:
-        workflow = AnalysisWorkflow(model_name='gemini-2.0-flash-exp')
+        workflow = AnalysisWorkflow(gemini_api_key=api_key, config_path=config_path)
         print("✓ Workflow initialized")
     except Exception as e:
         print(f"❌ Failed to initialize workflow: {e}")

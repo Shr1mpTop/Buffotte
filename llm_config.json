@@ -2,7 +2,7 @@
   "llm": {
     "provider": "google",
     "model": "gemini-2.0-flash-exp",
-    "api_key_env": "GEMINI_API_KEY",
+    "api_key": "AIzaSyBZ_aohGl9p2oSpVefDY6IIcXNLbzEVxlM",
     "temperature": {
       "data_analyst": 0.3,
       "market_analyst": 0.5,
@@ -23,8 +23,8 @@
     },
     "market_analyst": {
       "enabled": true,
-      "news_sources": ["BUFF", "悠悠优品", "Steam社区", "电竞资讯"],
-      "keywords": ["BUFF", "悠悠优品", "steam饰品", "CSGO饰品", "CS2"]
+      "news_sources": ["BUFF", "悠悠有品", "Steam社区", "cs电竞资讯"],
+      "keywords": ["BUFF", "悠悠有品", "steam饰品", "CSGO饰品", "CS2"]
     },
     "fund_manager": {
       "enabled": true,

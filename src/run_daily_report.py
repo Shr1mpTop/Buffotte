@@ -376,19 +376,33 @@ def run_ai_analysis(df, predictions, chart_path):
         print(f'Failed to load LLM config: {e}')
         return None, None, None
     
-    # Check if API key is set
-    api_key_env = llm_cfg.get('llm', {}).get('api_key_env', 'GEMINI_API_KEY')
-    if not os.getenv(api_key_env):
-        print(f'Warning: {api_key_env} not set in environment, skipping AI analysis')
+    # Get API key from config or environment
+    api_key = None
+    llm_config = llm_cfg.get('llm', {})
+    
+    # Try direct key in config
+    api_key_value = llm_config.get('api_key')
+    if api_key_value:
+        if api_key_value.startswith('AIza'):
+            api_key = api_key_value
+        else:
+            # Treat as environment variable name
+            api_key = os.getenv(api_key_value)
+    
+    # Fall back to GEMINI_API_KEY env var
+    if not api_key:
+        api_key = os.getenv('GEMINI_API_KEY')
+    
+    if not api_key:
+        print('Warning: No Gemini API key found in config or environment, skipping AI analysis')
         return None, None, None
     
     try:
         # Import workflow (lazy import to avoid errors if dependencies missing)
         from llm.workflow import AnalysisWorkflow
         
-        # Initialize workflow
-        model_name = llm_cfg.get('llm', {}).get('model', 'gemini-2.0-flash-exp')
-        workflow = AnalysisWorkflow(model_name=model_name)
+        # Initialize workflow with config
+        workflow = AnalysisWorkflow(gemini_api_key=api_key, config_path=LLM_CONFIG)
         
         # Run analysis
         enable_news = llm_cfg.get('workflow', {}).get('enable_news_search', False)

@@ -124,7 +124,12 @@ class FundManagerAgent(BaseAgent):
         market_sentiment = market_report.get('sentiment', 'neutral')
         market_signals = market_report.get('signals', {})
         
-        prompt = f"""作为基金经理，你需要综合以下团队成员的分析报告，做出最终的投资决策。
+        from datetime import datetime
+        current_date = datetime.now().strftime('%Y年%m月%d日')
+        
+        prompt = f"""当前日期：{current_date}
+
+作为基金经理，你需要综合以下团队成员的分析报告，做出最终的投资决策。
 
 ═══════════════════════════════════════
 【数据分析师报告】

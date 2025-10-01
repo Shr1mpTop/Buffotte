@@ -178,7 +178,12 @@ class MarketAnalystAgent(BaseAgent):
             news_summary += f"   内容: {item.get('summary', '')}\n"
             news_summary += f"   情绪倾向: {item.get('sentiment', 'neutral')} | 影响程度: {item.get('impact', 'medium')}\n\n"
         
-        prompt = f"""请基于以下信息进行市场分析：
+        from datetime import datetime
+        current_date = datetime.now().strftime('%Y年%m月%d日')
+        
+        prompt = f"""当前日期：{current_date}
+
+请基于以下信息进行市场分析：
 
 【数据分析师报告摘要】
 {data_report[:500] if len(data_report) > 500 else data_report}

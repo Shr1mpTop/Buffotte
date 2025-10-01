@@ -4,22 +4,30 @@ Google Gemini API Client
 Provides interface to Google Gemini 2.5-flash model for AI analysis.
 """
 import os
+import sys
 import json
 import time
 from typing import Optional, Dict, Any, List
+
+# Suppress gRPC/ALTS warnings from Google API client
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+os.environ['GRPC_VERBOSITY'] = 'ERROR'
+os.environ['GLOG_minloglevel'] = '2'
+
 import google.generativeai as genai
 
 
 class GeminiClient:
     """Client for Google Gemini API."""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash-exp"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.5-flash"):
         """
         Initialize Gemini client.
         
         Args:
             api_key: Google API key. If None, reads from GEMINI_API_KEY env var.
-            model_name: Model name to use (default: gemini-2.0-flash-exp)
+            model_name: Model name to use (default: gemini-2.5-flash)
         """
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
