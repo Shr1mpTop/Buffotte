@@ -13,49 +13,50 @@ from llm.clients.gemini_client import GeminiClient
 from llm.agents.data_analyst import DataAnalystAgent
 from llm.agents.market_analyst import MarketAnalystAgent
 from llm.agents.fund_manager import FundManagerAgent
+from llm.agents.summarizer import SummarizerAgent
 
 
 class AnalysisWorkflow:
     """Orchestrates multi-agent analysis workflow."""
     
-    def __init__(self, gemini_api_key: Optional[str] = None, model_name: str = "gemini-2.5-flash", config_path: Optional[str] = None):
+    def __init__(self, llm_config: dict):
         """
-        Initialize workflow with agents.
+        Initialize analysis workflow with all necessary agents.
         
         Args:
-            gemini_api_key: Google Gemini API key. If None, will try to load from config or env var.
-            model_name: Gemini model to use
-            config_path: Path to llm_config.json. If provided, will load API key and settings from config.
+            llm_config: Configuration dictionary for LLM and agents.
         """
-        # Try to load from config file if provided
-        if config_path and os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                llm_config = config.get('llm', {})
-                # Try to get API key from config (direct key or env var name)
-                if not gemini_api_key:
-                    api_key_value = llm_config.get('api_key')
-                    if api_key_value:
-                        # Check if it looks like an actual key (starts with AIza) or env var name
-                        if api_key_value.startswith('AIza'):
-                            gemini_api_key = api_key_value
-                        else:
-                            gemini_api_key = os.getenv(api_key_value)
-                # Use model from config if not specified
-                if model_name == "gemini-2.5-flash" and 'model' in llm_config:
-                    model_name = llm_config['model']
-            except Exception as e:
-                print(f"Warning: Failed to load config from {config_path}: {e}")
-        
+        self.config = llm_config
+        model_name = self.config.get('llm', {}).get('model', 'gemini-1.5-flash')
+        api_key = self.config.get('llm', {}).get('api_key')
+
+        if not api_key:
+            raise ValueError("API key not found in the 'llm.api_key' field of the configuration.")
+
         # Initialize LLM client
-        self.client = GeminiClient(api_key=gemini_api_key, model_name=model_name)
+        self.client = GeminiClient(api_key=api_key, model_name=model_name)
         
+        agent_configs = self.config.get('agents', {})
+        temp_configs = self.config.get('llm', {}).get('temperature', {})
+
         # Initialize agents
-        self.data_analyst = DataAnalystAgent(client=self.client)
-        self.market_analyst = MarketAnalystAgent(client=self.client)
-        self.fund_manager = FundManagerAgent(client=self.client)
-        
+        self.data_analyst = DataAnalystAgent(
+            client=self.client, 
+            temperature=temp_configs.get('data_analyst', 0.3)
+        )
+        self.market_analyst = MarketAnalystAgent(
+            client=self.client, 
+            temperature=temp_configs.get('market_analyst', 0.5)
+        )
+        self.fund_manager = FundManagerAgent(
+            client=self.client, 
+            temperature=temp_configs.get('fund_manager', 0.4)
+        )
+        self.summarizer = SummarizerAgent(
+            client=self.client,
+            temperature=temp_configs.get('summarizer', 0.4) # Added for summarizer
+        )
+
         self.workflow_results = {}
     
     def run_full_analysis(
@@ -85,7 +86,7 @@ class AnalysisWorkflow:
         statistics = self._calculate_statistics(historical_data, predictions)
         
         # Stage 1: Data Analyst
-        print("\n[1/3] 📊 数据分析师正在分析历史数据和预测...")
+        print("\n[1/4] 📊 数据分析师正在分析历史数据和预测...")
         data_context = {
             'historical_data': historical_data,
             'predictions': predictions,
@@ -96,7 +97,7 @@ class AnalysisWorkflow:
         print(f"✓ 数据分析完成 - 识别 {len(data_result.get('key_findings', []))} 个关键发现")
         
         # Stage 2: Market Analyst
-        print("\n[2/3] 📰 市场分析师正在分析市场动态和新闻...")
+        print("\n[2/4] 📰 市场分析师正在分析市场动态和新闻...")
         market_context = {
             'data_analyst_report': data_result['report'],
             'search_enabled': enable_news_search,
@@ -107,7 +108,7 @@ class AnalysisWorkflow:
         print(f"✓ 市场分析完成 - 情绪: {market_result.get('sentiment', 'unknown')}")
         
         # Stage 3: Fund Manager
-        print("\n[3/3] 💼 基金经理正在综合分析并制定投资策略...")
+        print("\n[3/4] 💼 基金经理正在综合分析并制定投资策略...")
         manager_context = {
             'data_analyst_report': data_result,
             'market_analyst_report': market_result,
@@ -119,20 +120,28 @@ class AnalysisWorkflow:
         print(f"✓ 投资建议生成完成 - 建议: {manager_result.get('recommendation', 'unknown').upper()}")
         print(f"  信心度: {manager_result.get('confidence', 0)*100:.0f}%")
         
+        # Stage 4: Summarizer
+        print("\n[4/4] ✍️ 摘要专家正在生成报告摘要...")
+        summary_result = self.summarizer.analyze(self.workflow_results)
+        self.workflow_results['summary_agent'] = summary_result
+        print("✓ 摘要生成完成")
+
         # Compile final results
         final_results = {
             'timestamp': datetime.now(timezone.utc).isoformat(),
-            'workflow_version': '1.0',
-            'agents_used': ['data_analyst', 'market_analyst', 'fund_manager'],
+            'workflow_version': '1.1',
+            'agents_used': ['data_analyst', 'market_analyst', 'fund_manager', 'summarizer'],
             'data_analyst': data_result,
             'market_analyst': market_result,
             'fund_manager': manager_result,
+            'summary_agent': summary_result,
             'summary': {
                 'recommendation': manager_result.get('recommendation'),
                 'confidence': manager_result.get('confidence'),
                 'key_findings': data_result.get('key_findings', [])[:3],
                 'market_sentiment': market_result.get('sentiment'),
-                'risk_level': self._assess_overall_risk(manager_result)
+                'risk_level': self._assess_overall_risk(manager_result),
+                'email_body': summary_result.get('summary')
             }
         }
         

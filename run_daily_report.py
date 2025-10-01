@@ -13,6 +13,7 @@ Notes:
 - To enable email sending, copy `email_config.json.template` -> `email_config.json` and fill SMTP creds.
 """
 import os
+import sys
 import json
 import time
 from datetime import datetime, timezone, timedelta
@@ -23,11 +24,43 @@ import smtplib
 from email.message import EmailMessage
 import matplotlib.pyplot as plt
 
-from kline_crawler import KlineCrawler
+from src.kline_crawler import KlineCrawler
+from llm.workflow import AnalysisWorkflow
+from llm.report_generator import ReportGenerator
 
 MODELS_DIR = 'models'
 DB_CONFIG = 'config.json'
 EMAIL_CONFIG = 'email_config.json'
+AI_REPORT_PATH = os.path.join(MODELS_DIR, 'ai_analysis_report.json')
+
+
+def build_full_markdown_report(ai_results: dict) -> str:
+    """Combines all agent reports into a single markdown document."""
+    
+    # Safely get reports from the results dictionary
+    fund_manager_report = ai_results.get('fund_manager', {}).get('report', '基金经理报告不可用。')
+    data_analyst_report = ai_results.get('data_analyst', {}).get('report', '数据分析报告不可用。')
+    market_analyst_report = ai_results.get('market_analyst', {}).get('report', '市场分析报告不可用。')
+
+    return f"""
+# BUFF饰品市场AI分析报告
+**生成时间:** {datetime.now(timezone.utc).astimezone().strftime('%Y年%m月%d日 %H:%M:%S')}
+
+---
+
+## 🎯 最终投资策略建议
+{fund_manager_report}
+
+---
+
+## 📊 数据分析报告
+{data_analyst_report}
+
+---
+
+## 📰 市场分析报告
+{market_analyst_report}
+"""
 
 
 def fetch_and_insert(db_config_path, days=5):
@@ -214,130 +247,173 @@ def plot_and_save(results, out_png):
     plt.close()
 
 
-def send_html_report(email_cfg_path, subject, html_body, inline_image_paths=None, attachments=None):
-    """Send an HTML email. Images in inline_image_paths will be embedded as data URLs in the HTML.
-    html_body should already reference images as <img src="cid:..."> or data URIs. For simplicity we will convert first image to base64 and expose as {{INLINE_IMAGE_0}} placeholder.
-    """
+def send_report(email_cfg_path, subject, body, attachments=None):
+    """Sends an email with attachments."""
     # first try environment variables (preferred for security)
-    env_cfg = {}
-    env_cfg['smtp_server'] = os.getenv('BUFFOTTE_SMTP_SERVER')
-    env_cfg['smtp_port'] = os.getenv('BUFFOTTE_SMTP_PORT')
-    env_cfg['username'] = os.getenv('BUFFOTTE_SMTP_USERNAME')
-    env_cfg['password'] = os.getenv('BUFFOTTE_SMTP_PASSWORD')
-    env_cfg['from_address'] = os.getenv('BUFFOTTE_FROM_ADDRESS')
-    env_cfg['to_address'] = os.getenv('BUFFOTTE_TO_ADDRESS')
-    env_cfg['use_tls'] = os.getenv('BUFFOTTE_SMTP_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
+    env_cfg = {
+        'smtp_server': os.getenv('BUFFOTTE_SMTP_SERVER'),
+        'smtp_port': os.getenv('BUFFOTTE_SMTP_PORT'),
+        'username': os.getenv('BUFFOTTE_SMTP_USERNAME'),
+        'password': os.getenv('BUFFOTTE_SMTP_PASSWORD'),
+        'from_address': os.getenv('BUFFOTTE_FROM_ADDRESS'),
+        'to_address': os.getenv('BUFFOTTE_TO_ADDRESS'),
+        'use_tls': os.getenv('BUFFOTTE_SMTP_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
+    }
 
-    if all(env_cfg.get(k) for k in ['smtp_server', 'smtp_port', 'username', 'password', 'from_address', 'to_address']):
+    if all(env_cfg.values()):
         cfg = env_cfg
     else:
-        # try explicit config file first
-        if os.path.exists(email_cfg_path):
-            with open(email_cfg_path, 'r', encoding='utf-8') as f:
-                cfg = json.load(f)
-        else:
-            print('Email config not found and env vars not set; skipping email send')
+        if not os.path.exists(email_cfg_path):
+            print('Email config not found and env vars not set; skipping email send.')
             return False
+        with open(email_cfg_path, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+        
         required = ['smtp_server', 'smtp_port', 'username', 'password', 'from_address', 'to_address']
         if not all(k in cfg for k in required):
-            print('Email config missing required fields and env vars not set; skipping email send')
+            print('Email config missing required fields and env vars not set; skipping email send.')
             return False
-
-    # embed first inline image(s) as data URIs
-    html = html_body
-    inline_image_paths = inline_image_paths or []
-    import base64
-    for idx, path in enumerate(inline_image_paths):
-        try:
-            with open(path, 'rb') as f:
-                b = f.read()
-            data64 = base64.b64encode(b).decode('ascii')
-            mime = 'image/png'
-            placeholder = f'{{{{INLINE_IMAGE_{idx}}}}}'
-            datauri = f'data:{mime};base64,{data64}'
-            html = html.replace(placeholder, datauri)
-        except Exception as e:
-            print('Failed to inline image', path, e)
 
     msg = EmailMessage()
     msg['Subject'] = subject
     msg['From'] = cfg['from_address']
     msg['To'] = cfg['to_address']
-    msg.set_content('This is an HTML email. If you see this, your client does not support HTML.')
-    msg.add_alternative(html, subtype='html')
+    msg.set_content(body)
 
-    attachments = attachments or []
-    for path in attachments:
+    for path in attachments or []:
+        if not os.path.exists(path):
+            print(f"Attachment not found, skipping: {path}")
+            continue
         try:
             with open(path, 'rb') as f:
-                data = f.read()
-            maintype = 'application'
-            subtype = 'octet-stream'
-            if path.lower().endswith('.png'):
-                maintype = 'image'; subtype = 'png'
-            msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=os.path.basename(path))
+                file_data = f.read()
+                file_name = os.path.basename(path)
+            
+            maintype, subtype = 'application', 'octet-stream'
+            if file_name.lower().endswith('.png'):
+                maintype, subtype = 'image', 'png'
+            elif file_name.lower().endswith('.pdf'):
+                maintype, subtype = 'application', 'pdf'
+            
+            msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=file_name)
         except Exception as e:
-            print('Failed attach', path, e)
+            print(f'Failed to attach file {path}: {e}')
 
     try:
-        server = smtplib.SMTP(cfg['smtp_server'], int(cfg['smtp_port']), timeout=20)
+        server = smtplib.SMTP(cfg['smtp_server'], int(cfg['smtp_port']), timeout=30)
         if cfg.get('use_tls', True):
             server.starttls()
         server.login(cfg['username'], cfg['password'])
         server.send_message(msg)
         server.quit()
-        print('Email sent to', cfg['to_address'])
+        print(f"Email sent successfully to {cfg['to_address']}")
         return True
     except Exception as e:
-        print('Email send failed:', e)
+        print(f'Email send failed: {e}')
         return False
 
 
 def main():
-    # 1) fetch and insert latest data
+    # 0) Config and setup
     if not os.path.exists(DB_CONFIG):
         print('DB config not found:', DB_CONFIG)
         return
-    inserted = fetch_and_insert(DB_CONFIG, days=5)
-    print('Inserted rows:', inserted)
+    
+    current_date_str = datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d')
+    print(f"--- Running Daily Report for {current_date_str} ---")
 
-    # 2) load recent df and featurize
+    # 1) Fetch and insert latest data
+    print("\n[1/6] Fetching latest market data...")
+    inserted = fetch_and_insert(DB_CONFIG, days=5)
+    print(f"-> Inserted {inserted} new rows.")
+
+    # 2) Load recent df and featurize
+    print("\n[2/6] Loading data and building features...")
     df = load_recent_df(DB_CONFIG, nrows=60)
     df_feat, feat_cols = featurize(df, lags=5)
+    print("-> Features built successfully.")
 
-    # 3) load model & scaler
+    # 3) Load model & scaler
+    print("\n[3/6] Loading prediction model and scaler...")
     model_path, scaler_path = find_model_and_scaler()
     if not model_path or not scaler_path:
-        print('Model or scaler not found in models/; aborting prediction')
+        print('! Model or scaler not found in models/; aborting prediction.')
         return
     model = joblib.load(model_path)
     scaler = joblib.load(scaler_path)
+    print(f"-> Model: {os.path.basename(model_path)}")
+    print(f"-> Scaler: {os.path.basename(scaler_path)}")
 
-    # 4) predict next 5 days
-    results = predict_next_days(model, scaler, df_feat, feat_cols, days=5)
+    # 4) Predict next 5 days and generate chart
+    print("\n[4/6] Generating 5-day market forecast...")
+    predictions = predict_next_days(model, scaler, df_feat, feat_cols, days=5)
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-    out_json = os.path.join(MODELS_DIR, 'next_week_prediction.json')
-    with open(out_json, 'w', encoding='utf-8') as f:
-        json.dump({'generated_at': timestamp, 'predictions': results}, f, ensure_ascii=False, indent=2)
+    
+    out_json_path = os.path.join(MODELS_DIR, 'next_week_prediction.json')
+    with open(out_json_path, 'w', encoding='utf-8') as f:
+        json.dump({'generated_at': timestamp, 'predictions': predictions}, f, ensure_ascii=False, indent=2)
+    print(f"-> Forecast saved to {out_json_path}")
 
-    # 5) plot
-    out_png = os.path.join(MODELS_DIR, f'next_week_prediction_{timestamp}.png')
-    plot_and_save(results, out_png)
+    chart_path = os.path.join(MODELS_DIR, f'next_week_prediction_{timestamp}.png')
+    plot_and_save(predictions, chart_path)
+    print(f"-> Forecast chart saved to {chart_path}")
 
-    # 6) email
-    subject = f'Market forecast {datetime.now(timezone.utc).date().isoformat()}'
-    first = results[0]
-    body = f"Tomorrow prediction: {first['direction']} (expected return {first['predicted_daily_return']:.5f})\n\nFull 5-day:\n"
-    for r in results:
-        body += f"day {r['day']}: {r['direction']} ({r['predicted_daily_return']:.5f})\n"
+    # 5) Run Multi-Agent AI Analysis
+    print("\n[5/6] Running Multi-Agent AI Analysis Workflow...")
+    
+    # Load the entire LLM config from the JSON file
+    try:
+        with open('llm_config.json', 'r', encoding='utf-8') as f:
+            llm_config = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Error loading or parsing llm_config.json: {e}", file=sys.stderr)
+        return
 
-    # Create simple HTML body
-    inline = [out_png] if os.path.exists(out_png) else []
-    html = '<html><body><pre>' + (body.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')) + '</pre>'
-    if inline:
-        html += '<br><img src="{{INLINE_IMAGE_0}}" alt="chart" />'
-    html += '</body></html>'
-    send_html_report(EMAIL_CONFIG, subject, html, inline_image_paths=inline, attachments=[out_png, out_json])
+    # Pass the whole config dictionary to the workflow
+    workflow = AnalysisWorkflow(llm_config=llm_config)
+    
+    ai_results = workflow.run_full_analysis(
+        historical_data=df,
+        predictions=predictions,
+        chart_path=chart_path,
+        enable_news_search=llm_config.get('workflow', {}).get('enable_news_search', False)
+    )
+    
+    # Combine all agent reports into one markdown document
+    full_markdown_report = build_full_markdown_report(ai_results)
+    
+    # 6) Generate and Send Email Report
+    print("\n[6/6] Generating and sending email report...")
+    
+    # Generate PNG and PDF from the full markdown report
+    report_gen = ReportGenerator(output_dir=MODELS_DIR)
+    report_files = report_gen.generate_all(full_markdown_report, "daily_market_report")
+    
+    # Use the summary from the summarizer agent as the email body
+    email_body = ai_results.get('summary_agent', {}).get('summary', 'AI分析摘要不可用。')
+    
+    subject = f"BUFF市场AI分析日报 - {current_date_str}"
+
+    # Attach the generated PNG and PDF files
+    attachments = list(report_files.values())
+    
+    # Also attach the prediction chart
+    if os.path.exists(chart_path):
+        attachments.append(chart_path)
+
+    send_status = send_report(
+        email_cfg_path=EMAIL_CONFIG,
+        subject=subject,
+        body=email_body,
+        attachments=attachments
+    )
+    
+    if send_status:
+        print("-> Email report sent successfully.")
+    else:
+        print("! Failed to send email report.")
+        
+    print(f"\n--- Daily Report for {current_date_str} Finished ---")
 
 
 if __name__ == '__main__':

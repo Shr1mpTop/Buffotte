@@ -279,6 +279,368 @@ def plot_and_save(df, results, out_png):
     plt.close()
 
 
+def build_integrated_email(ai_results, predictions, chart_path, current_date):
+    """
+    Build integrated HTML email with complete AI report embedded and chart inlined.
+    
+    Args:
+        ai_results: AI analysis results dict
+        predictions: Model predictions list
+        chart_path: Path to prediction chart PNG
+        current_date: Current date string
+    
+    Returns:
+        Complete HTML string for email body
+    """
+    # Extract AI report components
+    data_result = ai_results.get('data_analyst', {}) if ai_results else {}
+    market_result = ai_results.get('market_analyst', {}) if ai_results else {}
+    manager_result = ai_results.get('fund_manager', {}) if ai_results else {}
+    summary = ai_results.get('summary', {}) if ai_results else {}
+    
+    recommendation = summary.get('recommendation', 'HOLD').upper()
+    confidence = summary.get('confidence', 0) * 100
+    sentiment = summary.get('market_sentiment', 'N/A')
+    risk_level = summary.get('risk_level', 'N/A')
+    
+    # Recommendation color
+    rec_color = {
+        'BUY': '#28a745',
+        'SELL': '#dc3545',
+        'HOLD': '#ffc107'
+    }.get(recommendation, '#6c757d')
+    
+    # Build predictions table HTML
+    predictions_html = ""
+    for r in predictions:
+        direction_emoji = '🟢' if r['direction'] == 'up' else '🔴' if r['direction'] == 'down' else '⚪'
+        predictions_html += f"""
+        <tr>
+            <td>{direction_emoji} 第{r['day']}天</td>
+            <td style="color: {'#28a745' if r['direction'] == 'up' else '#dc3545'}; font-weight: bold;">
+                {r['direction'].upper()}
+            </td>
+            <td>{r['predicted_daily_return']*100:+.2f}%</td>
+        </tr>
+        """
+    
+    # Build key findings list
+    key_findings_html = ""
+    for finding in summary.get('key_findings', [])[:5]:
+        key_findings_html += f"<li>{finding}</li>"
+    
+    # Complete HTML email
+    html = f"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUFF饰品市场AI分析报告 - {current_date}</title>
+    <style>
+        body {{
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+            background-color: #f5f7fa;
+        }}
+        .container {{
+            background-color: white;
+            margin: 20px auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        .header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0 0 10px 0;
+            font-size: 36px;
+            font-weight: 700;
+        }}
+        .header .timestamp {{
+            opacity: 0.95;
+            font-size: 16px;
+            margin-top: 10px;
+        }}
+        .recommendation-box {{
+            background: linear-gradient(135deg, {rec_color}22 0%, {rec_color}11 100%);
+            padding: 30px;
+            margin: 30px;
+            border-radius: 10px;
+            border-left: 5px solid {rec_color};
+            text-align: center;
+        }}
+        .recommendation-box h2 {{
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 24px;
+        }}
+        .recommendation {{
+            font-size: 56px;
+            font-weight: 900;
+            color: {rec_color};
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }}
+        .confidence {{
+            font-size: 28px;
+            color: #555;
+            font-weight: 600;
+        }}
+        .metrics {{
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }}
+        .metric {{
+            text-align: center;
+            padding: 15px;
+            flex: 1;
+            min-width: 150px;
+        }}
+        .metric-label {{
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }}
+        .metric-value {{
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }}
+        .section {{
+            padding: 30px;
+            margin: 0;
+            border-bottom: 1px solid #eee;
+        }}
+        .section:last-child {{
+            border-bottom: none;
+        }}
+        .section h2 {{
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 12px;
+            margin-top: 0;
+            font-size: 28px;
+        }}
+        .agent-badge {{
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }}
+        .badge-data {{
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }}
+        .badge-market {{
+            background-color: #f3e5f5;
+            color: #7b1fa2;
+        }}
+        .badge-manager {{
+            background-color: #e8f5e9;
+            color: #388e3c;
+        }}
+        .key-findings {{
+            background-color: #fff9e6;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }}
+        .key-findings h3 {{
+            margin-top: 0;
+            color: #f57c00;
+        }}
+        .key-findings ul {{
+            margin: 10px 0;
+            padding-left: 25px;
+        }}
+        .key-findings li {{
+            margin: 8px 0;
+            color: #555;
+        }}
+        .report-content {{
+            white-space: pre-wrap;
+            line-height: 1.9;
+            color: #444;
+            font-size: 15px;
+            background-color: #fafafa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }}
+        .chart-container {{
+            margin: 30px 0;
+            text-align: center;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }}
+        .chart-container img {{
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }}
+        .predictions-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }}
+        .predictions-table th {{
+            background-color: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }}
+        .predictions-table td {{
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }}
+        .predictions-table tr:hover {{
+            background-color: #f8f9fa;
+        }}
+        .footer {{
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 30px;
+            font-size: 14px;
+        }}
+        .footer p {{
+            margin: 8px 0;
+            opacity: 0.9;
+        }}
+        .highlight-box {{
+            background: linear-gradient(135deg, #667eea11 0%, #764ba211 100%);
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 BUFF饰品市场AI分析报告</h1>
+            <div class="timestamp">📅 生成时间: {current_date}</div>
+        </div>
+        
+        <div class="recommendation-box">
+            <h2>🎯 核心投资建议</h2>
+            <div class="recommendation">{recommendation}</div>
+            <div class="confidence">信心度: {confidence:.0f}%</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">市场情绪</div>
+                    <div class="metric-value">{sentiment.upper()}</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">风险等级</div>
+                    <div class="metric-value">{risk_level.upper()}</div>
+                </div>
+            </div>
+        </div>
+"""
+    
+    # Add key findings if available
+    if key_findings_html:
+        html += f"""
+        <div class="section">
+            <div class="key-findings">
+                <h3>🔍 关键发现（重点关注）</h3>
+                <ul>
+                    {key_findings_html}
+                </ul>
+            </div>
+        </div>
+"""
+    
+    # Add Fund Manager report
+    if manager_result:
+        html += f"""
+        <div class="section">
+            <span class="agent-badge badge-manager">💼 基金经理分析</span>
+            <h2>最终投资策略建议</h2>
+            <div class="report-content">{manager_result.get('report', '报告生成中...')}</div>
+        </div>
+"""
+    
+    # Add prediction chart
+    html += f"""
+        <div class="section">
+            <h2>📈 预测K线图与未来走势</h2>
+            <div class="chart-container">
+                <img src="{{{{INLINE_IMAGE_0}}}}" alt="预测K线图" />
+            </div>
+            
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">🔮 模型预测 - 未来5日走势</h3>
+                <table class="predictions-table">
+                    <thead>
+                        <tr>
+                            <th>交易日</th>
+                            <th>预测方向</th>
+                            <th>预期回报率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {predictions_html}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+"""
+    
+    # Add Data Analyst report
+    if data_result:
+        html += f"""
+        <div class="section">
+            <span class="agent-badge badge-data">📊 数据分析师</span>
+            <h2>量化数据分析</h2>
+            <div class="report-content">{data_result.get('report', '报告生成中...')}</div>
+        </div>
+"""
+    
+    # Add Market Analyst report
+    if market_result:
+        html += f"""
+        <div class="section">
+            <span class="agent-badge badge-market">📰 市场分析师</span>
+            <h2>市场动态与情绪分析</h2>
+            <div class="report-content">{market_result.get('report', '报告生成中...')}</div>
+        </div>
+"""
+    
+    # Add footer
+    html += f"""
+        <div class="footer">
+            <p><strong>⚠️ 免责声明</strong></p>
+            <p>本报告由AI多Agent系统自动生成，基于历史数据分析和机器学习模型预测</p>
+            <p>仅供参考，不构成任何投资建议 | 投资有风险，决策需谨慎</p>
+            <p style="margin-top: 20px; opacity: 0.7;">Powered by Buffotte AI Analysis System | Gemini 2.0</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    
+    return html
+
+
 def send_html_report(email_cfg_path, subject, html_body, inline_image_paths=None, attachments=None):
     """Send an HTML email. Images in inline_image_paths will be embedded as data URLs in the HTML.
     html_body should already reference images as <img src="cid:..."> or data URIs. For simplicity we will convert first image to base64 and expose as {{INLINE_IMAGE_0}} placeholder.
@@ -472,136 +834,18 @@ def main():
     print('='*60)
     ai_results, ai_html_path, ai_json_path = run_ai_analysis(df, results, out_png)
     
-    # 7) Prepare email body
+    # 7) Prepare integrated email with embedded AI report
     current_date = datetime.now(timezone.utc).astimezone().strftime('%Y年%m月%d日')
     subject = f'BUFF市场分析报告 - {current_date}'
-    first = results[0]
     
-    # Build comprehensive email body
-    body = f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 BUFF饰品市场 AI分析报告
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-报告日期：{current_date}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
-
-    # Add AI analysis summary if available (PRIORITY)
-    if ai_results:
-        summary = ai_results.get('summary', {})
-        recommendation = summary.get('recommendation', 'N/A').upper()
-        confidence = summary.get('confidence', 0)*100
-        sentiment = summary.get('market_sentiment', 'N/A')
-        risk_level = summary.get('risk_level', 'N/A')
-        
-        # Recommendation emoji
-        rec_emoji = {'BUY': '📈', 'SELL': '📉', 'HOLD': '⏸️'}.get(recommendation, '❓')
-        
-        body += f"""
-🤖 【AI多Agent分析结论】（重点关注）
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{rec_emoji} 投资建议：{recommendation}
-💯 信心度：{confidence:.0f}%
-📊 市场情绪：{sentiment.upper()}
-⚠️  风险等级：{risk_level.upper()}
-
-🔍 关键发现：
-"""
-        for i, finding in enumerate(summary.get('key_findings', [])[:3], 1):
-            body += f"{i}. {finding}\n"
-        
-        body += f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
+    # Build integrated HTML email with complete AI report embedded
+    html = build_integrated_email(ai_results, results, out_png, current_date)
     
-    # Add prediction summary
-    body += f"""
-🔮 【模型预测】未来5天走势
-
-明日预测：{first['direction'].upper()} (预期回报率 {first['predicted_daily_return']*100:.2f}%)
-
-完整5日预测：
-"""
-    for r in results:
-        direction_emoji = '🟢' if r['direction'] == 'up' else '🔴' if r['direction'] == 'down' else '⚪'
-        body += f"{direction_emoji} 第{r['day']}天: {r['direction'].upper():6s} ({r['predicted_daily_return']*100:+.2f}%)\n"
-    
-    body += f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-� 附件说明：
-"""
-    
-    attachments_list = []
-    if ai_html_path and os.path.exists(ai_html_path):
-        attachments_list.append("• AI分析完整报告.html (⭐推荐查看)")
-    attachments_list.append("• 预测K线图.png")
-    attachments_list.append("• 预测数据.json")
-    if ai_json_path and os.path.exists(ai_json_path):
-        attachments_list.append("• AI分析数据.json")
-    
-    body += '\n'.join(attachments_list)
-    
-    body += f"""
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️  免责声明：
-本报告由AI系统自动生成，仅供参考，不构成投资建议。
-投资有风险，决策需谨慎。
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Powered by Buffotte AI Analysis System
-"""
-
-    # Create HTML body with better styling
+    # Inline the chart image
     inline = [out_png] if os.path.exists(out_png) else []
-    html = f"""
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body {{
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        pre {{
-            background-color: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
-        }}
-        .chart {{
-            margin: 20px 0;
-            text-align: center;
-        }}
-        .chart img {{
-            max-width: 100%;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }}
-    </style>
-</head>
-<body>
-    <pre>{body.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')}</pre>
-"""
-    if inline:
-        html += '<div class="chart"><img src="{{INLINE_IMAGE_0}}" alt="预测K线图" /></div>'
-    html += """
-</body>
-</html>
-"""
     
-    # Prepare attachments
-    attachments = [out_png, out_json]
-    if ai_html_path and os.path.exists(ai_html_path):
-        attachments.append(ai_html_path)
+    # Attachments: only JSON files for data reference
+    attachments = [out_json]
     if ai_json_path and os.path.exists(ai_json_path):
         attachments.append(ai_json_path)
     

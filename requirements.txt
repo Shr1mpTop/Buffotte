@@ -13,3 +13,4 @@ SQLAlchemy
 mplfinance
 google-generativeai
 pillow
+markdown-it-py
