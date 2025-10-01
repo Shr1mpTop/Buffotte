@@ -473,33 +473,130 @@ def main():
     ai_results, ai_html_path, ai_json_path = run_ai_analysis(df, results, out_png)
     
     # 7) Prepare email body
-    subject = f'Market forecast {datetime.now(timezone.utc).date().isoformat()}'
+    current_date = datetime.now(timezone.utc).astimezone().strftime('%Y年%m月%d日')
+    subject = f'BUFF市场分析报告 - {current_date}'
     first = results[0]
-    body = f"Tomorrow prediction: {first['direction']} (expected return {first['predicted_daily_return']:.5f})\n\nFull 5-day:\n"
-    for r in results:
-        body += f"day {r['day']}: {r['direction']} ({r['predicted_daily_return']:.5f})\n"
+    
+    # Build comprehensive email body
+    body = f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 BUFF饰品市场 AI分析报告
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+报告日期：{current_date}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
 
-    # Add AI analysis summary if available
+    # Add AI analysis summary if available (PRIORITY)
     if ai_results:
-        body += f"\n{'='*50}\n"
-        body += "🤖 AI ANALYSIS SUMMARY\n"
-        body += f"{'='*50}\n"
         summary = ai_results.get('summary', {})
-        body += f"Recommendation: {summary.get('recommendation', 'N/A').upper()}\n"
-        body += f"Confidence: {summary.get('confidence', 0)*100:.0f}%\n"
-        body += f"Market Sentiment: {summary.get('market_sentiment', 'N/A')}\n"
-        body += f"Risk Level: {summary.get('risk_level', 'N/A')}\n\n"
-        body += "Key Findings:\n"
-        for finding in summary.get('key_findings', [])[:3]:
-            body += f"• {finding}\n"
-        body += f"\n📄 Full AI report attached\n"
+        recommendation = summary.get('recommendation', 'N/A').upper()
+        confidence = summary.get('confidence', 0)*100
+        sentiment = summary.get('market_sentiment', 'N/A')
+        risk_level = summary.get('risk_level', 'N/A')
+        
+        # Recommendation emoji
+        rec_emoji = {'BUY': '📈', 'SELL': '📉', 'HOLD': '⏸️'}.get(recommendation, '❓')
+        
+        body += f"""
+🤖 【AI多Agent分析结论】（重点关注）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    # Create HTML body
+{rec_emoji} 投资建议：{recommendation}
+💯 信心度：{confidence:.0f}%
+📊 市场情绪：{sentiment.upper()}
+⚠️  风险等级：{risk_level.upper()}
+
+🔍 关键发现：
+"""
+        for i, finding in enumerate(summary.get('key_findings', [])[:3], 1):
+            body += f"{i}. {finding}\n"
+        
+        body += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+    
+    # Add prediction summary
+    body += f"""
+🔮 【模型预测】未来5天走势
+
+明日预测：{first['direction'].upper()} (预期回报率 {first['predicted_daily_return']*100:.2f}%)
+
+完整5日预测：
+"""
+    for r in results:
+        direction_emoji = '🟢' if r['direction'] == 'up' else '🔴' if r['direction'] == 'down' else '⚪'
+        body += f"{direction_emoji} 第{r['day']}天: {r['direction'].upper():6s} ({r['predicted_daily_return']*100:+.2f}%)\n"
+    
+    body += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+� 附件说明：
+"""
+    
+    attachments_list = []
+    if ai_html_path and os.path.exists(ai_html_path):
+        attachments_list.append("• AI分析完整报告.html (⭐推荐查看)")
+    attachments_list.append("• 预测K线图.png")
+    attachments_list.append("• 预测数据.json")
+    if ai_json_path and os.path.exists(ai_json_path):
+        attachments_list.append("• AI分析数据.json")
+    
+    body += '\n'.join(attachments_list)
+    
+    body += f"""
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  免责声明：
+本报告由AI系统自动生成，仅供参考，不构成投资建议。
+投资有风险，决策需谨慎。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Powered by Buffotte AI Analysis System
+"""
+
+    # Create HTML body with better styling
     inline = [out_png] if os.path.exists(out_png) else []
-    html = '<html><body><pre>' + (body.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')) + '</pre>'
+    html = f"""
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        pre {{
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+        }}
+        .chart {{
+            margin: 20px 0;
+            text-align: center;
+        }}
+        .chart img {{
+            max-width: 100%;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+    </style>
+</head>
+<body>
+    <pre>{body.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')}</pre>
+"""
     if inline:
-        html += '<br><img src="{{INLINE_IMAGE_0}}" alt="chart" />'
-    html += '</body></html>'
+        html += '<div class="chart"><img src="{{INLINE_IMAGE_0}}" alt="预测K线图" /></div>'
+    html += """
+</body>
+</html>
+"""
     
     # Prepare attachments
     attachments = [out_png, out_json]
