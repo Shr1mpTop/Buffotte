@@ -28,9 +28,16 @@ class SummarizerAgent(BaseAgent):
     def _build_summary_prompt(self, context: Dict[str, Any]) -> str:
         """Builds the prompt for generating the summary."""
         reports = []
+        
+        # Extract reports from different agents
         for agent_name, result in context.items():
-            if isinstance(result, dict) and 'analysis' in result:
-                reports.append(f"## 来自 {agent_name} 的分析:\n{result['analysis']}\n")
+            if agent_name == 'summary_agent':  # Skip self
+                continue
+            if isinstance(result, dict):
+                # Try to get 'report' field first, then 'analysis'
+                report_text = result.get('report') or result.get('analysis', '')
+                if report_text:
+                    reports.append(f"## {agent_name}:\n{report_text}\n")
 
         if not reports:
             return "没有可供摘要的分析报告。"

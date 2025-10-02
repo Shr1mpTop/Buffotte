@@ -1,5 +1,5 @@
 {
-  "generated_at": "20251001T211758Z",
+  "generated_at": "20251002T065636Z",
   "predictions": [
     {
       "day": 1,
@@ -8,12 +8,12 @@
     },
     {
       "day": 2,
-      "predicted_daily_return": -0.006067344505013684,
+      "predicted_daily_return": -0.006067344505013685,
       "direction": "down"
     },
     {
       "day": 3,
-      "predicted_daily_return": -0.007159186259034436,
+      "predicted_daily_return": -0.007159186259034438,
       "direction": "down"
     },
     {
@@ -23,7 +23,7 @@
     },
     {
       "day": 5,
-      "predicted_daily_return": -0.008044524885286607,
+      "predicted_daily_return": -0.008044524885286609,
       "direction": "down"
     }
   ]
