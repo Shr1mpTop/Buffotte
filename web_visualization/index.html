@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSTM模型预测 vs 真实K线对比分析</title>
+    <link rel="stylesheet" href="static/style.css">
+    <!-- Chart.js 核心库 - 使用多个CDN源确保加载成功 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" 
+            onerror="this.onerror=null; this.src='https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js';"
+            onload="console.log('Chart.js loaded successfully')"></script>
+    
+    <!-- 备用Chart.js加载 -->
+    <script>
+        // 检查Chart.js是否成功加载，如果没有则尝试备用源
+        window.addEventListener('load', function() {
+            if (typeof Chart === 'undefined') {
+                console.warn('主CDN Chart.js加载失败，尝试备用源...');
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.js';
+                script.onload = function() {
+                    console.log('Chart.js 备用源加载成功');
+                };
+                script.onerror = function() {
+                    console.error('所有Chart.js CDN源都加载失败');
+                    // 可以在这里添加本地fallback或者显示错误信息
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+    
+    <!-- 插件（可选，如果加载失败不影响基本功能） -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js" 
+            onerror="console.warn('Hammer.js load failed - 缩放功能可能受限')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js" 
+            onerror="console.warn('Zoom plugin load failed - 缩放功能不可用')"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LSTM模型预测 vs 真实K线对比分析</h1>
+            <p>交互式K线图对比界面 - 可缩放、滚动查看不同时间范围的预测效果</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="timeRange">时间范围:</label>
+                <select id="timeRange">
+                    <option value="24h">最近24小时</option>
+                    <option value="3d">最近3天</option>
+                    <option value="7d" selected>最近7天</option>
+                    <option value="30d">最近30天</option>
+                    <option value="all">全部数据</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="chartType">图表类型:</label>
+                <select id="chartType">
+                    <option value="candlestick" selected>K线图</option>
+                    <option value="line">折线图</option>
+                    <option value="both">K线+折线</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="errorDisplay">误差显示:</label>
+                <select id="errorDisplay">
+                    <option value="none">不显示</option>
+                    <option value="absolute" selected>绝对误差</option>
+                    <option value="percentage">百分比误差</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <button id="resetZoom">重置缩放</button>
+                <button id="refreshData">刷新数据</button>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-wrapper">
+                <h3>价格对比图表</h3>
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="error-container" id="errorContainer">
+            <div class="chart-wrapper">
+                <h3>预测误差分析</h3>
+                <canvas id="errorChart"></canvas>
+            </div>
+        </div>
+
+        <div class="statistics">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>数据概览</h4>
+                    <div id="dataOverview">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h4>预测性能指标</h4>
+                    <div id="performanceMetrics">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h4>当前选择范围统计</h4>
+                    <div id="rangeStatistics">
+                        <p>选择时间范围查看统计</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h4>误差分布</h4>
+                    <div id="errorDistribution">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-section">
+                <h4>使用说明</h4>
+                <ul>
+                    <li><strong>缩放:</strong> 使用鼠标滚轮或双指手势缩放图表</li>
+                    <li><strong>平移:</strong> 拖拽图表进行平移浏览</li>
+                    <li><strong>时间范围:</strong> 使用上方下拉菜单快速选择时间范围</li>
+                    <li><strong>图表类型:</strong> 切换K线图和折线图显示模式</li>
+                    <li><strong>误差分析:</strong> 查看不同时间段的预测误差统计</li>
+                    <li><strong>重置:</strong> 点击"重置缩放"按钮恢复原始视图</li>
+                </ul>
+            </div>
+            
+            <div class="info-section">
+                <h4>图例说明</h4>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-color real-color"></span>
+                        <span>真实价格</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color pred-color"></span>
+                        <span>预测价格</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color error-color"></span>
+                        <span>预测误差</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>数据更新时间: <span id="lastUpdate">加载中...</span></p>
+            <p>LSTM模型预测系统 - 实时K线对比分析工具</p>
+        </footer>
+    </div>
+
+    <script src="static/kline-chart.js"></script>
+    <script src="static/main.js"></script>
+</body>
+</html>

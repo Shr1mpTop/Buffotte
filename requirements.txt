@@ -14,3 +14,9 @@ mplfinance
 google-generativeai
 pillow
 markdown-it-py
+torch
+torchvision
+torchaudio
+optuna
+plotly
+kaleido

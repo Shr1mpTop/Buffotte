@@ -1,0 +1,18 @@
+{
+  "prediction_time": "2025-10-04T23:01:31.710969",
+  "model_path": "models\\lstm_best_model.pth",
+  "current_price": 1592.39,
+  "prediction_horizon": 168,
+  "predictions": {
+    "min_price": 1594.8538003444671,
+    "max_price": 1597.1682509088516,
+    "final_price": 1594.931826877594,
+    "price_change": 2.5418268775938486,
+    "price_change_pct": 0.15962338859160435
+  },
+  "data_info": {
+    "last_data_timestamp": "2025-10-04T06:55:10",
+    "prediction_start": "2025-10-04T07:55:10",
+    "prediction_end": "2025-10-11T06:55:10"
+  }
+}
