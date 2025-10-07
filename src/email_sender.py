@@ -99,32 +99,10 @@ def send_email_report(
 
 
 def _load_config(config_path: str) -> Optional[dict]:
-    """Load email configuration from file or environment variables."""
-    # Check if all required environment variables are set
-    env_smtp_server = os.getenv('BUFFOTTE_SMTP_SERVER')
-    env_smtp_port = os.getenv('BUFFOTTE_SMTP_PORT')
-    env_username = os.getenv('BUFFOTTE_SMTP_USERNAME')
-    env_password = os.getenv('BUFFOTTE_SMTP_PASSWORD')
-    env_from_address = os.getenv('BUFFOTTE_FROM_ADDRESS')
-    env_to_address = os.getenv('BUFFOTTE_TO_ADDRESS')
-    
-    # Only use environment variables if ALL required ones are set
-    if all([env_smtp_server, env_smtp_port, env_username, env_password, env_from_address, env_to_address]):
-        cfg = {
-            'smtp_server': env_smtp_server,
-            'smtp_port': int(env_smtp_port),
-            'username': env_username,
-            'password': env_password,
-            'from_address': env_from_address,
-            'to_address': env_to_address,
-            'use_tls': os.getenv('BUFFOTTE_SMTP_USE_TLS', 'true').lower() in ('1', 'true', 'yes')
-        }
-        print("ℹ️  使用环境变量配置")
-        return cfg
-    
+    """Load email configuration from file."""
     # Use config file
     if not os.path.exists(config_path):
-        print('Email config not found and env vars not set; skipping email send.')
+        print('Email config not found; skipping email send.')
         return None
         
     try:
@@ -133,7 +111,7 @@ def _load_config(config_path: str) -> Optional[dict]:
 
         required = ['smtp_server', 'smtp_port', 'username', 'password', 'from_address', 'to_address']
         if not all(k in cfg for k in required):
-            print('Email config missing required fields and env vars not set; skipping email send.')
+            print('Email config missing required fields; skipping email send.')
             return None
         
         print("ℹ️  使用配置文件")
