@@ -24,7 +24,6 @@ from src.feature_engineering import build_features
 from src.model_loader import find_model_and_scaler, load_model_and_scaler
 from src.predictor import predict_next_days
 from src.chart_generator import generate_prediction_chart
-from src.email_sender import send_email_report
 from src.report_builder import build_markdown_report
 
 # Import AI workflow and report generator
