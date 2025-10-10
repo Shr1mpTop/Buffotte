@@ -1,7 +1,5 @@
 requests
 pymysql
-httpx[http2]
-aiofiles
 playwright
 pandas
 scikit-learn
@@ -14,3 +12,6 @@ mplfinance
 google-generativeai
 pillow
 markdown-it-py
+scipy
+weasyprint
+tqdm
