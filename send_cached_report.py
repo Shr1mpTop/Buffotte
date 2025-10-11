@@ -228,13 +228,7 @@ Examples:
         else:
             # Send mode
             preview_email(cache)
-            
-            response = input("\n❓ Send this email? (y/N): ")
-            if response.lower() == 'y':
-                send_cached_email(args.cache, args.email_config, args.to)
-            else:
-                print("Email sending cancelled.")
-                
+            send_cached_email(args.cache, args.email_config, args.to)
     except FileNotFoundError as e:
         print(f"\n❌ Error: {e}")
         print("\n💡 Please run 'python run_daily_report.py' first to generate the report.")
