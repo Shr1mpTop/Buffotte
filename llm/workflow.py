@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional
 import pandas as pd
 
 from llm.clients.gemini_client import GeminiClient
+from llm.clients.doubao_client import DoubaoClient
 from llm.agents.data_analyst import DataAnalystAgent
 from llm.agents.market_analyst import MarketAnalystAgent
 from llm.agents.fund_manager import FundManagerAgent
@@ -27,14 +28,20 @@ class AnalysisWorkflow:
             llm_config: Configuration dictionary for LLM and agents.
         """
         self.config = llm_config
+        provider = self.config.get('llm', {}).get('provider', 'google')
         model_name = self.config.get('llm', {}).get('model', 'gemini-1.5-flash')
         api_key = self.config.get('llm', {}).get('api_key')
 
         if not api_key:
             raise ValueError("API key not found in the 'llm.api_key' field of the configuration.")
 
-        # Initialize LLM client
-        self.client = GeminiClient(api_key=api_key, model_name=model_name)
+        # Initialize LLM client based on provider
+        if provider.lower() == 'google':
+            self.client = GeminiClient(api_key=api_key, model_name=model_name)
+        elif provider.lower() == 'doubao':
+            self.client = DoubaoClient(api_key=api_key, model_name=model_name)
+        else:
+            raise ValueError(f"Unsupported LLM provider: {provider}")
         
         agent_configs = self.config.get('agents', {})
         temp_configs = self.config.get('llm', {}).get('temperature', {})

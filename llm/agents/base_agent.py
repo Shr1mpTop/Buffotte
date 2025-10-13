@@ -2,8 +2,9 @@
 Base Agent class for multi-agent system.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from llm.clients.gemini_client import GeminiClient
+from llm.clients.doubao_client import DoubaoClient
 
 
 class BaseAgent(ABC):
@@ -13,7 +14,7 @@ class BaseAgent(ABC):
         self,
         name: str,
         role: str,
-        client: GeminiClient,
+        client: Union[GeminiClient, DoubaoClient],
         temperature: float = 0.7
     ):
         """
@@ -89,9 +90,15 @@ class BaseAgent(ABC):
             Generated text
         """
         temp = temperature if temperature is not None else self.temperature
-        return self.client.generate_with_images(
-            prompt=prompt,
-            image_paths=image_paths,
-            system_instruction=self.system_instruction,
-            temperature=temp
-        )
+        
+        try:
+            return self.client.generate_with_images(
+                prompt=prompt,
+                image_paths=image_paths,
+                system_instruction=self.system_instruction,
+                temperature=temp
+            )
+        except NotImplementedError:
+            # Fallback to text-only if images are not supported
+            print(f"Warning: {self.client.__class__.__name__} does not support image inputs. Using text-only mode.")
+            return self._generate_response(prompt, temp)

@@ -3,10 +3,18 @@
     "provider": "google",
     "model": "gemini-2.0-flash-exp",
     "api_key": "YOUR_GOOGLE_GEMINI_API_KEY_HERE",
+    "doubao_api_key": "YOUR_DOUBAO_API_KEY_HERE",
+    "doubao_model": "doubao-seed-1-6-thinking-250715",
+    "_comment_models": "请从火山方舟控制台复制你的 Endpoint ID，例如: doubao-seed-1-6-thinking-250715",
     "temperature": {
       "data_analyst": 0.3,
       "market_analyst": 0.5,
-      "fund_manager": 0.4
+      "fund_manager": 0.4,
+      "quant_researcher": 0.3,
+      "fundamental_analyst": 0.4,
+      "sentiment_analyst": 0.5,
+      "strategy_manager": 0.4,
+      "risk_control": 0.2
     },
     "max_tokens": 4096
   },
