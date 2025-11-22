@@ -127,6 +127,7 @@ yarn-error.log*
 .npm/
 .yarn/
 .vite/
+next_week_prediction.json
 
 # 备份文件
 *.bak
