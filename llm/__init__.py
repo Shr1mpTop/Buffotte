@@ -1,8 +1,14 @@
 """
-LLM Module for Multi-Agent Analysis System
+LLM Module for Simple Market Analysis
 
-This module provides AI-powered analysis using Google Gemini models.
-It implements a multi-agent workflow simulating financial analyst teams.
+This module provides simple, clear market analysis using LLM.
+All indicators are based on real data, with easy-to-understand language.
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0-simple"
+
+__all__ = [
+    'SimpleMarketAnalyzer',
+]
+
+from llm.simple_workflow import SimpleMarketAnalyzer

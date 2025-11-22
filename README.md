@@ -53,9 +53,73 @@
       ```
 
    5. 生成每日市场预测并发送报告（一键推荐）：
-      ```powershell
-      python src\run_daily_report.py
+      ```bash
+      python run_daily_report.py
       ```
+
+   ## 🤖 AI市场分析（简洁版）
+
+   ### 功能概述
+   项目使用AI提供简洁、易懂的市场分析：
+
+   - **基于真实数据**: 所有指标都是基于历史数据计算，不是AI编造
+   - **通俗易懂**: 避免专业术语，像和朋友聊天一样
+   - **快速高效**: 10-20秒内完成分析（vs 旧版130秒）
+   - **一目了然**: 3秒内看懂核心观点
+
+   ### 快速开始
+
+   1. **安装AI依赖**：
+      ```bash
+      pip install google-generativeai
+      # 或使用豆包
+      pip install openai
+      ```
+
+   2. **配置API Key**：
+      编辑 `llm_config.json`：
+      ```json
+      {
+        "llm": {
+          "provider": "google",
+          "model": "gemini-2.0-flash-exp",
+          "api_key": "your-api-key-here"
+        }
+      }
+      ```
+
+   3. **运行分析**：
+      ```bash
+      # 使用Gemini（默认）
+      python run_daily_report.py
+      
+      # 使用豆包
+      python run_daily_report.py --model doubao
+      ```
+
+   ### 报告示例
+
+   ```
+   💡 今日结论
+   价格处于低位但成交量不足，建议观望等待
+
+   📈 价格走势
+   当前价格: ¥1169.57
+   最近涨跌: 20天跌了3% ↓
+   历史位置: 处于历史20%分位（便宜）
+
+   🔥 市场热度
+   交易热度: ❄️ 冷清（成交量比平时少12%）
+   市场情绪: 😐 中性 (47分/100分)
+
+   🎯 操作建议
+   观望 （信心度: 60%）
+   
+   什么时候可以考虑买入？
+   ✓ 价格继续跌到¥1050以下
+   ✓ 成交量放大20%以上
+   ✓ 连续3天不再下跌
+   ```
 
    ## 🚀 API服务
 
@@ -94,90 +158,6 @@
    pip install gunicorn
    gunicorn -w 4 -k uvicorn.workers.UvicornWorker api:app
    ```
-
-   ## 🤖 AI多Agent分析系统（新功能）
-
-   ### 功能概述
-   项目新增了基于Google Gemini 2.0的多Agent AI分析系统，模拟证券公司专业分析团队的工作流程：
-
-   - **📊 数据分析师**: 分析历史30天数据，计算技术指标，评估预测准确性
-   - **📰 市场分析师**: 搜集市场新闻，分析利好利空因素，评估市场情绪
-   - **💼 基金经理**: 综合所有报告，制定投资策略，生成最终建议
-
-   ### 快速开始
-
-   1. **安装AI依赖**：
-      ```powershell
-      pip install google-generativeai pillow
-      ```
-
-   2. **获取Gemini API Key**：
-      - 访问 [Google AI Studio](https://aistudio.google.com/)
-      - 创建API Key并设置环境变量：
-      ```powershell
-      $env:GEMINI_API_KEY = "your-api-key-here"
-      ```
-
-   3. **运行AI分析**：
-      ```powershell
-      # AI分析已自动集成到日报告中
-      python src\run_daily_report.py
-      
-      # 或单独测试AI功能
-      python test_ai_analysis.py
-      ```
-
-   ### 输出报告
-
-   AI分析会生成：
-   - **JSON报告**: `models/ai_analysis_report.json` - 结构化分析结果
-   - **HTML报告**: `models/ai_analysis_report_*.html` - 精美可视化报告
-   - **邮件集成**: 分析摘要和完整报告自动附加到邮件中
-
-   ### 报告示例
-
-   ```
-   📊 投资建议: BUY
-   信心度: 75%
-   市场情绪: positive
-   风险等级: medium
-
-   🔍 关键发现：
-   • 30日均价上涨12.5%，呈现明确上升趋势
-   • 交易量较前期增长35%，市场活跃度提升
-   • 预测模型显示未来5天持续看涨信号
-   ```
-
-   ### 配置说明
-
-   编辑 `llm_config.json` 自定义AI分析行为：
-
-   ```json
-   {
-     "llm": {
-       "model": "gemini-2.0-flash-exp",
-       "temperature": {
-         "data_analyst": 0.3,
-         "market_analyst": 0.5,
-         "fund_manager": 0.4
-       }
-     },
-     "workflow": {
-       "enable_news_search": false,
-       "save_reports": true,
-       "generate_html": true
-     }
-   }
-   ```
-
-   ### 详细文档
-
-   查看 `llm/README.md` 获取：
-   - 系统架构详解
-   - 每个Agent的职责和prompt设计
-   - 自定义开发指南
-   - 性能优化建议
-   - 故障排除
 
    存档说明
    - 为简化仓库，若干早期独立脚本（如 `predict.py`, `fetch_only.py`, `send_report.py`, `predict_next_week.py`）已移至 `archive/`。根目录保留小型 stub，指示请使用 `src/run_daily_report.py` 或查看归档脚本。

@@ -66,10 +66,10 @@ def get_markdown_report() -> Dict[str, str]:
 @app.get("/report/summary")
 def get_report_summary() -> Dict[str, Any]:
     """
-    获取报告的摘要信息
+    获取报告的摘要信息（简洁版）
     
     Returns:
-        包含执行摘要和关键信息的字典
+        包含市场状态和操作建议的字典
     """
     cache_path = os.path.join("models", "email_cache.json")
     
@@ -81,20 +81,21 @@ def get_report_summary() -> Dict[str, Any]:
             report_data = json.load(f)
         
         ai_summary = report_data.get("ai_results_summary", {})
-        executive_summary = ai_summary.get("executive_summary", {})
+        metrics = ai_summary.get("metrics", {})
+        insights = ai_summary.get("insights", {})
         
         return {
             "status": "success",
             "generated_at": report_data.get("generated_at"),
             "date": report_data.get("date"),
-            "executive_summary": executive_summary,
-            "ai_analysis": {
-                "quant_researcher": ai_summary.get("quant_researcher", {}).get("key_findings", []),
-                "fundamental_analyst": ai_summary.get("fundamental_analyst", {}).get("key_findings", []),
-                "sentiment_analyst": ai_summary.get("sentiment_analyst", {}).get("key_findings", []),
-                "strategy_manager": ai_summary.get("strategy_manager", {}).get("key_findings", []),
-                "risk_control": ai_summary.get("risk_control", {}).get("key_findings", [])
-            }
+            "summary": insights.get("summary", ""),
+            "action": insights.get("action", "观望"),
+            "confidence": insights.get("confidence", 50),
+            "reason": insights.get("reason", ""),
+            "price": metrics.get("price", {}),
+            "volume": metrics.get("volume", {}),
+            "sentiment": metrics.get("sentiment", {}),
+            "technical": metrics.get("technical", {})
         }
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="Invalid report format")
