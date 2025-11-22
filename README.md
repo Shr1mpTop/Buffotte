@@ -57,6 +57,44 @@
       python src\run_daily_report.py
       ```
 
+   ## 🚀 API服务
+
+   项目提供了FastAPI服务，用于通过HTTP API访问每日报告。
+
+   ### 安装API依赖
+   ```bash
+   pip install fastapi uvicorn
+   ```
+
+   ### 启动API服务器
+   ```bash
+   python run_api.py
+   ```
+
+   服务器将在 `http://localhost:8000` 启动，API文档可在 `http://localhost:8000/docs` 查看。
+
+   ### API端点
+
+   - `GET /` - API根路径
+   - `GET /report` - 获取完整的每日报告数据
+   - `GET /report/markdown` - 获取报告的Markdown格式内容
+   - `GET /report/summary` - 获取报告摘要信息
+
+   ### 部署到生产环境
+
+   对于生产部署，可以使用以下命令：
+
+   ```bash
+   uvicorn api:app --host 0.0.0.0 --port 8000
+   ```
+
+   或者使用Gunicorn：
+
+   ```bash
+   pip install gunicorn
+   gunicorn -w 4 -k uvicorn.workers.UvicornWorker api:app
+   ```
+
    ## 🤖 AI多Agent分析系统（新功能）
 
    ### 功能概述

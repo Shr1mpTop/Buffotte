@@ -36,7 +36,7 @@ def fetch_and_insert(db_config_path: str, days: int = 5) -> int:
     force_update = bool(cfg.get('force_update', False))
     history_days = int(cfg.get('history_days', days))
 
-    now_ref = datetime.now(timezone.utc)
+    now_ref = datetime.now(timezone.utc).astimezone()
 
     try:
         crawler.connect_db()
@@ -65,25 +65,25 @@ def fetch_and_insert(db_config_path: str, days: int = 5) -> int:
                 
             rows = KlineCrawler.parse_data_rows(data) if data else []
             if not rows:
-                print(f'No rows returned for {target_date.isoformat()} 23:55:10 Shanghai (ts={ts})')
+                print(f'No rows returned for {target_date.isoformat()} 23:55:55 Shanghai (ts={ts})')
                 continue
 
-            # Filter rows to only include those with Shanghai time 23:55:10
+            # Filter rows to only include those with Shanghai time 23:55:55
             filtered_rows = []
             for r in rows:
                 ts_row = int(r[0])
                 dt_utc = datetime.fromtimestamp(ts_row, tz=timezone.utc)
                 dt_shanghai = dt_utc + timedelta(hours=8)
-                if dt_shanghai.hour == 23 and dt_shanghai.minute == 55 and dt_shanghai.second == 10:
+                if dt_shanghai.hour == 23 and dt_shanghai.minute == 55 and dt_shanghai.second == 55:
                     filtered_rows.append(r)
 
             if not filtered_rows:
-                print(f'No rows with 23:55:10 Shanghai time for {target_date.isoformat()}')
+                print(f'No rows with 23:55:55 Shanghai time for {target_date.isoformat()}')
                 continue
 
             try:
                 inserted = crawler.insert_rows(filtered_rows, ktype='day')
-                print(f'Inserted {inserted} rows for {target_date.isoformat()} 23:55:10 Shanghai')
+                print(f'Inserted {inserted} rows for {target_date.isoformat()} 23:55:55 Shanghai')
                 total_inserted += inserted
             except Exception as e:
                 print(f'DB insert failed for {target_date.isoformat()}:', e)
