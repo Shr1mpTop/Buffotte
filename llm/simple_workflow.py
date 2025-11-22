@@ -99,35 +99,41 @@ class SimpleMarketAnalyzer:
     def _calculate_market_metrics(self, df: pd.DataFrame, predictions: list) -> Dict[str, Any]:
         """Calculate all market metrics based on real data."""
         
-        # Get latest data
+        price_col = self._get_column(df, ['close', 'close_price'])
+        volume_col = self._get_column(df, ['volume', 'volume_usdt'], required=False)
+
+        price_series = df[price_col].astype(float)
         latest = df.iloc[-1]
-        current_price = latest['close']
+        current_price = float(latest[price_col])
         
         # Price metrics
-        price_20d_ago = df.iloc[-20]['close'] if len(df) >= 20 else current_price
+        price_20d_ago = float(df.iloc[-20][price_col]) if len(df) >= 20 else current_price
         price_change_20d = ((current_price - price_20d_ago) / price_20d_ago * 100)
         
         # Calculate price percentile
-        all_prices = df['close'].values
+        all_prices = price_series.values
         price_percentile = (all_prices < current_price).sum() / len(all_prices) * 100
         
         # Moving averages
-        ma5 = df['close'].tail(5).mean()
-        ma20 = df['close'].tail(20).mean() if len(df) >= 20 else current_price
-        ma60 = df['close'].tail(60).mean() if len(df) >= 60 else current_price
+        ma5 = price_series.tail(5).mean()
+        ma20 = price_series.tail(20).mean() if len(df) >= 20 else current_price
+        ma60 = price_series.tail(60).mean() if len(df) >= 60 else current_price
         
         # Volume metrics
-        current_volume = latest.get('volume', 0)
-        avg_volume = df['volume'].tail(20).mean() if 'volume' in df.columns else current_volume
+        current_volume = float(latest.get(volume_col, 0)) if volume_col else 0
+        if volume_col:
+            avg_volume = df[volume_col].tail(20).mean()
+        else:
+            avg_volume = current_volume
         volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1.0
         
         # Technical indicators
-        rsi = self._calculate_rsi(df['close'], period=14)
-        macd_line, signal_line, histogram = self._calculate_macd(df['close'])
-        bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(df['close'])
+        rsi = self._calculate_rsi(price_series, period=14)
+        macd_line, signal_line, histogram = self._calculate_macd(price_series)
+        bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(price_series)
         
         # Volatility
-        returns = df['close'].pct_change().dropna()
+        returns = price_series.pct_change().dropna()
         volatility_20d = returns.tail(20).std() * np.sqrt(252) * 100  # Annualized
         
         # Prediction analysis
@@ -227,6 +233,15 @@ class SimpleMarketAnalyzer:
                 'volume_risk': "低迷" if volume_ratio < 0.8 else "正常",
             }
         }
+
+    def _get_column(self, df: pd.DataFrame, candidates, required: bool = True) -> Optional[str]:
+        """Return the first existing column name from candidates."""
+        for col in candidates:
+            if col in df.columns:
+                return col
+        if required:
+            raise KeyError(f"None of the required columns found: {candidates}")
+        return None
     
     def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> float:
         """Calculate RSI indicator."""

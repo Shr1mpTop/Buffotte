@@ -36,7 +36,12 @@ except Exception:
 def read_from_db(config_path: str) -> pd.DataFrame:
     with open(config_path, 'r', encoding='utf-8') as f:
         cfg = json.load(f)
-    conn = pymysql.connect(**cfg)
+
+    # Filter out non-database entries (e.g., tokens, API keys)
+    allowed_keys = {"host", "port", "user", "password", "database", "charset"}
+    conn_cfg = {k: v for k, v in cfg.items() if k in allowed_keys}
+
+    conn = pymysql.connect(**conn_cfg)
     df = pd.read_sql('SELECT timestamp, open_price, high_price, low_price, close_price, volume FROM kline_data_day ORDER BY timestamp', conn)
     conn.close()
     # timestamp assumed to be in seconds
