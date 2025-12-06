@@ -1,83 +1,44 @@
 <template>
-  <div class="register">
-    <h2>注册</h2>
-    <form @submit.prevent="register">
-      <input v-model="form.username" type="text" placeholder="用户名" required>
-      <input v-model="form.email" type="email" placeholder="邮箱" required>
-      <input v-model="form.password" type="password" placeholder="密码" required>
-      <button type="submit">注册</button>
-    </form>
-    <p>已有账号？<router-link to="/login">登录</router-link></p>
-  </div>
+  <TerminalWindow title="user@buffotte:~/register">
+    <div class="register-console">
+      <div class="prompt">$ register</div>
+      <form class="form" @submit.prevent="onRegister">
+        <input v-model="form.username" class="input" type="text" placeholder="用户名" required autocomplete="username" />
+        <input v-model="form.email" class="input" type="email" placeholder="邮箱" required autocomplete="email" />
+        <input v-model="form.password" class="input" type="password" placeholder="密码" required autocomplete="new-password" />
+        <button class="btn" type="submit">创建用户</button>
+      </form>
+      <div class="alt">已有账号？ <router-link to="/login">登录</router-link></div>
+    </div>
+  </TerminalWindow>
 </template>
 
 <script>
+import TerminalWindow from '../components/TerminalWindow.vue'
+import api from '../services/api'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 
 export default {
   name: 'Register',
+  components: { TerminalWindow },
   setup() {
-    const form = ref({
-      username: '',
-      email: '',
-      password: ''
-    })
+    const form = ref({ username: '', email: '', password: '' })
     const router = useRouter()
-
-    const register = async () => {
-      try {
-        const response = await axios.post('http://localhost:8000/api/register', {
-          username: form.value.username,
-          email: form.value.email,
-          password: form.value.password
-        })
-        if (response.data.success) {
-          alert('注册成功！请登录')
-          router.push('/login')
-        } else {
-          alert(response.data.message)
-        }
-      } catch (error) {
-        alert(error.response?.data?.detail || '注册失败')
-      }
+    const onRegister = async () => {
+      const res = await api.register({ username: form.value.username, email: form.value.email, password: form.value.password })
+      if (res.success) { alert('注册成功'); router.push('/login') }
+      else { let msg = res.error?.detail || res.error?.message || res.error || '注册失败'; alert(msg) }
     }
-
-    return {
-      form,
-      register
-    }
+    return { form, onRegister }
   }
 }
 </script>
 
 <style scoped>
-.register {
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-input {
-  padding: 8px;
-}
-
-button {
-  padding: 8px;
-  background-color: #42b883;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #369870;
-}
+.prompt { color: var(--secondary-green); font-weight:700 }
+.form { display:flex; flex-direction:column; gap:8px }
+.input { background:transparent; border:1px solid rgba(0,255,127,0.08); padding:10px; color:var(--primary-green); border-radius:6px }
+.btn { padding:10px; background:linear-gradient(45deg,var(--primary-green),var(--secondary-green)); color:#000; border:none; border-radius:6px; cursor:pointer }
+.alt { color: rgba(159,255,191,0.6) }
 </style>

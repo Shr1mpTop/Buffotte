@@ -1,2 +1,4 @@
 .env
 buffotte_backups/
+.pyc
+__pycache__/

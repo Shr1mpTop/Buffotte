@@ -19,7 +19,11 @@ class UserManager:
         }
 
     def get_db_connection(self):
-        return pymysql.connect(**self.config)
+        try:
+            return pymysql.connect(**self.config)
+        except Exception as e:
+            # Propagate exception so callers can handle connection issues
+            raise
 
     def create_user_table(self):
         """

@@ -1,69 +1,22 @@
 <template>
-  <div class="home">
-    <header>
-      <h1>首页</h1>
-      <nav>
-        <router-link to="/profile">Profile</router-link>
-        <button @click="logout">注销</button>
-      </nav>
-    </header>
-    <main>
-      <h2>欢迎回来！</h2>
-      <p>这是您的首页。</p>
-    </main>
-  </div>
+  <TerminalWindow title="user@buffotte:~/home">
+    <div class="home-console">
+      <pre class="welcome">Buffotte 仪表盘</pre>
+      <div class="controls">
+        <router-link class="btn" to="/profile">查看资料</router-link>
+        <router-link class="btn" to="/kline">K线数据</router-link>
+      </div>
+    </div>
+  </TerminalWindow>
 </template>
 
 <script>
-import { useRouter } from 'vue-router'
-
-export default {
-  name: 'Home',
-  setup() {
-    const router = useRouter()
-
-    const logout = () => {
-      localStorage.removeItem('user')
-      router.push('/login')
-    }
-
-    return {
-      logout
-    }
-  }
-}
+import TerminalWindow from '../components/TerminalWindow.vue'
+export default { name: 'Home', components: { TerminalWindow } }
 </script>
 
 <style scoped>
-.home {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #ccc;
-  padding-bottom: 10px;
-}
-
-nav {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-button {
-  padding: 5px 10px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #d32f2f;
-}
+.welcome { color: var(--secondary-green); font-weight:700 }
+.controls { display:flex; gap:8px; margin-top:12px }
+.btn { padding:8px 12px; background:linear-gradient(45deg,var(--primary-green),var(--secondary-green)); border-radius:6px; color:#000 }
 </style>

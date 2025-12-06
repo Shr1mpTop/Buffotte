@@ -1,80 +1,48 @@
 <template>
-  <div class="login">
-    <h2>登录</h2>
-    <form @submit.prevent="login">
-      <input v-model="form.email" type="email" placeholder="邮箱" required>
-      <input v-model="form.password" type="password" placeholder="密码" required>
-      <button type="submit">登录</button>
-    </form>
-    <p>没有账号？<router-link to="/register">注册</router-link></p>
-  </div>
+  <TerminalWindow title="user@buffotte:~/login">
+    <div class="login-console">
+      <div class="prompt">$ login</div>
+      <form class="form" @submit.prevent="onLogin">
+        <input v-model="form.email" class="input" type="email" placeholder="邮箱" required autocomplete="email" />
+        <input v-model="form.password" class="input" type="password" placeholder="密码" required autocomplete="current-password" />
+        <button class="btn" type="submit">登录</button>
+      </form>
+      <div class="alt">没有账号？ <router-link to="/register">注册</router-link></div>
+    </div>
+  </TerminalWindow>
 </template>
 
 <script>
+import TerminalWindow from '../components/TerminalWindow.vue'
+import api from '../services/api'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 
 export default {
   name: 'Login',
+  components: { TerminalWindow },
   setup() {
-    const form = ref({
-      email: '',
-      password: ''
-    })
+    const form = ref({ email: '', password: '' })
     const router = useRouter()
-
-    const login = async () => {
-      try {
-        const response = await axios.post('http://localhost:8000/api/login', {
-          email: form.value.email,
-          password: form.value.password
-        })
-        if (response.data.success) {
-          localStorage.setItem('user', JSON.stringify(response.data.user))
-          router.push('/home')
-        } else {
-          alert(response.data.message)
-        }
-      } catch (error) {
-        alert(error.response?.data?.detail || '登录失败')
+    const onLogin = async () => {
+      const res = await api.login(form.value)
+      if (res.success) {
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        alert('登录成功'); router.push('/home')
+      } else {
+        let msg = res.error?.detail || res.error?.message || res.error || '登录失败'
+        alert(msg)
       }
     }
-
-    return {
-      form,
-      login
-    }
+    return { form, onLogin }
   }
 }
 </script>
 
 <style scoped>
-.login {
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-input {
-  padding: 8px;
-}
-
-button {
-  padding: 8px;
-  background-color: #42b883;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #369870;
-}
+.prompt { color: var(--secondary-green); font-weight:700 }
+.form { display:flex; flex-direction:column; gap:8px }
+.input { background:transparent; border:1px solid rgba(0,255,127,0.08); padding:10px; color:var(--primary-green); border-radius:6px }
+.btn { padding:10px; background:linear-gradient(45deg,var(--primary-green),var(--secondary-green)); color:#000; border:none; border-radius:6px; cursor:pointer }
+.alt { color: rgba(159,255,191,0.6) }
 </style>

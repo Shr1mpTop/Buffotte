@@ -1,20 +1,19 @@
 <template>
   <div id="app">
-    <router-view />
+    <MatrixBackground />
+    <div class="app-shell">
+      <router-view />
+    </div>
   </div>
 </template>
 
 <script>
-export default {
-  name: 'App'
-}
+import MatrixBackground from './components/MatrixBackground.vue'
+export default { name: 'App', components: { MatrixBackground } }
 </script>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-}
+:root { --primary-green: #00ff8b; --secondary-green: #8affc9 }
+html,body,#app { height:100%; background:#000; color:var(--primary-green); font-family: 'Source Code Pro', monospace }
+.app-shell { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px }
 </style>
