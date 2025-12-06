@@ -1,9 +1,0 @@
-{
-  "smtp_server": "smtp.qq.com",
-  "smtp_port": 587,
-  "use_tls": true,
-  "username": "YourQQUsername",
-  "password": "your_qq_smtp_authorization_code",
-  "from_address": "your_email@qq.com",
-  "to_address": "recipient@example.com"
-}
