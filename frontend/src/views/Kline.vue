@@ -19,7 +19,22 @@ export default { name: 'Kline' }
 
 <style scoped>
 .kline {
+  width: 100%;
   max-width: 1200px;
+  padding: 24px;
+  margin: 40px 0 0 0;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .kline-header {

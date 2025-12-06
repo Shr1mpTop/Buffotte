@@ -21,12 +21,18 @@ export default {
   display: flex;
   min-height: 100vh;
   background: #000;
+  overflow: hidden;
 }
 
 .content-area {
-  margin-left: 220px;
   flex: 1;
-  padding: 24px;
-  overflow-y: auto;
+  padding: 0;
+  margin: 0 0 0 220px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: #000;
 }
 </style>

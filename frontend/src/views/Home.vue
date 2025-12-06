@@ -1,5 +1,6 @@
 <template>
-  <div class="dashboard">
+  <BootAnimation v-if="showBoot" @complete="showBoot = false" />
+  <div v-show="!showBoot" class="dashboard">
     <div class="dashboard-header">
       <h1 class="title">$ ./dashboard.sh</h1>
       <div class="user-info">
@@ -39,13 +40,16 @@
 </template>
 
 <script>
+import BootAnimation from '../components/BootAnimation.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 
 export default {
   name: 'Dashboard',
+  components: { BootAnimation },
   setup() {
     const user = ref(null)
     const sessionTime = ref('00:00:00')
+    const showBoot = ref(false)
     let startTime = Date.now()
     let timer = null
 
@@ -61,6 +65,14 @@ export default {
       try {
         user.value = JSON.parse(localStorage.getItem('user'))
       } catch (e) {}
+      
+      // 检查是否是首次登录进入
+      const isFirstLogin = sessionStorage.getItem('firstLogin')
+      if (isFirstLogin === 'true') {
+        showBoot.value = true
+        sessionStorage.removeItem('firstLogin')
+      }
+      
       timer = setInterval(updateSessionTime, 1000)
     })
 
@@ -68,18 +80,33 @@ export default {
       if (timer) clearInterval(timer)
     })
 
-    return { user, sessionTime }
+    return { user, sessionTime, showBoot }
   }
 }
 </script>
 
 <style scoped>
 .dashboard {
+  width: 100%;
   max-width: 1200px;
+  padding: 24px;
+  margin: 40px 0 0 0;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dashboard-header {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(0, 255, 127, 0.2);
 }
@@ -90,6 +117,19 @@ export default {
   font-weight: 700;
   margin: 0 0 12px 0;
   text-shadow: 0 0 10px rgba(0, 255, 127, 0.3);
+  animation: typing 1s steps(20) forwards;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
 }
 
 .user-info {
@@ -118,11 +158,28 @@ export default {
   border-radius: 6px;
   overflow: hidden;
   transition: all 0.3s;
+  animation: slideUp 0.5s ease backwards;
+}
+
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card:hover {
   border-color: rgba(0, 255, 127, 0.4);
   box-shadow: 0 0 20px rgba(0, 255, 127, 0.1);
+  transform: translateY(-4px);
 }
 
 .card-header {

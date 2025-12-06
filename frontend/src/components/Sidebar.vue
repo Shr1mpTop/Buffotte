@@ -55,6 +55,18 @@ export default {
   left: 0;
   top: 0;
   z-index: 100;
+  animation: slideInLeft 0.4s ease;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-220px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .sidebar-header {
@@ -92,6 +104,25 @@ export default {
   transition: all 0.2s;
   border-left: 3px solid transparent;
   position: relative;
+}
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  background: var(--primary-green);
+  transition: all 0.3s;
+  opacity: 0;
+}
+
+.nav-item:hover::before {
+  width: 3px;
+  height: 100%;
+  opacity: 0.5;
 }
 
 .nav-item:hover {

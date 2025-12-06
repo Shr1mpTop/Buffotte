@@ -67,11 +67,24 @@ export default {
   justify-content: center;
   height: 100vh;
   overflow: hidden;
+  background: #000;
 }
 
 .auth-container {
   width: 100%;
   max-width: 420px;
+  animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .auth-header {
@@ -86,6 +99,16 @@ export default {
   letter-spacing: 4px;
   text-shadow: 0 0 20px rgba(0, 255, 127, 0.5);
   margin-bottom: 8px;
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(0, 255, 127, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(0, 255, 127, 0.8), 0 0 40px rgba(0, 255, 127, 0.4);
+  }
 }
 
 .subtitle {
