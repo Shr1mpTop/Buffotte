@@ -1,17 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from './views/Login.vue'
 import Register from './views/Register.vue'
+import MainLayout from './layouts/MainLayout.vue'
 import Home from './views/Home.vue'
 import Kline from './views/Kline.vue'
 import Profile from './views/Profile.vue'
 
 const routes = [
-  { path: '/', redirect: '/home' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/home', component: Home },
-  { path: '/kline', component: Kline },
-  { path: '/profile', component: Profile }
+  { 
+    path: '/', 
+    component: MainLayout,
+    redirect: '/dashboard',
+    children: [
+      { path: 'dashboard', component: Home, alias: '/home' },
+      { path: 'profile', component: Profile },
+      { path: 'kline', component: Kline }
+    ]
+  }
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })

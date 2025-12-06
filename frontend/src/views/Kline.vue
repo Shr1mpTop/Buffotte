@@ -1,20 +1,64 @@
 <template>
-  <TerminalWindow title="user@buffotte:~/kline">
-    <div class="kline-console">
-      <div class="line">K线数据页面（占位）</div>
-      <div class="line">将显示历史行情和图表</div>
-      <div class="actions"><router-link class="btn" to="/home">返回</router-link></div>
+  <div class="kline">
+    <div class="kline-header">
+      <h1 class="title">$ ./kline_monitor.sh</h1>
     </div>
-  </TerminalWindow>
+    <div class="kline-content">
+      <div class="placeholder-card">
+        <div class="placeholder-icon">📊</div>
+        <div class="placeholder-text">K线数据图表</div>
+        <div class="placeholder-hint">[占位区域 - 待实现]</div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-import TerminalWindow from '../components/TerminalWindow.vue'
-export default { name: 'Kline', components: { TerminalWindow } }
+export default { name: 'Kline' }
 </script>
 
 <style scoped>
-.line { margin: 8px 0 }
-.actions { margin-top:12px }
-.btn { padding:8px 12px; border-radius:6px; background:linear-gradient(45deg,var(--primary-green),var(--secondary-green)); border:none }
+.kline {
+  max-width: 1200px;
+}
+
+.kline-header {
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 255, 127, 0.2);
+}
+
+.title {
+  color: var(--primary-green);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(0, 255, 127, 0.3);
+}
+
+.placeholder-card {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 255, 127, 0.2);
+  border-radius: 6px;
+  padding: 60px 40px;
+  text-align: center;
+}
+
+.placeholder-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.3;
+}
+
+.placeholder-text {
+  color: var(--primary-green);
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.placeholder-hint {
+  color: rgba(0, 255, 127, 0.4);
+  font-size: 14px;
+  font-style: italic;
+}
 </style>

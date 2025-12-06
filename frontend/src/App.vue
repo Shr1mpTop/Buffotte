@@ -1,19 +1,29 @@
 <template>
   <div id="app">
     <MatrixBackground />
-    <div class="app-shell">
-      <router-view />
-    </div>
+    <router-view />
+    <Toast :key="toastKey" :message="toastMessage" :type="toastType" />
   </div>
 </template>
 
 <script>
 import MatrixBackground from './components/MatrixBackground.vue'
-export default { name: 'App', components: { MatrixBackground } }
+import Toast from './components/Toast.vue'
+import { useToast } from './composables/useToast'
+
+export default { 
+  name: 'App', 
+  components: { MatrixBackground, Toast },
+  setup() {
+    const { toastMessage, toastType, toastKey } = useToast()
+    return { toastMessage, toastType, toastKey }
+  }
+}
 </script>
 
 <style>
 :root { --primary-green: #00ff8b; --secondary-green: #8affc9 }
-html,body,#app { height:100%; background:#000; color:var(--primary-green); font-family: 'Source Code Pro', monospace }
-.app-shell { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px }
+html,body { height:100%; background:#000; color:var(--primary-green); font-family: 'Source Code Pro', monospace; margin: 0; padding: 0; overflow-x: hidden; }
+#app { height:100%; }
+* { box-sizing: border-box; }
 </style>
