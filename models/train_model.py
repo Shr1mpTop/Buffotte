@@ -5,6 +5,8 @@ from sklearn.model_selection import train_test_split
 import os
 import sys
 import subprocess
+import pymysql
+from dotenv import load_dotenv
 
 # 定义评估函数：皮尔逊相关系数
 def pearson_correlation(y_true, y_pred):
@@ -13,6 +15,86 @@ def pearson_correlation(y_true, y_pred):
     """
     corr = np.corrcoef(y_true, y_pred)[0, 1]
     return corr
+
+def get_db_connection():
+    """
+    建立并返回数据库连接。
+    """
+    load_dotenv()
+    try:
+        config = {
+            'host': os.getenv('HOST'),
+            'port': int(os.getenv('PORT')),
+            'user': os.getenv('USER'),
+            'password': os.getenv('PASSWORD'),
+            'database': os.getenv('DATABASE'),
+            'charset': os.getenv('CHARSET')
+        }
+        return pymysql.connect(**config)
+    except Exception as e:
+        print(f"数据库连接失败: {e}")
+        return None
+
+def save_predictions_to_db(predictions_df):
+    """
+    将预测结果保存到数据库的新表中。
+    """
+    conn = get_db_connection()
+    if not conn:
+        print("!!! 无法连接到数据库，跳过保存预测结果。")
+        return
+
+    print("\n--- 开始将预测结果保存到数据库 ---")
+    try:
+        with conn.cursor() as cursor:
+            # 1. 创建预测表（如果不存在）
+            create_table_sql = """
+            CREATE TABLE IF NOT EXISTS kline_data_prediction (
+                date DATE PRIMARY KEY,
+                predicted_close_price DECIMAL(10, 2),
+                rolling_mean_7 DECIMAL(10, 2),
+                rolling_std_7 DECIMAL(10, 2),
+                rolling_mean_14 DECIMAL(10, 2),
+                rolling_std_14 DECIMAL(10, 2),
+                rolling_mean_30 DECIMAL(10, 2),
+                rolling_std_30 DECIMAL(10, 2)
+            )
+            """
+            cursor.execute(create_table_sql)
+            print("预测表 'kline_data_prediction' 已确认存在。")
+
+            # 3. 插入或更新新的预测数据
+            insert_sql = """
+            INSERT INTO kline_data_prediction (
+                date, predicted_close_price, rolling_mean_7, rolling_std_7,
+                rolling_mean_14, rolling_std_14, rolling_mean_30, rolling_std_30
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                predicted_close_price = VALUES(predicted_close_price),
+                rolling_mean_7 = VALUES(rolling_mean_7),
+                rolling_std_7 = VALUES(rolling_std_7),
+                rolling_mean_14 = VALUES(rolling_mean_14),
+                rolling_std_14 = VALUES(rolling_std_14),
+                rolling_mean_30 = VALUES(rolling_mean_30),
+                rolling_std_30 = VALUES(rolling_std_30)
+            """
+            
+            # 准备要插入的数据, 将 NaN 替换为 None 以便数据库存储为 NULL
+            data_to_insert = [
+                tuple(row) for row in predictions_df.where(pd.notna(predictions_df), None).to_numpy()
+            ]
+
+            cursor.executemany(insert_sql, data_to_insert)
+            conn.commit()
+            print(f"成功将 {len(data_to_insert)} 条预测数据插入或更新到数据库。")
+
+    except Exception as e:
+        print(f"!!! 保存预测数据到数据库时发生错误: {e}")
+        conn.rollback()
+    finally:
+        if conn.open:
+            conn.close()
+            print("数据库连接已关闭。")
 
 def run_script(module_path, cwd):
     """
@@ -254,6 +336,9 @@ def train_and_predict():
     prediction_path = os.path.join(current_dir, 'next_month_prediction.csv')
     predictions_df.to_csv(prediction_path, index=False)
     print(f"未来 30 天的详细预测结果已保存到: {prediction_path}")
+
+    # 新增步骤：将预测保存到数据库
+    save_predictions_to_db(predictions_df)
 
 
 if __name__ == "__main__":
