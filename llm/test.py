@@ -21,7 +21,7 @@ prompt = """
 4. HLTV比赛赛事最新资讯 (https://www.hltv.org/)
 5. 其他抖音、头条等平台。
 
-尽量找到“最近一周”的CS2饰品市场的最新资讯。请注意，需要筛选出可能会影响饰品价格的新闻资讯。就事论事，总结这些新闻"""
+尽量找到“最近3天”的CS2饰品市场的最新资讯。请注意，需要筛选出可能会影响饰品价格的新闻资讯。就事论事，总结这些新闻"""
 
 response = client.responses.create(
     model="doubao-seed-1-6-flash-250828",
@@ -32,7 +32,7 @@ response = client.responses.create(
 print(response)
 
 # 将响应保存到 txt 文件
-output_filename = "./llm/response.txt"
+output_filename = "response.txt"
 with open(output_filename, "w", encoding="utf-8") as f:
     f.write(response.model_dump_json(indent=2))
 print(f"API 响应已保存到 {output_filename}")
