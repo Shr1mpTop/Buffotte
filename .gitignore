@@ -1,4 +1,43 @@
+# --- Environment & Credentials ---
+# Ignore environment variables file
 .env
+# Ignore API keys and sensitive configuration backups
 buffotte_backups/
-.pyc
+
+# --- Python ---
+# Ignore Python bytecode and cache
 __pycache__/
+*.pyc
+# Ignore Python virtual environment
+venv/
+*.venv/
+# Ignore package installation directory
+.eggs/
+
+# --- Node.js / Frontend ---
+# Ignore node_modules directory
+node_modules/
+# Ignore Vite build output directory
+frontend/dist/
+# Ignore npm debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Datasets & Models (Generated Files) ---
+# Ignore generated training data and predictions
+training_dataset.csv
+models/next_month_prediction.csv
+
+# --- Logs ---
+# Ignore log files
+logs/
+*.log
+
+# --- IDE & System Files ---
+# Ignore VS Code settings
+.vscode/
+# Ignore macOS system files
+.DS_Store
+# Ignore Windows thumbnail cache
+Thumbs.db

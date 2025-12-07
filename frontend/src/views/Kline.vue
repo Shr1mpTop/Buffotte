@@ -254,6 +254,22 @@ export default {
         const endDate = new Date(maxTime)
         dateRange.value = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`
 
+        // 设置默认缩放范围为最近一个月
+        if (totalDays.value > 30) {
+          const startPercentage = 100 - (30 / totalDays.value) * 100
+          // 应用于所有 dataZoom 组件
+          chartOption.value.dataZoom.forEach(dz => {
+            dz.start = startPercentage
+            dz.end = 100
+          })
+        } else {
+          // 如果数据不足一个月，则显示全部
+           chartOption.value.dataZoom.forEach(dz => {
+            dz.start = 0
+            dz.end = 100
+          })
+        }
+
         // 根据时间范围动态设置X轴标签间隔
         const timeRange = maxTime - minTime
         const days = timeRange / (24 * 3600 * 1000)

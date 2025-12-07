@@ -4,3 +4,6 @@ pymysql
 bcrypt
 fastapi
 uvicorn
+pandas
+scikit-learn
+lightgbm
