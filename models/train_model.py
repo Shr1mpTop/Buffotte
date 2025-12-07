@@ -35,40 +35,45 @@ def train_and_predict():
     print(f"数据清洗完成：移除了 {initial_rows - len(data)} 行包含 0 值的数据。")
 
     # 将 timestamp 转换为日期时间格式，并设为索引
-    data['date'] = pd.to_datetime(data['timestamp'], unit='ms')
+    # 时间戳默认为 UTC，我们将其转换为 UTC+8 (Asia/Shanghai)
+    data['date'] = pd.to_datetime(data['timestamp'], unit='s').dt.tz_localize('UTC').dt.tz_convert('Asia/Shanghai')
     data.set_index('date', inplace=True)
     data.sort_index(inplace=True)
 
-    # --- 步骤 2: 特征工程 ---
+    # --- 步骤 2: 特征工程 (在除去最后一行的数据上进行) ---
     print("步骤 2: 特征工程...")
+
+    # 分离出最后一行用于后续的迭代预测
+    data_for_prediction = data.iloc[-1:].copy()
+    data_for_training = data.iloc[:-1].copy()
     
     # 目标变量：未来1天的收盘价
-    data['target'] = data['close_price'].shift(-1)
+    data_for_training['target'] = data_for_training['close_price'].shift(-1)
 
     # 时间特征
-    data['day_of_week'] = data.index.dayofweek
-    data['month'] = data.index.month
-    data['year'] = data.index.year
+    data_for_training['day_of_week'] = data_for_training.index.dayofweek
+    data_for_training['month'] = data_for_training.index.month
+    data_for_training['year'] = data_for_training.index.year
 
     # 滞后特征
     for lag in [7, 14, 30]:
-        data[f'close_lag_{lag}'] = data['close_price'].shift(lag)
+        data_for_training[f'close_lag_{lag}'] = data_for_training['close_price'].shift(lag)
 
     # 滑动窗口特征
     for window in [7, 14, 30]:
-        data[f'close_rolling_mean_{window}'] = data['close_price'].rolling(window=window).mean()
-        data[f'close_rolling_std_{window}'] = data['close_price'].rolling(window=window).std()
-        data[f'volume_rolling_mean_{window}'] = data['volume'].rolling(window=window).mean()
+        data_for_training[f'close_rolling_mean_{window}'] = data_for_training['close_price'].rolling(window=window).mean()
+        data_for_training[f'close_rolling_std_{window}'] = data_for_training['close_price'].rolling(window=window).std()
+        data_for_training[f'volume_rolling_mean_{window}'] = data_for_training['volume'].rolling(window=window).mean()
 
     # 清理因特征工程产生的 NaN 值
-    data.dropna(inplace=True)
+    data_for_training.dropna(inplace=True)
     
     # --- 步骤 3: 划分数据集 ---
     print("步骤 3: 划分数据集...")
     
-    features = [col for col in data.columns if col not in ['timestamp', 'target']]
-    X = data[features]
-    y = data['target']
+    features = [col for col in data_for_training.columns if col not in ['timestamp', 'target']]
+    X = data_for_training[features]
+    y = data_for_training['target']
 
     # 按时间顺序划分，后 20% 为验证集
     train_size = int(len(X) * 0.8)
@@ -107,6 +112,10 @@ def train_and_predict():
     # --- 步骤 5: 模型微调与未来预测 ---
     print("步骤 5: 模型微调与未来预测...")
 
+    # 在预测前打印最后一个历史数据点的日期以进行调试
+    last_historical_date = data.index[-1]
+    print(f"DEBUG: 最后一个历史数据点的日期是: {last_historical_date}")
+
     # 'model' 已在训练集(前80%数据)上训练完成
     # 现在，我们使用验证集(最近20%的数据)对其进行微调，使其适应近期市场模式
     print(f"使用最近 {len(X_val)} 条数据进行模型微调...")
@@ -117,56 +126,98 @@ def train_and_predict():
     
     print("模型微调完成。")
 
-    # 准备进行迭代预测
-    future_steps = 30
-    last_data_point = data.iloc[-1:].copy()
-    future_predictions = []
+    # --- 为预测准备初始特征 ---
+    # 我们需要为 data_for_prediction 计算与训练时相同的特征
+    
+    # 完整的数据历史（包括用于训练的数据和用于预测的最后一行）
+    full_history_df = pd.concat([data_for_training, data_for_prediction])
+    
+    # 时间特征
+    data_for_prediction['day_of_week'] = data_for_prediction.index.dayofweek
+    data_for_prediction['month'] = data_for_prediction.index.month
+    data_for_prediction['year'] = data_for_prediction.index.year
 
-    for _ in range(future_steps):
+    # 滞后特征
+    for lag in [7, 14, 30]:
+        data_for_prediction[f'close_lag_{lag}'] = full_history_df['close_price'].shift(lag).iloc[-1]
+
+    # 滑动窗口特征
+    for window in [7, 14, 30]:
+        data_for_prediction[f'close_rolling_mean_{window}'] = full_history_df['close_price'].rolling(window=window).mean().iloc[-1]
+        data_for_prediction[f'close_rolling_std_{window}'] = full_history_df['close_price'].rolling(window=window).std().iloc[-1]
+        data_for_prediction[f'volume_rolling_mean_{window}'] = full_history_df['volume'].rolling(window=window).mean().iloc[-1]
+    
+    last_data_point_features = data_for_prediction[features].copy()
+    last_known_date = data_for_prediction.index[0]
+    
+    future_steps = 30
+    future_records = []
+
+    # 将所有已知收盘价（包括最后一行）转换为列表
+    close_price_history = full_history_df['close_price'].tolist()
+    
+    for i in range(future_steps):
         # 准备当前时间点的特征
-        current_features = last_data_point[features]
+        current_features = last_data_point_features
         
         # 使用微调后的模型进行预测
         next_day_pred = model.predict(current_features)[0]
-        future_predictions.append(next_day_pred)
 
-        # 更新 last_data_point 以准备下一次迭代
-        last_date = last_data_point.index[0]
-        next_date = last_date + pd.Timedelta(days=1)
+        # 更新历史价格列表以包含新的预测值
+        close_price_history.append(next_day_pred)
         
-        # 创建新的数据行
-        new_row = last_data_point.copy()
-        new_row.index = [next_date]
-        new_row['close_price'] = next_day_pred # 使用预测值更新收盘价
+        # 计算下一个日期
+        next_date = last_known_date + pd.Timedelta(days=i + 1)
         
-        # 更新其他依赖于 close_price 的特征（简化版，仅更新滞后和滚动特征）
-        # 实际应用中可能需要更复杂的特征更新逻辑
-        temp_history = pd.concat([data['close_price'], pd.Series(future_predictions, index=pd.to_datetime(last_date) + pd.to_timedelta(np.arange(1, len(future_predictions) + 1), unit='D'))])
+        # --- 为下一次迭代准备新的特征 ---
+        next_features = current_features.copy()
+        next_features.index = [next_date] # 更新索引为新日期
+        
+        # 更新时间特征
+        next_features['day_of_week'] = next_date.dayofweek
+        next_features['month'] = next_date.month
+        next_features['year'] = next_date.year
 
-        new_row['day_of_week'] = next_date.dayofweek
-        new_row['month'] = next_date.month
-        new_row['year'] = next_date.year
+        # 使用扩展后的历史价格来计算滞后和滚动特征
+        temp_series = pd.Series(close_price_history)
 
         for lag in [7, 14, 30]:
-            new_row[f'close_lag_{lag}'] = temp_history.shift(lag).iloc[-1]
+            if len(temp_series) > lag:
+                next_features[f'close_lag_{lag}'] = temp_series.shift(lag).iloc[-1]
+            else:
+                next_features[f'close_lag_{lag}'] = np.nan
         
         for window in [7, 14, 30]:
-            new_row[f'close_rolling_mean_{window}'] = temp_history.rolling(window=window).mean().iloc[-1]
-            new_row[f'close_rolling_std_{window}'] = temp_history.rolling(window=window).std().iloc[-1]
-        
-        last_data_point = new_row
+            if len(temp_series) >= window:
+                next_features[f'close_rolling_mean_{window}'] = temp_series.rolling(window=window).mean().iloc[-1]
+                next_features[f'close_rolling_std_{window}'] = temp_series.rolling(window=window).std().iloc[-1]
+            else:
+                next_features[f'close_rolling_mean_{window}'] = np.nan
+                next_features[f'close_rolling_std_{window}'] = np.nan
 
+        # 记录当前步骤的详细预测信息
+        record = {
+            'day': next_date.strftime('%Y-%m-%d'),
+            'predicted_close_price': next_day_pred,
+            'rolling_mean_7': next_features[f'close_rolling_mean_7'].iloc[0] if f'close_rolling_mean_7' in next_features and not np.isnan(next_features[f'close_rolling_mean_7'].iloc[0]) else None,
+            'rolling_std_7': next_features[f'close_rolling_std_7'].iloc[0] if f'close_rolling_std_7' in next_features and not np.isnan(next_features[f'close_rolling_std_7'].iloc[0]) else None,
+            'rolling_mean_14': next_features[f'close_rolling_mean_14'].iloc[0] if f'close_rolling_mean_14' in next_features and not np.isnan(next_features[f'close_rolling_mean_14'].iloc[0]) else None,
+            'rolling_std_14': next_features[f'close_rolling_std_14'].iloc[0] if f'close_rolling_std_14' in next_features and not np.isnan(next_features[f'close_rolling_std_14'].iloc[0]) else None,
+            'rolling_mean_30': next_features[f'close_rolling_mean_30'].iloc[0] if f'close_rolling_mean_30' in next_features and not np.isnan(next_features[f'close_rolling_mean_30'].iloc[0]) else None,
+            'rolling_std_30': next_features[f'close_rolling_std_30'].iloc[0] if f'close_rolling_std_30' in next_features and not np.isnan(next_features[f'close_rolling_std_30'].iloc[0]) else None
+        }
+        future_records.append(record)
+
+        # 更新 last_data_point_features 以用于下一次迭代
+        last_data_point_features = next_features
 
     # 保存预测结果
-    future_day_indices = range(1, future_steps + 1)
-    predictions_df = pd.DataFrame({
-        'day': future_day_indices,
-        'predicted_close_price': future_predictions
-    })
+    predictions_df = pd.DataFrame(future_records)
     
     prediction_path = os.path.join(current_dir, 'next_month_prediction.csv')
     predictions_df.to_csv(prediction_path, index=False)
-    print(f"未来 30 天的预测结果已保存到: {prediction_path}")
+    print(f"未来 30 天的详细预测结果已保存到: {prediction_path}")
+
 
 if __name__ == "__main__":
     train_and_predict()
