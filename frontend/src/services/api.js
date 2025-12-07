@@ -4,7 +4,7 @@ const client = axios.create({ baseURL: '/api', timeout: 6000 })
 
 // 外部API客户端 - 用于调用buff-tracker服务
 const externalClient = axios.create({ 
-  baseURL: 'http://bufftracker.hezhili.online:8010/api',
+  baseURL: 'https://bufftracker.hezhili.online:8010/api',
   timeout: 10000 
 })
 
