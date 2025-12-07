@@ -13,10 +13,18 @@
 使用常规的LBGM或者LSTM模型进行简单的预测训练分析（一般这些模型的测试集方向正确率再50%-55%之间），可以给AI分析提供额外维度信息 【done！】
 ## 7. AI分析
 LangChain，构造一个强大的分析工作流，进行数据分析和建议
+
+### AI工具定价
+![image-20251208015200924](https://cdn.jsdelivr.net/gh/Shr1mpTop/picgo-images/images/image-20251208015200924.png)
+
+### 具体设计
+1. 新闻爬取，我找到了四个可靠的信息源："https://www.douyin.com/search/CS2%E9%A5%B0%E5%93%81%E6%9C%80%E6%96%B0"（抖音搜索）,"https://store.steampowered.com/news/app/730/view"（Steam游戏更新咨询）,"https://buff.163.com/news/?news_game=csgo"（网易BUFF资讯）,"https://www.hltv.org/"（HLTV比赛赛事最新资讯）
+返回爬取到的新闻详细
+2. 新闻分析，将新闻爬取 --> 新闻分析，
+
 ## 8. 邮箱订阅投送
 每日定时投送关键信息
 ## 9. Buy Me A Coffee
 天下没有免费的午餐，所有知道项目的用户（我亲爱的uu们）可以在beta版本免费享用项目提供的服务，但是在LTS（Long Term Support）版本发布后，我会考虑实行订阅制或者赞助制来维护项目的正常运行
 > 总而言之，我设计这个项目的初衷是1. 我自己对虚拟市场的兴趣 2. 我希望可以增强我的项目开发能力 3. 我希望可以通过这个项目赚取人生的第一桶金~
-
 

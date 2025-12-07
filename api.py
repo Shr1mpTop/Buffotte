@@ -4,7 +4,7 @@ import logging
 import traceback
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from user_manager import UserManager
+from db.user_manager import UserManager
 from db.kline_data_processor import KlineDataProcessor
 import pymysql
 from datetime import date, datetime

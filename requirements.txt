@@ -7,3 +7,4 @@ uvicorn
 pandas
 scikit-learn
 lightgbm
+openai
