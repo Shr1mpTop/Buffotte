@@ -2,6 +2,12 @@ import axios from 'axios'
 
 const client = axios.create({ baseURL: '/api', timeout: 6000 })
 
+// 外部API客户端 - 用于调用buff-tracker服务
+const externalClient = axios.create({ 
+  baseURL: 'http://bufftracker.hezhili.online:8010/api',
+  timeout: 10000 
+})
+
 export default {
   async register(payload) {
     try {
@@ -26,6 +32,30 @@ export default {
         errorData = '无法连接到后端服务，请确认后端是否运行。'
       }
       return { success: false, error: errorData }
+    }
+  },
+  
+  // 饰品搜索
+  async searchItems(name, num = 10) {
+    try {
+      const { data } = await externalClient.get('/search', {
+        params: { name, num }
+      })
+      return { success: true, ...data }
+    } catch (err) {
+      console.error('搜索饰品失败:', err)
+      return { success: false, error: err.response?.data || err.message }
+    }
+  },
+  
+  // 获取饰品价格
+  async getItemPrice(marketHashName) {
+    try {
+      const { data } = await externalClient.get(`/price/${encodeURIComponent(marketHashName)}`)
+      return { success: true, ...data }
+    } catch (err) {
+      console.error('获取价格失败:', err)
+      return { success: false, error: err.response?.data || err.message }
     }
   }
 }
