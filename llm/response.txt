@@ -1,6 +1,6 @@
 {
-  "id": "resp_021765134885043c85c17782ebc45169ced08d4429f63daf1cb4e",
-  "created_at": 1765134885.0,
+  "id": "resp_021765140896075fedc765ab0ca3ffb90517c4b9d877f074cf7f3",
+  "created_at": 1765140896.0,
   "error": null,
   "incomplete_details": null,
   "instructions": null,
@@ -9,10 +9,10 @@
   "object": "response",
   "output": [
     {
-      "id": "rs_02176513488538200000000000000000000ffffac1526a75cbeb8",
+      "id": "rs_02176514089635300000000000000000000ffffac15dd1253bcf8",
       "summary": [
         {
-          "text": "我现在需要处理用户的问题，作为一名CS2自媒体咨询人和游戏饰品投资者，用户希望我找到最近一周（即截至2025年12月8日）CS2饰品市场的最新资讯，筛选出可能影响价格的新闻，并分析信息流、影响和预测走势，最后总结。首先，我需要确定哪些信息源是可靠的，并且符合用户提供的选项，比如抖音搜索、Steam更新、网易BUFF、HLTV等。\n\n首先，用户提到的可靠信源包括抖音搜索（CS2饰品最新）、Steam游戏CS2更新资讯、网易BUFF资讯、HLTV赛事最新资讯，以及其他抖音、头条等平台。根据系统提示，我需要使用web_search工具，并且需要指定source_types和queries。source_types可以包括toutiao_article（今日头条）、douyin_baike（抖音百科）、search_engine（搜索引擎），可能还有weather，但这里显然不需要天气信息。queries应该是搜索的关键词，比如“CS2饰品市场一周价格走势”、“CS2最近更新对饰品影响”、“CS2赛事结果对饰品价格影响”、“网易BUFF最近CS2饰品资讯”等。\n\n接下来，我需要确定哪些信息可能影响饰品价格。通常，游戏更新（如新皮肤、武器箱、平衡性调整）、大型赛事（如Major、ESL等）、官方活动（如Steam促销、节日活动）、饰品供需变化（如饰品下架、复刻）、市场政策调整（如VAC封禁、交易限制）等都会影响价格。因此，搜索的关键词应该围绕这些方面。\n\n首先，我需要调用web_search工具，选择合适的source_types和queries。source_types方面，用户提到的toutiao_article（今日头条）和douyin_baike（抖音百科）可能比较合适，因为头条和抖音的资讯通常时效性强，且内容全面。此外，可能需要用search_engine来补充全网信息，但要注意准确性。不过，根据工具描述，toutiao_article优先选择，所以先以头条为主。\n\nqueries需要包括多个问题，比如：\n1. CS2饰品市场一周最新动态（影响价格的因素）\n2. CS2最近版本更新内容（Steam news）\n3. CS2 Major赛事结果或即将举行的赛事信息（HLTV）\n4. 网易BUFF平台上CS2饰品的最近价格波动及原因\n5. 抖音上CS2饰品相关热门内容和资讯（可能涉及主播推荐、开箱信息等）\n\n另外，用户当前时间是2025年12月8日，最近一周应该是从12月1日到12月8日。需要确保搜索到的信息在这个时间段内。\n\n现在，我需要构造web_search的参数。source_types选择toutiao_article和douyin_baike，可能还要search_engine，但根据工具描述，search_engine是在其他源不满足时选择，所以先主要用toutiao和douyin。queries应该包括上述问题，例如：\n- CS2饰品最近一周市场动态\n- CS2 2025年12月更新内容\n- CS2 Major赛事2025年12月结果\n- CS2饰品价格一周波动原因\n- 网易BUFF CS2饰品最新资讯\n\n此外，可能还需要考虑是否有新皮肤推出，或者某个饰品的热度变化，比如新出的武器箱或者限定皮肤。另外，Steam上的新闻可能包含版本更新，比如平衡性调整可能影响某些武器的使用率，从而影响其饰品价格。例如，如果某个武器被加强，那么其皮肤可能价格上涨。\n\n在分析影响时，需要区分直接影响和间接影响。比如，新皮肤的推出通常会导致原有皮肤价格下降，但新皮肤本身可能先上涨后趋于稳定。赛事结果如果某个战队夺冠，其队服或纪念品皮肤可能价格暴涨。例如，HLTV上的赛事新闻可能会有相关结果。\n\n然后，预测未来走势需要综合这些因素。如果有新皮肤推出，短期内价格可能上涨，但长期可能受供需影响下降。如果赛事临近，可能相关饰品提前预热。如果Steam有更新，比如修复某个漏洞导致某些饰品被修复或加强，可能影响价格。\n\n现在，我需要将这些信息整理成web_search的参数，生成正确的JSON结构。根据工具描述，web_search的parameters是一个对象，包含source_types和queries数组。source_types是数组，包含字符串，如\"toutiao_article\", \"douyin_baike\", \"search_engine\"；queries是数组，每个元素是搜索问题字符串。\n\n因此，构造的参数可能如下：\n{\n  \"source_types\": [\"toutiao_article\", \"douyin_baike\", \"search_engine\"],\n  \"queries\": [\n    \"CS2饰品最近一周市场动态 2025年12月\",\n    \"CS2 2025年12月版本更新内容\",\n    \"CS2 Major赛事2025年12月结果及影响\",\n    \"网易BUFF CS2饰品最近价格波动及原因\",\n    \"抖音CS2饰品最新资讯\"\n  ]\n}\n\n需要注意的是，queries应该简洁明确，便于搜索到相关信息。同时，source_types中的search_engine可能需要，但如果头条和抖音已经足够，可能不需要，但为了全面性，可以包括。\n\n现在，我需要按照系统提示，使用<|FunctionCallBegin|>和<|FunctionCallEnd|>包裹，生成工具调用的JSON。\n\n因此，最终的工具调用应该是：\n\n<|FunctionCallBegin|>[{\"name\":\"web_search\",\"parameters\":{\"source_types\":[\"toutiao_article\",\"douyin_baike\",\"search_engine\"],\"queries\":[\"CS2饰品最近一周市场动态 2025年12月\",\"CS2 2025年12月版本更新内容\",\"CS2 Major赛事2025年12月结果及影响\",\"网易BUFF CS2饰品最近价格波动及原因\",\"抖音CS2饰品最新资讯\"]}}]<|FunctionCallEnd|>\n\n这样，通过调用web_search，我可以获取各信源的相关信息，进而分析影响因素，预测价格走势。需要注意的是，如果搜索结果中没有足够的信息，可能需要调整queries，但根据工具描述，不要反复尝试。但在这个问题中，用户提供了多个信源，所以应该能获取到相关信息。",
+          "text": "用户现在需要作为CS2自媒体咨询人，同时也是虚拟游戏饰品市场的小投资者，要找最近一周（截至2025年12月8日）的CS2饰品市场最新资讯，特别是可能影响价格的新闻。首先，我需要确定哪些信源是可靠的，用户已经列出了几个选项：抖音搜索、Steam游戏CS2更新资讯、网易BUFF资讯、HLTV比赛赛事，还有其他抖音、头条等平台。\n\n首先，我需要按照用户提供的工具参数来构造搜索请求。根据系统提示，调用web_search工具时，需要指定source_types和queries。source_types可以选择多个，比如toutiao_article、douyin_baike、search_engine、weather等，但这里主要关注的是CS2饰品市场相关的资讯，所以可能需要优先选择toutiao_article（今日头条的文章，优先选择）和douyin_baike（抖音百科），以及search_engine（搜索引擎，作为补充）。不过用户提到的选项中，steam的更新、网易BUFF的资讯、HLTV的赛事都是直接相关的平台，可能需要在queries中明确这些关键词。\n\n接下来，要确定“最近一周”的时间范围，当前时间是2025年12月8日，所以最近一周应该是从12月1日到12月8日。需要搜索的关键词应该包括CS2饰品市场相关的，比如“CS2饰品最新价格走势”、“CS2更新对饰品影响”、“CS2赛事新闻”、“CS2饰品投资热点”等。同时，要筛选可能影响价格的新闻，比如游戏更新（如新皮肤、武器箱）、赛事活动（如Major赛事、ESL比赛等）、饰品供需变化、官方公告等。\n\n可能的问题点在于，用户提供的source_types中，toutiao_article是优先选择的，因为它提供时效性和准确性较高的资讯，比如金价、油价、房价、股票等，但这里主要是CS2饰品，所以需要在queries中加入相关的关键词，比如“CS2饰品2025年12月价格趋势”、“CS2最近更新对饰品影响”、“CS2新皮肤发布时间”、“CS2赛事对饰品市场影响”等。同时，HLTV的资讯可能涉及赛事新闻，比如选手动态、赛事结果，这也可能影响饰品价格，尤其是特定选手佩戴的饰品。\n\n另外，网易BUFF的资讯可能直接提供饰品市场的分析和新闻，所以需要包括进去。Steam的更新资讯可能涉及游戏内容的变化，比如新武器、新地图、平衡性调整，这些都会影响饰品的价值。例如，如果推出了新的皮肤，可能会导致旧皮肤价格下跌，或者新皮肤价格上涨；平衡性调整可能影响武器的使用率，从而影响对应皮肤的需求。\n\n需要注意的是，用户提到的“最近一周”是截至当前时间，所以需要在搜索时限定时间范围，可能需要在queries中加入时间关键词，比如“2025年12月1日至8日”，但需要看各个平台是否支持时间筛选。如果平台不支持，可能需要直接用关键词搜索，然后通过内容判断是否在最近一周内。\n\n现在需要构造web_search的参数，source_types选择toutiao_article（今日头条）、douyin_baike（抖音百科）、search_engine（搜索引擎，用于补充），以及可能的steam_news（但用户没有将Steam新闻单独列为source_type，所以可能需要在queries中包含Steam的更新）。queries需要包括多个关键词，例如：\n\n1. CS2饰品最新资讯2025年12月\n2. CS2饰品价格走势最近一周\n3. CS2 2025年12月新皮肤发布\n4. CS2 Major赛事2025时间地点\n5. CS2饰品投资热点12月\n6. Steam CS2 2025年12月更新内容\n7. 网易BUFF CS2饰品市场分析\n8. HLTV 2025年12月CS2赛事新闻\n\n这些关键词能够覆盖可能影响价格的因素，包括游戏更新、赛事、市场分析等。同时，需要确保每个queries都是具体的问题，以获取相关信息。\n\n可能的问题是，如果某些平台无法获取到足够的信息，比如Steam新闻更新是否在最近一周有变化，或者网易BUFF的资讯是否有相关内容，可能需要通过多个搜索词来覆盖。此外，抖音搜索本身可以作为一个source_type，但用户提供的第一个选项是抖音搜索的链接，但工具参数中source_types是选项，比如douyin_baike是百科知识，而抖音搜索可能属于其他类型，但根据工具参数，source_types中的选项是search_engine、weather、toutiao_article、douyin_baike，所以抖音搜索可能不属于这些类型，因此可能需要用search_engine或者toutiao_article来搜索，因为toutiao_article可以获取抖音的信息吗？或者可能用户提到的抖音搜索链接需要单独处理，但根据系统提示，只能调用提供的工具参数，因此需要在queries中直接包含抖音搜索的关键词，或者将其作为一个source_type？\n\n这里可能需要再仔细看工具参数：web_search的parameters中的source_types是一个数组，其中可以选择的类型包括search_engine、weather、toutiao_article、douyin_baike。所以如果用户提到的抖音搜索（https://www.douyin.com/search/CS2%E9%A5%B0%E5%93%81%E6%96%B0%E6%9C%80%E6%96%B0）其实属于search_engine的一部分，还是应该单独处理？可能需要将抖音搜索的关键词作为queries中的一项，或者将toutiao_article作为主要来源，因为toutiao_article可能包含抖音的资讯，而douyin_baike是更专业的百科。\n\n现在，综合以上分析，我需要构造一个web_search的调用，其中source_types包括toutiao_article（优先）、douyin_baike（百科）、search_engine（补充），而queries需要包含上述提到的多个关键词，以覆盖可能影响饰品价格的最新资讯。这样能够确保获取到不同渠道的信息，从而全面分析最近一周的情况。\n\n因此，最终的工具调用应该是：\n\n<|FunctionCallBegin|>[{\"name\":\"web_search\",\"parameters\":{\"source_types\":[\"toutiao_article\",\"douyin_baike\",\"search_engine\"],\"queries\":[\"CS2饰品最新资讯2025年12月\",\"CS2饰品价格走势最近一周\",\"CS2 2025年12月新皮肤发布\",\"CS2 Major赛事2025时间地点\",\"CS2饰品投资热点12月\",\"Steam CS2 2025年12月更新内容\",\"网易BUFF CS2饰品市场分析\",\"HLTV 2025年12月CS2赛事新闻\"]}}]<|FunctionCallEnd|>\n\n这样，通过多个source_types和queries，可以尽可能覆盖到最近一周的影响价格的新闻资讯，包括游戏更新、赛事、市场分析等，从而为用户提供可靠的信息。",
           "type": "summary_text"
         }
       ],
@@ -22,9 +22,9 @@
       "status": "completed"
     },
     {
-      "id": "ws_02176513489838100000000000000000000ffffac1526a787397a",
+      "id": "ws_02176514091060000000000000000000000ffffac15dd12c7747a",
       "action": {
-        "query": "CS2饰品最近一周市场动态 2025年12月;CS2 2025年12月版本更新内容;CS2 Major赛事2025年12月结果及影响;网易BUFF CS2饰品最近价格波动及原因;抖音CS2饰品最新资讯",
+        "query": "CS2饰品最新资讯2025年12月;CS2饰品价格走势最近一周;CS2 2025年12月新皮肤发布;CS2 Major赛事2025时间地点;CS2饰品投资热点12月;Steam CS2 2025年12月更新内容;网易BUFF CS2饰品市场分析;HLTV 2025年12月CS2赛事新闻",
         "type": "search",
         "sources": null
       },
@@ -32,10 +32,10 @@
       "type": "web_search_call"
     },
     {
-      "id": "rs_02176513489995100000000000000000000ffffac1526a78a01d8",
+      "id": "rs_02176514091315200000000000000000000ffffac15dd126aea72",
       "summary": [
         {
-          "text": "现在需要处理用户的问题，用户是CS2的自媒体咨询人和游戏饰品投资者，想了解最近一周CS2饰品市场的最新资讯，并分析影响和预测走势。首先，回顾之前的回答思路，用户已经调用了web_search工具，使用了多个信源，包括抖音搜索、Steam更新、网易BUFF和HLTV等，但实际搜索结果中，摘要1到5的内容主要集中在10月23日左右的饰品市场崩盘事件，而用户的问题是关于“最近一周”，也就是2025年12月的信息。但根据当前时间是2025年12月8日，所以最近一周应该是12月1日到7日之间。\n\n首先，检查搜索结果中的时间是否符合。摘要1的发布时间是2025年12月1日，属于最近一周内，提到的是10月23日的更新导致崩盘，但后续是否有新的影响因素？摘要5的发布时间是12月7日，提到的也是同样的10月23日的更新，以及市场暴跌后的情况，但同样没有12月的新动态。其他摘要如摘要2、3、4都是11月或更早的，可能不相关。\n\n现在的问题是，用户的问题要求“最近一周”的资讯，但搜索结果中只有12月1日和7日的文章，内容仍然是10月23日的旧事件，没有2025年12月的新动态。因此，现有的搜索结果可能不足以回答用户的问题，因为用户需要的是“最近一周”（即12月1日至7日）的最新资讯，而搜索结果中的文章主要讨论的是10月的事件，虽然时间接近最近一周，但并非新的资讯。\n\n接下来，是否需要进一步搜索？因为用户可能希望了解最近一周内的市场变化，比如是否有新的更新、赛事结果、政策变动等影响饰品价格的因素。现有的搜索结果显示，在12月1日和7日发布的文章仍然讨论的是10月的旧机制调整，而没有提到12月的新动态。因此，可能需要补充搜索最近一周的CS2饰品市场动态，特别是2025年12月的新信息，比如是否有新的游戏更新、Major赛事结果、饰品价格反弹或继续下跌的趋势，或者新的政策调整。\n\n此外，用户提到的可靠信源包括抖音搜索、Steam更新、网易BUFF资讯、HLTV赛事等。可能需要重新使用这些信源进行更精确的搜索，关键词如“CS2饰品2025年12月最新资讯”、“CS2 12月版本更新”、“CS2饰品价格12月走势”等，以获取更近期的信息。例如，在Steam的更新资讯页面是否有12月的新内容？网易BUFF是否有12月的最新新闻？HLTV是否有12月的Major赛事结果？\n\n因此，现有的搜索结果虽然提供了历史背景，但缺乏最近一周的新动态，需要进一步搜索以补充信息。可能需要调整搜索关键词，确保获取的是2025年12月1日至7日之间的最新资讯，而不仅仅是重复旧事件的报道。",
+          "text": "我现在需要处理用户的问题，作为一名CS2自媒体咨询人和虚拟游戏饰品市场的小投资者，用户希望参考多个可靠信源，找到最近一周（截至2025年12月8日）影响饰品价格的最新资讯。\n\n首先，回顾之前的回答思路，我已经调用了web_search工具，使用了多个关键词，包括“CS2饰品最新资讯2025年12月”、“CS2饰品价格走势最近一周”等，并且选择了toutiao_article、douyin_baike和search_engine作为搜索源。现在需要分析新获取的搜索结果，看看是否足够回答用户的问题。\n\n接下来，查看工具返回的摘要内容。摘要1来自电玩馆，发布于2025年12月6日，提到CSGO起源2引擎更新导致饰品视觉效果提升，尤其是金贴纸价格翻倍，售量下降。这可能影响未来饰品价格，因为新引擎会吸引更多关注，推高需求。\n\n摘要2是关于徽章销量的，虽然提到了饰品，但主要是电商平台的促销信息，可能对价格影响较小，属于常规销售数据。\n\n摘要3来自超凡电竞，发布于12月3日，提到新版Cache地图和海豹短刀箱上线，以及CS20武器箱。这是较旧的信息，可能对当前价格影响有限，但需要确认是否有后续更新。\n\n摘要4是关于MAJOR赛事的时间，虽然重要，但比赛在12月1日至14日，最近一周内可能已经开始，赛事热度可能影响相关饰品价格，但需要看是否有具体关联。\n\n摘要5提到Unity引擎更新导致饰品价格暴跌，手套和蝴蝶刀价格腰斩，SteamDB数据显示总市值从59亿跌至31亿，之后又有所回升。但发布时间是12月2日，已经一周前，可能需要确认后续是否有变化。\n\n摘要6是12月4日发布的StarLadder与Runestone合作推出Twitch互动扩展，用于布达佩斯MAJOR，可能增加赛事互动性，但对饰品价格的直接影响可能不大。\n\n摘要7是10月24日的新闻，提到饰品价格崩盘和职业选手清仓，时间较早，可能不适用当前一周的情况。\n\n现在需要判断这些信息是否足够。用户需要的是最近一周的资讯，即12月1日至8日之间的内容。摘要1是12月6日，属于最近一周内，直接提到金贴纸价格上涨，这是积极影响价格的因素。摘要3虽然旧，但提到了海豹短刀箱，可能是否有后续补货或新库存影响价格？摘要4和6是关于MAJOR赛事的，虽然MAJOR在12月1日开始，但摘要4的发布时间是5月，摘要6是12月4日，可能赛事期间会有相关周边饰品推出，或者观众增加导致需求上升？\n\n此外，是否有其他影响价格的因素？比如是否有新的皮肤发布、赛事临近、Valve的新政策（如摘要5提到的T+14规则是否有更新）？当前的搜索结果中，摘要1提到起源2上线在即，这可能刺激旧饰品价格上涨。摘要5提到Unity引擎更新导致价格暴跌，但那是12月2日的，可能在之后一周内是否有反转或新动态？\n\n另外，需要确认是否有其他可靠信源未被覆盖，比如Steam News是否有12月的更新？之前的搜索可能已经覆盖，但根据工具返回的结果，可能没有Steam的更新信息。用户提到的Steam更新资讯是可靠信源，但当前搜索结果中没有相关内容，可能需要补充搜索。\n\n是否需要进一步搜索Steam的最新资讯？比如查看12月3日之后的Steam News是否有新更新，是否影响饰品价格？或者网易BUFF的资讯是否有更近的内容？\n\n另外，关于CS2的饰品投资热点，是否有新的皮肤或活动即将上线？比如摘要1提到起源2上线在即，可能新皮肤会在发布时推出，导致价格波动。但当前搜索结果中是否有具体上线时间？\n\n此外，摘要5提到的饰品价格波动，是否在最近一周内有新的变化？比如总市值是否继续回升或再次下跌？\n\n可能的缺失点：\n1. Steam在12月是否有新的更新，比如皮肤或引擎更新，影响饰品价格？\n2. 网易BUFF的最新资讯是否有关于饰品市场趋势的分析？\n3. 是否有新的赛事周边或联动活动发布？\n4. Valve是否在最近一周内发布了关于饰品交易规则的新调整？\n\n例如，摘要1提到起源2上线在即，可能在12月6日的资讯中提到，但具体上线时间是否在最近一周内？如果起源2即将发布，可能在发布后会有新的饰品推出，这会影响价格走势。但搜索结果中没有明确上线日期，可能需要确认。\n\n另外，摘要3提到的海豹短刀箱是12月3日发布的，可能在最近一周内是否有补货或新库存？这可能影响价格。\n\n是否需要进一步调用搜索工具，补充Steam的最新更新和网易BUFF的资讯？比如搜索关键词：“Steam CS2 2025年12月8日更新”、“网易BUFF CS2饰品市场分析2025年12月”等，以获取更准确的信息。\n\n或者，是否有可能遗漏了某些关键信息？例如，摘要1中提到的金贴纸价格上涨，是否是因为起源2引擎更新导致视觉效果提升，从而刺激需求？这可能是一个重要因素，属于直接影响价格的新闻。\n\n另外，摘要5提到的Unity引擎更新导致价格暴跌，但之后又有所回升，这是否在最近一周内有进一步的变化？比如是否有玩家开始重新买入，或者新的政策出台？\n\n综合来看，现有信息中，最近一周内的有效资讯是摘要1（12月6日）和可能的摘要6（12月4日，MAJOR的互动扩展），以及摘要5（12月2日）的价格波动，但后者属于一周前的信息。此外，是否还有其他资讯？\n\n比如，是否有关于新皮肤发布的信息？例如，摘要1提到起源2的饰品视觉提升，可能意味着新皮肤将推出，导致旧饰品价格上涨，但具体新皮肤名称或上线时间是否有？\n\n另外，用户提到的抖音搜索结果（如摘要1）是CS2饰品的最新，但搜索结果中是否有其他抖音内容？比如是否有新皮肤预告或价格预测？\n\n目前，可能缺少的信息包括：\n- Steam在最近一周是否有新的CS2更新，影响饰品？\n- 网易BUFF在最近一周是否有饰品市场分析或价格趋势？\n- 是否有新的皮肤或武器箱上线的详细信息？\n- 起源2的确切发布日期是否在最近一周内？\n\n根据当前的搜索结果，可能需要进一步调用web_search工具，补充Steam的最新更新和网易BUFF的资讯，以确认是否有新的影响因素。例如，搜索关键词：“Steam CS2 2025年12月更新”、“网易BUFF CS2饰品12月8日资讯”、“CS2起源2发布日期2025”等，以获取更及时准确的信息。\n\n或者，是否有可能用户的问题中的“最近一周”是指12月1日至8日，而当前搜索结果中已经包含12月6日的摘要1（起源2更新），这可能足够作为主要影响因素。此外，MAJOR赛事在进行中，可能会带动相关饰品需求，比如战队周边、赛事皮肤等，虽然搜索结果中没有具体提到，但摘要6提到的Twitch互动扩展可能间接影响。\n\n是否需要再次调用搜索工具，使用更精确的关键词，例如：\n- “CS2起源2饰品价格2025年12月”\n- “Steam CS2 2025年12月8日更新”\n- “CS2新皮肤2025年12月”\n\n这样可能会获取更多信息，特别是关于起源2的确切上线时间和新饰品的发布情况，从而更准确地判断价格走势。",
           "type": "summary_text"
         }
       ],
@@ -45,9 +45,9 @@
       "status": "completed"
     },
     {
-      "id": "ws_02176513490631100000000000000000000ffffac1526a7b8b8fd",
+      "id": "ws_02176514092958800000000000000000000ffffac15dd123279c6",
       "action": {
-        "query": "CS2饰品2025年12月最新价格;CS2 2025年12月版本更新;CS2 Major赛事2025年12月结果;CS2饰品市场12月走势;CS2 12月1日至7日资讯",
+        "query": "CS2起源2上线时间2025;Steam CS2 2025年12月更新;网易BUFF饰品市场分析2025年12月;CS2新皮肤2025年12月发布;CS2饰品价格预测2025年12月",
         "type": "search",
         "sources": null
       },
@@ -55,10 +55,10 @@
       "type": "web_search_call"
     },
     {
-      "id": "rs_02176513490822600000000000000000000ffffac1526a7c49290",
+      "id": "rs_02176514093144400000000000000000000ffffac15dd12ac8740",
       "summary": [
         {
-          "text": "我现在需要继续分析用户的问题，结合新获取的搜索结果来判断是否需要进一步搜索。用户是CS2自媒体咨询人和虚拟游戏饰品市场投资者，需要最近一周的CS2饰品市场最新资讯，并分析影响价格走势的因素。\n\n首先，用户之前已经进行了两次搜索，第一次搜索了多个来源，得到的结果主要集中在10月23日V社更新“汰换功能”导致饰品市场崩盘，价格暴跌60%以上，蝴蝶刀价格从32000元跌至8000元等信息。第二次搜索补充了更多关于Starladder布达佩斯Major的资讯，以及TYLOO等中国战队的表现，但主要时间集中在11月和12月初，不过用户问题是“最近一周”，即2025年12月1日至7日之间的资讯。\n\n当前新搜索结果中，摘要1来自2025年12月1日，提到10月23日的更新导致市场崩盘，但这是较早的事件，虽然发布时间在最近一周，但内容并非12月的最新动态。摘要2是12月3日的更新日志，提到新版cache地图和海豹短刀箱上线，这可能影响饰品市场的供需，尤其是新箱子的开放可能增加红色皮肤供应，进而影响金色饰品的合成成本。摘要3和5是关于TYLOO战队在12月2日的比赛结果和Major进展，这可能影响赛事相关饰品的热度，但主要是赛事本身的信息，对饰品市场的直接影响可能有限。摘要4提到12月2日Unity引擎更新导致饰品价格波动，但来源可信度存疑，且内容重复之前的信息。摘要7是关于Major举办时间的确认，但时间已在11月至12月中旬，用户问题是最近一周，可能已包含在内。\n\n现在需要判断现有信息是否足够覆盖“最近一周”的饰品市场动态。根据搜索结果，最近一周的资讯包括：\n\n1. 12月1日：荣宝斋文章提到10月23日的更新导致市场崩盘，但发布时间在最近一周内，但事件本身不是12月发生的，而是历史事件的回顾。\n2. 12月3日：超凡电竞提到新版cache和海豹短刀箱上线，这是新的饰品获取途径，可能影响市场供应。\n3. 12月2日：IT之家报道TYLOO在Major的失利，以及其他中国战队的情况，可能影响赛事相关饰品（如战队周边、纪念品）的需求。\n4. 12月5日：麦穗日记的商品销量数据，但主要是周边徽章，可能对饰品市场影响较小。\n5. 12月3日：真封神发布网确认Major的举办时间，属于赛事信息。\n\n现有信息中，关于饰品市场的最新动态集中在10月23日的机制调整和后续价格变动，但用户需要的是“最近一周”即12月1日至7日的最新资讯。然而，新搜索结果中，除了摘要2提到的12月3日的版本更新（海豹短刀箱），其他信息多为赛事进展或重复旧闻。例如，摘要2提到的海豹短刀箱可能在12月3日上线，这可能增加红色皮肤的供应，进而影响金色饰品的合成，从而影响市场价格。但除此之外，是否有其他12月的新机制更新或市场动态？\n\n例如，是否有新的饰品合成规则、Valve的新公告、或者大型赛事结束后对饰品价格的影响？目前搜索结果中，没有明确的12月1日之后的饰品市场新动向，如价格波动、新皮肤发布、重大赛事结果后的影响等。此外，用户提到的“最近一周”是当前时间（2025年12月8日）往前推一周，即12月1日至7日，而搜索结果中的摘要2、3、4、5、7都在这个时间段内，但其中摘要1是12月1日发布的关于10月事件的文章，可能不算是最新动态。\n\n因此，可能缺少的信息包括：\n\n- 12月1日至7日期间，Valve是否有新的饰品相关更新（如新合成机制、新箱子）？\n- 是否有关于饰品市场价格近期走势的数据（如SteamDT的最新指数、网易BUFF的价格波动）？\n- 是否有其他重大事件（如V社新政策、第三方平台调整）影响市场？\n\n现有搜索结果中的摘要2提到12月3日上线了海豹短刀箱，这可能增加红色皮肤的供应，从而影响金色饰品的合成成本，但这一信息可能不足以全面反映最近一周的市场动态。此外，摘要4提到12月2日Unity引擎更新导致饰品价格波动，但来源可信度存疑，且内容重复旧闻。\n\n因此，可能需要进一步搜索以下内容：\n\n1. 2025年12月1日至7日期间，CS2饰品市场的最新价格数据（如SteamDT指数、网易BUFF价格波动）。\n2. Valve在12月是否有新的饰品相关更新或公告。\n3. 12月内举办的其他可能影响饰品市场的事件，如新Major阶段的结果、大型赛事纪念品发布等。\n\n由于现有信息主要集中在12月3日的版本更新和12月2日的赛事结果，可能缺少更直接的饰品市场价格动态，因此需要进一步搜索最近一周的市场数据和新机制更新。",
+          "text": "我现在需要分析用户的问题，看看是否需要进一步搜索。用户是CS2的自媒体咨询人，同时在虚拟游戏饰品市场投资，需要最近一周（截至2025年12月8日）的CS2饰品市场最新资讯，影响价格的新闻。\n\n首先，回顾之前的搜索结果。之前搜索了多个关键词，包括“CS2饰品最新资讯2025年12月”、“价格走势最近一周”、“新皮肤发布”、“Major赛事”等。得到的结果中有几个关键点：\n\n1. **起源2引擎升级**：摘要1提到起源2引擎带来的饰品视觉提升，导致金贴纸价格翻倍，在售数量下降，这可能影响未来饰品价格，属于短期利好。\n2. **Major赛事**：摘要4和6提到2025年冬季Major在布达佩斯12月1日至14日举办，临近的赛事可能带来相关周边和饰品需求。摘要6还提到Twitch互动插件，可能提升观众参与度，间接影响饰品热度。\n3. **更新内容**：摘要3和4提到新版Cache地图和海豹短刀箱上线，可能增加新饰品供应，影响市场供需。\n4. **价格波动**：摘要5提到Unity引擎更新导致饰品价格暴跌，但这是12月2日的消息，可能持续影响市场情绪，但需要确认是否有后续稳定或反弹。\n5. **职业选手清仓**：摘要7提到10月的饰品崩盘，但时间已过，需确认是否有后续影响，但最近的搜索结果中没有更近期的崩盘消息，可能已经缓和。\n\n接下来，分析现有信息是否足够：\n\n- **起源2引擎的影响**：摘要1提到12月6日的文章，指出金贴纸价格上涨，这是非常近期的利好，但可能是短期投机行为，是否有持续效应？\n- **Major赛事临近**：12月1日至14日的赛事，目前已接近尾声（当前时间12月8日），可能有赛事结果或周边热度，但现有搜索结果中是否有赛事期间的具体影响？\n- **新皮肤和箱子**：海豹短刀箱在12月3日上线，可能影响新饰品价格，但未提及具体销量或市场反应。\n- **价格数据**：摘要5提到12月2日市值波动，但最近是否有稳定或新趋势？比如是否有新合成系统或交易规则调整？\n- **网易BUFF分析**：摘要3和5提到网易BUFF的更新，但内容更多是平台介绍，缺乏饰品市场的具体分析。\n\n可能缺少的信息点：\n\n1. **最近一周（12月1日-8日）的具体饰品价格走势**：是否有持续上涨或下跌趋势？是否有新的事件影响价格？\n2. **Steam CS2的更新内容**：12月是否有重大更新，除了Cache和海豹短刀箱外？\n3. **HLTV的赛事新闻**：冬季Major进行中的情况，是否有爆冷或热门选手表现影响饰品？\n4. **新皮肤发布**：12月是否有其他新皮肤或箱子上线？比如官方是否有新内容预告？\n5. **投资热点**：是否有新的饰品或投资机会出现？\n\n考虑到用户需要“最近一周”的资讯，现有搜索结果中：\n\n- **起源2引擎**：12月6日的信息是一周内的，足够新。\n- **Major赛事**：已确认时间，但需确认赛事进行中的影响。\n- **海豹短刀箱**：12月3日上线，接近时间点。\n- **价格波动**：12月2日的信息，但需确认是否有后续稳定或反弹。\n\n是否需要进一步搜索：\n\n- **确认起源2引擎上线后的价格变化**：是否有更多数据或趋势报告？\n- **Steam最新更新**：12月是否有除Cache外的其他更新？\n- **Major赛事进展**：是否有相关新闻或粉丝反应？\n- **新皮肤或箱子**：是否有其他新内容？\n\n可能需要补充搜索的关键词：\n\n- “CS2饰品价格走势2025年12月”\n- “Steam CS2 2025年12月8日更新”\n- “布达佩斯Major 2025赛程及影响”\n- “CS2饰品投资热点2025年12月”\n\n现有搜索结果已覆盖主要点，但缺少更近期的价格数据和具体的赛事影响。如果继续搜索，可能会找到更具体的饰品市场动态和赛事期间的影响，但考虑到之前搜索结果中已有部分信息，可能需要判断是否足够。\n\n是否需要继续搜索？是的，因为：\n\n1. **价格数据**：摘要5提到12月2日价格波动，但用户需要最近一周的，可能还有后续信息。\n2. **HLTV的赛事新闻**：现有搜索结果中没有HLTV关于冬季Major的具体进展，可能影响饰品热度。\n3. **Steam更新**：是否有新内容发布？\n\n因此，应继续搜索以下内容：\n\n- **“CS2饰品市场价格2025年12月”**：获取最近一周的价格数据，确认趋势。\n- **“HLTV 2025布达佩斯Major新闻”**：了解赛事进行中的情况，是否有爆冷或热门选手带动相关饰品。\n- **“Steam CS2 2025年12月更新”**：是否有其他更新影响饰品。",
           "type": "summary_text"
         }
       ],
@@ -68,9 +68,9 @@
       "status": "completed"
     },
     {
-      "id": "ws_02176513491920000000000000000000000ffffac1526a74cc305",
+      "id": "ws_02176514094211900000000000000000000ffffac15dd12c6700d",
       "action": {
-        "query": "CS2饰品2025年12月价格走势;CS2 2025年12月新皮肤更新;CS2饰品市场12月供需数据;CS2 2025年12月1日至7日市场动态;SteamDT 2025年12月CS2指数",
+        "query": "CS2饰品价格2025年12月;布达佩斯Major 2025新闻;Steam CS2 12月更新;CS2饰品投资热点2025;CS2新皮肤2025年12月",
         "type": "search",
         "sources": null
       },
@@ -78,95 +78,41 @@
       "type": "web_search_call"
     },
     {
-      "id": "ws_02176513492148900000000000000000000ffffac1526a73d749c",
-      "action": {
-        "query": "CS2饰品2025年12月价格走势;CS2 2025年12月新皮肤更新;CS2饰品市场12月供需数据;CS2 2025年12月1日至7日市场动态;SteamDT 2025年12月CS2指数",
-        "type": "search",
-        "sources": null
-      },
-      "status": "completed",
-      "type": "web_search_call"
-    },
-    {
-      "id": "msg_02176513492364200000000000000000000ffffac1526a7ea0b66",
+      "id": "msg_02176514094442600000000000000000000ffffac15dd12bb2a2f",
       "content": [
         {
           "annotations": [
             {
               "end_index": null,
               "start_index": null,
-              "title": "CS2游戏饰品市场崩盘!一日蒸发近20亿美元，有人一夜之间亏15万元",
+              "title": "csgo2饰品变化有哪些|csgo起源2饰品变化",
               "type": "url_citation",
-              "url": "https://www.rongbaozhai.cn/index.php?id=zcddxh-955565",
-              "logo_url": "",
-              "site_name": "搜索引擎-荣宝斋",
-              "publish_time": "2025年12月01日 00:59:27(CST) 星期一",
+              "url": "https://m.dianwanguan.com/wytwwg/43888j.html",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/42ee950f0d824283d0a87146dc31657a~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206591&x-signature=sqSBEh6vapuV6myLEZf0ykbjAIg%3D",
+              "site_name": "搜索引擎-电玩馆",
+              "publish_time": "2025年12月06日 09:02:59(CST) 星期六",
               "cover_image": {
-                "url": "https://n.sinaimg.cn/sports/2_img/dfic/a7a65bdb/213/w2048h1365/20230202/d8e3-659d2d16de5d6559803ae095d06b6803.jpg",
+                "url": "https://i2.dianwanguan.com/92cf0f054e072dce/939b5051/919f5256/909d5a521a5d7e97f0b7e18027.jpg",
                 "width": 0,
                 "height": 0
               },
-              "summary": "但因为稀缺程度不一，“刀”和“手套”被玩家抽中的概率极小，也导致其在二级饰品交易市场中价格高昂。但游戏开发商维尔福的一纸公告，拉开了CS2饰品市场的崩盘序幕。10月23日，维尔福发布更新公告，其中的“汰换功能”规定：游戏玩家可以用5件“红色皮肤”合成一件“刀”或“手套”饰品。这就是李明所说的“5克白银可以合成1克黄金”，意味着稀缺饰品的获取门槛和成本极大降低。紧接着，二级饰品市场发生巨震。游戏饰品数据分析平台SteamDT显示，10月22日-24日，CS2饰品大盘从1662点直线跳水，暴跌至651点，跌幅超过60%。其中，高端稀有饰品价格集体跳水，例如一款“蝴蝶刀”饰品价格从32000元左右跌至约8000元，短短两天跌去75%。图片来自平台SteamDT此前，不少玩家将“刀”和“手套”视为高保值虚拟资产，也由此催生出了类似股市的二级交易市场。据李明讲述，他从去年开始参与CS2饰品交易，随着热门饰品行情不断走高，他的收益也不断增长，“每天一睁眼就是几千元的盈利”。李明印象最深刻的是，9月时，他以1500元的价格卖了一款饰品，仅仅一周，该饰品的价格就涨到了5000元。"
+              "summary": "csgo2饰品变化有哪些|csgo起源2饰品变化时间：2025-12-06 09:02:59电玩馆CSGO是一款多人竞技射击游戏，近日，N卡驱动更新内容与舅舅党爆料，都意味着CSGO起源2上线在即，那么在csgo起源2里面的饰品变化有哪些呢，下面就是具体的内容.csgo起源2饰品变化实际上，起源2引擎的加入，对游戏所能造成的改变比绝大部分人想象中还要大。因为它不单单只是升级地图、部分游戏机制和玩法，许多饰品在视觉表现力方面也得到了大幅提升。这也是官方公告中，所没有提到的内容。部分获得了测试资格的玩家，就对此进行了展示。光照效果及质感的提升，使得金贴纸以及各种饰品皮肤的外观有了很大变化。用最通俗的话来说，就是变得更“闪”了，红宝石愣是弄出了熔岩般的效果。当前，不少嗅到商机的人已经开始“扫货”了。金贴纸的均价短短一天内就翻了一倍多，在售数量也直线下降。可以预见的是，当CSGO 2正式发布后新上线的饰品，将拥有更绚丽的外观。TAGS： CSGO2  起源  饰品  csgoCS:GO"
             },
             {
               "end_index": null,
               "start_index": null,
-              "title": "StarLadder Partners with Runestone to launch Interactive Twitch Extension for CS2 Major",
+              "title": "2025年徽章csgo的品牌销量排行榜(徽章csgo十大产品排行榜)",
               "type": "url_citation",
-              "url": "https://starladder.com/en/news/starladder-partners-with-runestone-to-launch-interactive-twitch-extension-for-cs2-major",
-              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/image/0351f8ea22c58490cb7b9be824210f0f~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206899&x-signature=170KgRzOnHnM8Sl4yGeLrVAHTjA%3D",
-              "site_name": "搜索引擎-Starladder",
-              "publish_time": "2025年12月04日 00:00:00(CST) 星期四",
-              "summary": "4 Dec 2025 / CS2\nStarLadder Partners with Runestone to launch Interactive Twitch Extension for CS2 Major\nStarLadder and Runestone are proud to announce a new partnership for the StarLadder Counter-Strike 2 Major in Budapest. This collaboration introduces an exciting new Twitch extension designed to elevate how millions of fans watch and engage with the Major.\nThe new Twitch extension by Runestone  gives viewers real-time, data-powered interactive access to crucial in-game details, without compromising competitive integrity or the broadcast experience. Fans can toggle on-screen overlays to instantly view live scoreboards, player crosshairs, and equipment loadouts, all synced flawlessly with the official stream.\n“StarLadder has a legendary place in esports history.” said Shane Clarke, Managing Director of Runestone, “Seeing them return to center stage with the CS2 Major is incredibly exciting, and we’re proud to contribute new technology that honors that legacy. With our extension, fans "
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "《CS2》Starladder 布达佩斯 Major 2025 即将开幕，三支中国战队出战",
-              "type": "url_citation",
-              "url": "http://news.17173.com/content/11252025/093909927.shtml",
-              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/cba867120693b4a1844406e425333976~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828160804&x-signature=9akxtQpTpq7j5iuKuFbFYh8P1pE%3D",
-              "site_name": "搜索引擎-17173",
-              "publish_time": "2025年11月25日 09:39:09(CST) 星期二",
-              "summary": "《CS2》Starladder 布达佩斯 Major 2025 即将开幕，三支中国战队出战\n2025-11-25 09:39:09  作者：IT之家\n《CS2》Starladder 布达佩斯 Major 2025 即将于北京时间今日 20:00 正式拉来大幕。在这场 11 月 24 日~12 月 14 日举行的《反恐精英》官方最高荣誉赛事中，32 支来自世界各地的顶级战队将角逐 125 万美元（IT之家注：现汇率约合 889.2 万元人民币）的奖金池。\n本次 Major 共 3 支中国战队参与，其中 TYLOO 直通第二阶段，而 LVG 和 RA 则是进入即将启动的第一阶段，这两支战队在第一阶段瑞士轮第一轮 BO1 的对手分别是 FaZe 和 Imperial。\nRA vs Imperial 的比赛将在 20:00 的第一场次举行，而 LVG vs FaZe 则是排在 23:00 的第四场次。\n【作者：IT之家】\n"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "游戏虚拟饰品“数字黄金”神话破灭?反恐精英机制调整 致饰品市场指数暴跌60%",
-              "type": "url_citation",
-              "url": "https://stcn.com/article/detail/3454852.html",
-              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/3b7c60d7703400f9d572e72b69f2157d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1827937499&x-signature=dAcuGbArunAINn0nicZNk0NEAdw%3D",
-              "site_name": "搜索引擎-证券时报",
-              "publish_time": "2025年10月30日 09:38:00(CST) 星期四",
-              "summary": "游戏虚拟饰品“数字黄金”神话破灭？反恐精英机制调整 致饰品市场指数暴跌60%\n来源：21世纪经济报道 作者：郭聪聪,实习生刘晴 2025-10-30 09:38\n一场看似常规的游戏机制更新，却在全球CS2（《反恐精英》，一款射击类游戏）玩家中引发了剧烈“地震”。\n10月23日凌晨，CS2游戏开发商Valve更新了一则新机制：原本被玩家视作“数字黄金”的稀有金色饰品，如今只需集齐5件红色饰品即可合成。这一变动迅速在虚拟饰品市场中引发连锁反应。短短两天内，CS2饰品市场总估值蒸发超过20亿美元。\n或许有人会问，一次简单的机制调整，为何能引发如此大的市场震荡？\n经21世纪经济报道记者多方采访了解到，原来，长期以来这类金色饰品因获取概率极低，加上玩家间形成的“保值”共识，价格持续攀升，部分热门款式甚至高达数万元，早已超越游戏装备的属性，演变为具备流通性与投资价值的虚拟资产。而此次更新，恰恰动摇了其价值根基——稀缺性被大幅削弱。\n有囤积虚拟饰品的职业交易者感叹：“一夜之间，我的库存从‘黄金’变成了‘废铁’。”\n指数暴跌60%，不少玩家割肉离场\n根据虚拟饰品市场指数监测网站steamdt，消息发布两天内大盘从1663点暴跌至510点，跌幅近70%。截至发稿前（10月29日），指数有所回升，上升至875点。\n同样在国内两大CS2虚拟饰品交易平台——网易BUFF与悠悠有品（均为第三方平台）上，以蝴蝶刀（虎牙）、运动手套（迈阿密风云）为代表的高价值饰品，单日跌幅均超过50%。\n“我当天就把最近买的都卖了，还清掉了一些早年囤的，亏了大概2000块。”从2015年就开始玩CS系列的老玩家李先生告诉21世纪经济报道记者。\n“说不心疼是假的，之前买这些饰品主要是虚荣心作祟，想在朋友面前有好装备。”他坦言，自己这点亏损在圈内已属“轻伤”，身边不少人亏损上万元。大学生刘同学就出于对红色系饰品的喜爱，曾用奖学金购买了一整套相关皮肤，如今累计亏损已超两万元，社交平台上更有玩家晒出数十万元的账面浮亏。\n然而并非所有人都能及时脱手。根据Valve的交易规则，新获得的饰品需经历7天“冷却期”，交易后再次流转还需7天“保护期”，形成“T+14”锁定期。一位多年玩家就告诉本报记者，他在机制更新之前，从悠悠有品上购入了几件饰品，因未满七天尚未解锁，无法卖出，只能眼睁睁看着自己的饰品缩水。\nCS2机制调整：从“赌"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "一夜饰品价格直接腰斩，CS2那一晚究竟经历了什么",
-              "type": "url_citation",
-              "url": "https://post.smzdm.com/p/a2qzlkz2",
-              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/4ca429e48808545447cd5d937c1eb3f2~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206899&x-signature=58Al5vnEGlAVG2xciw%2BBgA74NF8%3D",
-              "site_name": "搜索引擎-什么值得买",
-              "publish_time": "2025年12月07日 14:42:26(CST) 星期日",
-              "summary": "一夜饰品价格直接腰斩，CS2那一晚究竟经历了什么\n很多人对CS的印象就是，AK47、沙漠2、P90RUSHB等等，但这几年来，无论是CSGO还是CS2，离不开一个和玩游戏不是那么有关的元素，那就是饰品交易，经过近几年的炒作与大火，CS2饰品已经飙升至一把刀皮买一辆豪车的水平，但就一夜之间，CS2的饰品价格大跌，最高等级的刀皮和手套近乎腰斩，那一晚上究竟发生了什么？\n首先简单介绍下游戏的皮肤获取，CS2目前可通过开箱、通行证或是市场购买获取皮肤，皮肤又通过颜色区分等级，等级越高越稀有，而大部分皮肤都是通过开箱获得，想要通过开箱获取最高等级的金色，也就是刀皮和手套，只有非常低的0.26%概率。而玩家通过第三方交易市场来进行饰品购买，躲避了steam自身的高额抽成，可以直接用现金购入皮肤，因为物以稀为贵的原则，好看的刀皮、手套卖到5、6位数也是有的，这也导致CS2饰品市场成为了许多人的数字资产。\n但在10月23日，V社更新发布后，游戏更新了允许玩家通过“交易升级合约”将五个红色品质皮肤兑换成金色品质的刀皮或手套后，整个市场炸开了锅，原本非常稀有的金色品质，一下子被变得不再高高在上，市场总值从约60亿美元跌至30亿美元，一瞬间饰品交易市场直接崩盘，要便于理解的话，那就是原价一百元的枪皮，只要集齐五个，就有机会合成原本价值万元以上级别的金色刀皮，一夜间所有金色品质饰品直接价格腰斩，许多倒货商人血本无归。\n由于CS2新交易的饰品还需7天后方可交易，许多通过交易升级合约的饰品还在仓库中，价格跌落的情景可能在31号左右复现，届时刀皮手套市场可能会更低的价格下探。而此次V社更新可以看出，官方确实想改变下畸形的CS饰品市场，不让游戏变成“金融交易中心”，这一次“交易升级合约”的更新确实让皮肤市场恢复到前几年的水平，让玩家更专注游戏本身，用合理的价格买自己喜欢的皮肤，才是正确的操作。\n当然想要CS2运行流畅，一张好的显卡是必须要的，在从CSGO更新到CS2后，游戏的画面引擎都得到了升级，许多粒子效果看得更为高清，因此加重了显卡的负载，加上竞技游戏追求的就是高帧率，因此一张RTX5070 Ti 星曜LUNAOC就非常适合各位想玩CS2的玩家。\n影驰RTX5070 Ti 星曜LUNAOC有着磁吸外壳设计，是此次RTX50系显卡独一份的特色，能轻松拆卸外壳风扇清灰，加上核心性能能畅玩2K分辨率"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "CS2游戏饰品市场崩盘!一日蒸发近20亿美元，有人一夜之间亏15万元",
-              "type": "url_citation",
-              "url": "https://www.rongbaozhai.cn/index.php?id=zcddxh-955565",
-              "logo_url": "",
-              "site_name": "搜索引擎-荣宝斋",
-              "publish_time": "2025年12月01日 00:59:27(CST) 星期一",
+              "url": "https://maisui1.com/art-wbnN3Ygu6596b5.htm",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/image/4297be20c0ae28257721eccde023edd5~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212912&x-signature=lUh7TE4Y7oLqrg3iL79DXMMnQGw%3D",
+              "site_name": "搜索引擎-麦穗日记",
+              "publish_time": "2025年12月07日 09:45:53(CST) 星期日",
               "cover_image": {
-                "url": "https://n.sinaimg.cn/sports/2_img/dfic/a7a65bdb/213/w2048h1365/20230202/d8e3-659d2d16de5d6559803ae095d06b6803.jpg",
+                "url": "https://img.alicdn.com/bao/uploaded/O1CN01PFw3QF287Nsu6lbwk_!!6000000007885-0-yinhe.jpg_310x310.jpg",
                 "width": 0,
                 "height": 0
               },
-              "summary": "但因为稀缺程度不一，“刀”和“手套”被玩家抽中的概率极小，也导致其在二级饰品交易市场中价格高昂。但游戏开发商维尔福的一纸公告，拉开了CS2饰品市场的崩盘序幕。10月23日，维尔福发布更新公告，其中的“汰换功能”规定：游戏玩家可以用5件“红色皮肤”合成一件“刀”或“手套”饰品。这就是李明所说的“5克白银可以合成1克黄金”，意味着稀缺饰品的获取门槛和成本极大降低。紧接着，二级饰品市场发生巨震。游戏饰品数据分析平台SteamDT显示，10月22日-24日，CS2饰品大盘从1662点直线跳水，暴跌至651点，跌幅超过60%。其中，高端稀有饰品价格集体跳水，例如一款“蝴蝶刀”饰品价格从32000元左右跌至约8000元，短短两天跌去75%。图片来自平台SteamDT此前，不少玩家将“刀”和“手套”视为高保值虚拟资产，也由此催生出了类似股市的二级交易市场。据李明讲述，他从去年开始参与CS2饰品交易，随着热门饰品行情不断走高，他的收益也不断增长，“每天一睁眼就是几千元的盈利”。李明印象最深刻的是，9月时，他以1500元的价格卖了一款饰品，仅仅一周，该饰品的价格就涨到了5000元。"
+              "summary": "天猫超市在售价¥58券￥10 券后 ¥48幽游社CS2CSGO10年老兵纪念币 类目：模玩/动漫/周边/娃圈三坑/桌游，游戏/电竞实物周边；该宝贝原价¥58， 现价¥48，  淘金币频道专享：淘金币频道抵扣7%起； ★最低 48元。销量No.3：Eleven原创csgo胸针AWP二西莫夫皮肤AK47徽章ins潮流背包配饰礼物Eleven原创csgo胸针AWP二西莫夫皮肤AK47徽章ins潮流背包配饰礼物天猫超市在售价¥39.9券￥0 券后 ¥39.9原创胸针ins背包配饰礼物徽章 类目：饰品/流行首饰/时尚饰品新，胸针；该宝贝原价¥39.9， 现价¥39.9 ，  淘金币频道专享：淘金币频道抵扣3%起； ★最低 39.9元。销量No.4：CSGO反恐精英游戏幸运币 紫铜色硬币全球攻势纪念章CS徽章纪念章CSGO反恐精英游戏幸运币 紫铜色硬币全球攻势纪念章CS徽章纪念章天猫超市在售价¥15券￥9 券后 ¥6csgo反恐精英游戏cs硬币幸运币 类目：节庆用品/礼品，创意/设计玩具；"
             },
             {
               "end_index": null,
@@ -174,7 +120,7 @@
               "title": "更新日志:新版cache、海豹短刀箱上线",
               "type": "url_citation",
               "url": "https://m.chaofan.com/news/7epjsgfms2q3sge.html",
-              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/img/d605571a821763f512883395a202255d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=8WbC%2BlC7MYZsEvshMzgAK%2BIcHTg%3D",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/d605571a821763f512883395a202255d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212912&x-signature=S5jWstVZOaPLCsUyW5Fhdmmw5DA%3D",
               "site_name": "搜索引擎-超凡电竞",
               "publish_time": "2025年12月03日 00:00:00(CST) 星期三",
               "summary": "更新日志：新版cache、海豹短刀箱上线\nCSGO资讯君\n2025-12-03\n2019年10月19日凌晨，CSGO迎来了又一轮更新，本次更新补丁大小290.5MB，与以往改改地图模型，修修系统BUG相比，这一次诚意满满。主要内容包括新版Cache已经正式上线CSGO客服端，玩家们可以在休闲、死亡竞赛和军备竞赛模式中体验。同时还加入了海豹短刀武器箱（CS20武器箱）和印花胶囊，以庆祝CS诞生20周年。\n由FMPONE和Volcano制作的重制版Cache已经更新，可在官方服务器休闲、死亡竞技、混战模式玩到。\nCS20武器箱和印花胶囊\nCSGO发布了CS20武器箱，以庆祝《反恐精英》20周年。该武器箱包含了Steam创意工坊各种主题皮肤，并以经典海豹短刀作为特色物品。另外你还可以购买到CS20贴纸胶囊，包含20个社区设计的贴纸。\nCS20武器箱中红色品质的大狙\n地图\nCache旧版本已被此前在创意工坊中与大家见面的重置版正式取代，但还没有在竞技模式中启用，大家可以在官方服务器休闲、死亡竞技、混战模式玩到。\n杂项\n添加了新启动项-lowmemworkshop，以允许Steam创意工坊更新非常大的地图文件\n添加了控制台命令fov_tv_debug，以允许在GOTV或Demo演示的自由观看修改观看范围\n提高了area portals性能优化\n海豹短刀皮肤预览\n下面应该是大家最为关注的东西了，所有海豹短刀的涂装皮肤如下：\n转载自：5EPlay 作者：Koro111\n"
@@ -182,13 +128,18 @@
             {
               "end_index": null,
               "start_index": null,
-              "title": "TYLOO 1:2不敌Liquid，中国《CS2》战队告别布达佩斯Major",
+              "title": "《CS2》最新MAJOR开始时间介绍",
               "type": "url_citation",
-              "url": "http://m.toutiao.com/group/7579110720571228687/?upstream_biz=VolcEngine",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/118f7a3625ad8ebbbc11d04f118d2e10~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=VU1TZ8ZZ6xpBh%2BbzUs%2FWPsgJJpE%3D",
-              "site_name": "头条图文",
-              "publish_time": "2025年12月02日 12:20:40(CST) 星期二",
-              "summary": "IT之家 12 月 2 日消息，在北京时间今日凌晨举行的《CS2》Starladder 布达佩斯 Major 2025 第二阶段瑞士轮 1-2 组别比赛中，中国战队 TYLOO 以 1:2 的大比分不敌 Liquid，三败出局。由于另两支中国战队 LVG、RA 此前已在第一阶段被淘汰，这意味着本次出战的所有中国战队均告别了布达佩斯 Major 赛场，三支队伍按地图计的总战绩为 2:12。TYLOO 在与 Liquid 的对决中首先以 13:9 的比分拿到远古遗迹 (ancient) 的胜利；但很快在自己的选图列车停放站 (train) 上被 Liquid 以 13:5 扳回一城；而到了决胜地图炼狱小镇 (inferno)，尽管 TYLOO 率先拿到四个赛点但还是被 Liquid 拖入加时，最终 14:16 输掉比赛。"
+              "url": "https://gl.ali213.net/html/2025-4/1643305.html",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/0abc11995955428561cf2118102abf12~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828080094&x-signature=qHsfmSDaGewObZMdeYr1EOiT%2B38%3D",
+              "site_name": "搜索引擎-游侠网",
+              "publish_time": "2025年05月24日 14:07:27(CST) 星期六",
+              "cover_image": {
+                "url": "https://img2.ali213.net/picfile/News/2025/04/09/584_9871db35-8a7f-99f0-41f9-e3a5abcf0efb.jpg",
+                "width": 0,
+                "height": 0
+              },
+              "summary": "《CS2》最新MAJOR开始时间介绍\n2025-05-24 14:07:27\n游戏赛事\n2025major什么时候开始?25年CS2 Major分为两届，分别于6月9日至22日在美国奥斯汀和12月1日至14日在匈牙利布达佩斯举办，接下来就让游侠网为大家带来CS2最新MAJOR开始时间介绍。\n2025major什么时候开始\n答：6月9日和12月\n1、BLAST.tv 奥斯汀Major（夏季Major）\n时间：2025年6月9日至22日\n地点：美国得克萨斯州奥斯汀市穆迪中心（Moody Center）\n关键信息：\n这是Major赛事自2018年波士顿Major后首次重返北美，预计吸引5万名现场观众及4000万美元经济投资。\n赛制改革为32支战队参赛，新增瑞士轮阶段（共三轮），淘汰赛由8支队伍晋级，总时长扩展至18天。\n参赛资格完全基于Valve区域排名（VRS），取消传统RMR预选赛，通过MRQ（Major区域资格赛）分配部分名额。\n2、StarLadder布达佩斯Major（冬季Major）\n时间：2025年12月1日至14日\n地点：匈牙利布达佩斯\n背景：\n首次在匈牙利举办Major，由曾承办2019年柏林Major的StarLadder组织。\n赛程同样为18天，采用动态Elo评分的瑞士轮阶段，融合欧洲电竞文化与历史景观。\n3、其他重要变化\n赛制调整：两届Major均采用瑞士轮+淘汰赛模式，取消RMR预选赛，新增严格纪律要求（如禁止穿短裤、线上赛全程监控等）。\n中国区名额：通过MRQ资格赛分配2个正赛名额，由RA、TYLOO等队伍争夺。\n以上就是游侠网为大家带来的CS2最新MAJOR开始时间介绍，更多CS2相关资讯攻略内容尽在游侠网。\n"
             },
             {
               "end_index": null,
@@ -196,7 +147,7 @@
               "title": "Unity团结引擎重磅发布新版本，广州网易一周内上演高管人事变动风云",
               "type": "url_citation",
               "url": "https://douyintang.cn/c77917c0c116d1f6f50a4d2c3.html",
-              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/image/82901d59372727df0eb1458c954d8c55~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=i0LtyKlCz8AGdalZTJ3Uhqg9xB8%3D",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/image/82901d59372727df0eb1458c954d8c55~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212912&x-signature=of%2B5s%2Bi%2FSJKpMpQj5QmwsXeEQt4%3D",
               "site_name": "搜索引擎",
               "publish_time": "2025年12月02日 11:42:00(CST) 星期二",
               "summary": "这一更新直接引发了《CS2》二手交易市场的震荡，手套、刀具饰品价格暴跌，不少饰品价格直接腰斩。比如原版“蝴蝶刀”，价格已从2万余元跌至1万元左右。此次价格暴跌，通过改变顶级饰品的获取途径，打破了原有的市场供需平衡与稀缺性逻辑，直接冲击了CS2二手市场。此前投入重金，甚至不惜贷款囤积游戏皮肤的玩家面临严重的账面亏损。值得一提的是，有消息称汰换出的饰品可交易，但需要等待7天交易冷却。这次更新对《CS2》二手交易市场的影响仍未平息，市值三天内波动巨大。在更新当天，有消息称其皮肤总市场单日蒸发20亿美元。而在昨日，SteamDB援引统计机构数据称，《CS2》皮肤总市场估值从59亿美元暴跌至31亿美元，下跌近49%。今日则出现新动向，csfloat数据显示，市场总市值再次增长约10亿美元，部分饰品价格较昨日翻倍。5.腾讯投资的上海二游公司被强制执行上海莫彼吾斯科技（以下简称莫彼吾斯）于近日新增一则法院公告，案由为“有限合伙纠纷”。该公司在早些时候拖欠合作方账款，并未履行还款义务，公司的六名股东追加为被执行人，其中也包括了莫彼吾斯的投资方腾讯。"
@@ -204,56 +155,77 @@
             {
               "end_index": null,
               "start_index": null,
-              "title": "《CS2》布达佩斯Major二阶段：TYLOO 1-2，Faze、NAVI率先晋级",
+              "title": "StarLadder Partners with Runestone to launch Interactive Twitch Extension for CS2 Major",
               "type": "url_citation",
-              "url": "http://m.toutiao.com/group/7578707336153039398/?upstream_biz=VolcEngine",
-              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/img/118f7a3625ad8ebbbc11d04f118d2e10~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=HJj9KcpyR6Fvi7jiiTSsIPIO2l8%3D",
-              "site_name": "头条图文",
-              "publish_time": "2025年12月01日 10:15:09(CST) 星期一",
-              "summary": "IT之家 12 月 1 日消息，《CS2》Starladder 布达佩斯 Major 2025 的第二阶段已在周末结束了前三轮的比拼，中国战队 TYLOO 目前位于 1-2 组别，Faze、NAVI 率先 3-0 晋级，FlyQuest 和 MIBR 则是 0-3 出局。TYLOO 首战面对的是 PARIVISION，在荒漠迷城 (mirage) 上以 13:5 轻取对手。不过在与 NIP 的核子危机 (nuke)、与 M80 的列车停放站 (train) 中，TYLOO 尽管都创造了不错的开局，但最终分别以 8:13、10:13 负于对手。TYLOO 接下来需要连续赢得 2 个 BO3 的胜利方能晋级到 Major 第三阶段，其第四轮将在北京时间 12 月 2 日约 03:00 面对 Liquid。"
+              "url": "https://starladder.com/en/news/starladder-partners-with-runestone-to-launch-interactive-twitch-extension-for-cs2-major",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/image/0351f8ea22c58490cb7b9be824210f0f~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212912&x-signature=HMtvdM784AStgDwlRPnkxcZxm6A%3D",
+              "site_name": "搜索引擎-Starladder",
+              "publish_time": "2025年12月04日 00:00:00(CST) 星期四",
+              "summary": "4 Dec 2025 / CS2StarLadder Partners with Runestone to launch Interactive Twitch Extension for CS2 MajorStarLadder and Runestone are proud to announce a new partnership for the StarLadder Counter-Strike 2 Major in Budapest. This collaboration introduces an exciting new Twitch extension designed to elevate how millions of fans watch and engage with the Major.The new Twitch extension by Runestone  gives viewers real-time, data-powered interactive access to crucial in-game details, without compromising competitive integrity or the broadcast experience. Fans can toggle on-screen overlays to instantly view live scoreboards, player crosshairs, and equipment loadouts, all synced flawlessly with the official stream."
             },
             {
               "end_index": null,
               "start_index": null,
-              "title": "2025年徽章csgo的品牌销量排行榜(徽章csgo十大产品排行榜)",
+              "title": "CS2饰品价格崩盘，交易平台一度瘫痪!有职业选手选择“清仓”:疯狂抛售与操纵，太夸张了",
               "type": "url_citation",
-              "url": "https://maisui1.com/art-wbnN3Ygu6596b5.htm",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/image/4297be20c0ae28257721eccde023edd5~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1827997166&x-signature=%2BoaG0TNG3bva1h6zMS9gvcymSYc%3D",
-              "site_name": "搜索引擎-麦穗日记",
-              "publish_time": "2025年12月05日 13:01:33(CST) 星期五",
+              "url": "https://c.m.163.com/news/a/KCLF84280512B07B.html",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/33162dfc400b53a031dbc5f1b8e8a0af~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212912&x-signature=R1dBFvEgQPfbBRNHfUu9Bf6jZXo%3D",
+              "site_name": "搜索引擎-网易新闻客户端",
+              "publish_time": "2025年10月24日 18:05:00(CST) 星期五",
               "cover_image": {
-                "url": "https://img.alicdn.com/bao/uploaded/O1CN01PFw3QF287Nsu6lbwk_!!6000000007885-0-yinhe.jpg_310x310.jpg",
+                "url": "http://dingyue.ws.126.net/2025/1024/59b51f2bj00t4mro20056d000ru00ncg.jpg",
                 "width": 0,
                 "height": 0
               },
-              "summary": "该宝贝原价¥249， 现价¥249 ，  ★最低 249元。销量No.7：幽游社 CSGO反恐精英全球攻势游戏周边 咆哮金属珐琅胸针徽章pin幽游社 CSGO反恐精英全球攻势游戏周边 咆哮金属珐琅胸针徽章pin天猫超市在售价¥38券￥2 券后 ¥36幽游社游戏周边全球攻势珐琅pin 类目：模玩/动漫/周边/娃圈三坑/桌游，游戏/电竞实物周边；该宝贝原价¥38， 现价¥36，  淘金币：淘金币可抵3%； ★最低 36元。销量No.8：包包挂件配饰csgo钥匙扣合金G2徽章挂饰cs2胸针项链包包挂件配饰csgo钥匙扣合金G2徽章挂饰cs2胸针项链天猫超市在售价¥29.8券￥12 券后 ¥17.8包包挂件配饰csgo钥匙扣合金G2徽章挂饰cs2胸针项链 类目：服饰配件/皮带/帽子/围巾，钥匙扣；该宝贝原价¥29.8， 现价¥29.8 ，  限时优惠：限时优惠12元； ★最低 17.8元。销量No.9：The MongolZ高清徽章吧唧乌兰巴托战队csgo一哥队伍收藏谷子"
+              "summary": "CS2饰品价格崩盘，交易平台一度瘫痪！有职业选手选择“清仓”：疯狂抛售与操纵，太夸张了\n每日经济新闻\n2025-10-24 18:05·四川·每日经济新闻官方网易号\n昨日，《CS2》游戏饰品市场剧烈震荡，总市场估值从59亿美元暴跌至42亿美元，一日蒸发17亿美元。高端饰品集体跳水，部分稀有道具如专业手套、蝴蝶刀等单日普遍跌超50%。\n下跌诱因是游戏公司Valve公布《CS2》重大更新，导致高端饰品稀缺性不再：\n5件 StatTrak™隐秘品质皮肤(红色)可汰换1把 StatTrak\"刀具(来源自所提供的系列之一)\n5件普通隐秘品质皮肤(红色)可汰换1把普通刀具或1副普通手套(来源自所提供的系列之一)\n简单地说，就是原来只可以通过开箱获得的珍贵饰品，现在可以通过便宜的道具合成。\n开箱接近抽奖，中奖概率极低，一套几十块的箱子，可能需要几百上千套，才能出一个珍贵的“刀”或者“手套”。\n举个例子，游戏道具“全新的多普勒蝴蝶刀”，有人开箱成本100元即可获得，有人可能投入100000元都一无所获，所以今年市场上这款游戏道具价格在40000元左右。而现在的新玩法，合成，极大地降低了原来的成本，同时也可能大大增加各种珍贵道具的数量。\n然而实际情况是，Valve此番实施“以旧换新”并非毫无征兆。根据Valve的交易规则，玩家通过开箱、市场购买获取的饰品，在7天内无法再次交易，即遵循所谓的“T+7”制度。今年7月，Valve进一步改革交易规则，令饰品在交易后需等待7天“保护期”才能再次流通，由于期间玩家可随时撤销交易，因此呈现出“T+14”的特点。无论是“以旧换新”还是“T+14”，本质上，都削弱了《CS2》游戏饰品的投机属性。\n职业选手选择“清仓”\n据都市快报报道，成本降低，数量变多，这也直接导致很多玩家的游戏饰品库存价值“腰斩”，整个饰品交易市场接近崩盘。\n游戏里绝大部分道具饰品，都出现了断崖式的下跌。以最有名的游戏道具“蝴蝶刀”为例，原本在交易平台上可以卖到40000多元，现在只要10000元左右，另一个道具“运动手套”，售价也下跌了27000多元。\n持有高价值游戏饰品的玩家，开始出现大量抛售现象，导致主流饰品交易平台一度瘫痪。\n据科创板日报报道，面对崩盘，甚至有《CS2》职业选手选择恐慌性出逃。昨日MOUZ战队选手Spinx发文称：“我卖掉了所有东西，我退出CS2市场。疯狂的"
             },
             {
               "end_index": null,
               "start_index": null,
-              "title": "真封神私服 | CS2 2025年第二届Major将在布达佩斯举办!完整日期公布!",
+              "title": "二十年追更:我与CS从Beta到CS2的版本同行记",
               "type": "url_citation",
-              "url": "http://objdl.zfs123.com/news/702a799290.html",
-              "logo_url": "",
-              "site_name": "搜索引擎-真封神私服",
-              "publish_time": "2025年12月03日 16:57:24(CST) 星期三",
-              "summary": "游戏名/运营时间 版本类型 钻石包月总固顶 地区线路 客服QQ 游戏介绍 详细介绍 进入官网\n真封神之金封神 男风舞闪亮登场 中国电信 游戏查询  新职业全面无新/女道士/女术士/女战士/全新装备/6年稳定/500倍经验 ！  ←固顶等级 游戏中查询 点击查看\n真封神天下版【蓬莱新区】 ★ ★ ★12月6日下午14：00火爆开启 ★★ ★ ★ 加Q群领取新人大礼包 全年置顶广告、巨额打造品牌大服 经验30倍◆全新七星阵团队副本→独家神仙炼化系统★内挂自动刷副本/22段动态称号/新商城/新地图◆12个装备槽◆禁用所有挂★白嫖养老品牌服！！！  ←固顶等级 游戏中查询 点击查看\n【神龙真封神】 ★ ★ ★风云新服11月25号晚上20点火爆开启★★ ★ 多副本玩法、社绝垄断资源！ 全年置顶广告、巨额打造品牌大服 经验30倍◆上线赠送经验装备→加Q群领大礼包★内挂自动刷副本/炫丽动态称号/新商城/新地图◆12个装备槽◆禁用所有挂★巨额打造品牌大服！！  ←固顶等级 Q群：391625561 点击查看\nCS2 2025年第二届Major将在布达佩斯举办！完整日期公布！\n发表于 2025-12-03 16:57:24 来源：真封神发布网\nCS2 2025年第二届Major将在布达佩斯举办！完整日期公布！\n2025-05-13 14:48:46来源：玩一玩游戏网编辑：柒柒\nStarLadder宣布2025年第二届Major将在匈牙利布达佩斯举办，这是乌克兰赛事主办方自2019年StarLadder柏林major后再次承办Major赛事，并公布了包括场地和门票销售在内的赛事细节。\nStarLadder布达佩斯特锦赛将于11月24日至12月14日举行，这将是今年赛制扩展后第二次有32支队伍参赛、共设四个阶段的比赛。赛事四个阶段均有现场观众。前三个阶段将于11月24日至12月7日在MTK体育公园举行，最多可容纳2000名观众。\n季后赛将于12月11日至14日在MVMDome举行，这是一座拥有20,000个座位的室内体育馆，于2021年开放，由于采用了360度舞台设置，它将充分利用其座位容量。\n门票现已在Ticketfairy网站上发售，前三个阶段的两天和四天套票价格为10欧元至30欧元，季后赛的单日票价为35欧元至120欧元。\n完整日期如下：\n第1阶段（MTK Sportpark）-1"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "CS2游戏饰品市场崩盘!一日蒸发近20亿美元，有人一夜之间亏15万元",
-              "type": "url_citation",
-              "url": "https://www.rongbaozhai.cn/index.php?id=zcddxh-955565",
-              "logo_url": "",
-              "site_name": "搜索引擎-荣宝斋",
-              "publish_time": "2025年12月01日 00:59:27(CST) 星期一",
+              "url": "https://post.m.smzdm.com/p/115460254/",
+              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/img/1a44b9ef64d4f823f24d9493b4fe660a~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212930&x-signature=Oc2kRhYsITXnpoUmfQfhzCfz5so%3D",
+              "site_name": "搜索引擎-什么值得买社区频道",
+              "publish_time": "2025年11月12日 16:46:26(CST) 星期三",
               "cover_image": {
-                "url": "https://n.sinaimg.cn/sports/2_img/dfic/a7a65bdb/213/w2048h1365/20230202/d8e3-659d2d16de5d6559803ae095d06b6803.jpg",
+                "url": "https://am.zdmimg.com/202511/12/69144241f91e27440.jpg_e1080.jpg",
                 "width": 0,
                 "height": 0
               },
-              "summary": "但因为稀缺程度不一，“刀”和“手套”被玩家抽中的概率极小，也导致其在二级饰品交易市场中价格高昂。但游戏开发商维尔福的一纸公告，拉开了CS2饰品市场的崩盘序幕。10月23日，维尔福发布更新公告，其中的“汰换功能”规定：游戏玩家可以用5件“红色皮肤”合成一件“刀”或“手套”饰品。这就是李明所说的“5克白银可以合成1克黄金”，意味着稀缺饰品的获取门槛和成本极大降低。紧接着，二级饰品市场发生巨震。游戏饰品数据分析平台SteamDT显示，10月22日-24日，CS2饰品大盘从1662点直线跳水，暴跌至651点，跌幅超过60%。其中，高端稀有饰品价格集体跳水，例如一款“蝴蝶刀”饰品价格从32000元左右跌至约8000元，短短两天跌去75%。图片来自平台SteamDT此前，不少玩家将“刀”和“手套”视为高保值虚拟资产，也由此催生出了类似股市的二级交易市场。据李明讲述，他从去年开始参与CS2饰品交易，随着热门饰品行情不断走高，他的收益也不断增长，“每天一睁眼就是几千元的盈利”。李明印象最深刻的是，9月时，他以1500元的价格卖了一款饰品，仅仅一周，该饰品的价格就涨到了5000元。"
+              "summary": "二十年追更：我与CS从Beta到CS2的版本同行记\n半杯咖啡半杯茶L\n11-12 16:46\n二十年间，CS从Beta版的粗糙像素，迭代到CS2的Source 2引擎光影，而我也从网吧里攥着鼠标的少年，长成了能和老友线上开黑的职场人。这场跨时代的同行，藏着我整个青春的热血与牵挂。\n2005年，我在街角网吧初识CS 1.6。那时的画面满是颗粒感，Dust2地图的纹理模糊，却不妨碍我们凑在一台电脑前，为了守包大喊大叫。没有华丽特效，只有简单的警匪对抗，我练了无数个通宵熟悉AK弹道，至今记得第一次用AWP盲狙爆头时，全网吧的欢呼。后来CS:GO上线，起源引擎带来了更细腻的画质和经济系统，我和队友们挤在出租屋里打排位，为了一个Major贴纸省吃俭用，那些熬夜研究战术的夜晚，成了最珍贵的回忆。\n2023年CS2上线时，我第一时间更新客户端。Source 2引擎重构的世界让我惊叹：动态烟雾能被子弹击穿，光照在枪械皮肤上的反射逼真，子刷新频率技术让射击手感更精准 。曾经熟悉的Dust2地图焕新归来，却依然能找到当年守A大的老位置。虽然初期也吐槽过蝴蝶刀检视延迟、部分机制不稳定，但看着库存里的老皮肤在新引擎下重获新生，那种亲切感无可替代。\n如今，我和当年的队友早已天各一方，却总能在CS2里凑齐五人。我们依然会为了一次配合失误拌嘴，也会为了绝境翻盘欢呼，就像二十年前那样。版本在变，从粗糙到精致，从局域网到全球联机；但不变的，是枪声里的默契，是对胜利的执着，是跨越时光的友谊。\nCS于我，早已不只是一款游戏。它是陪伴我成长的伙伴，是记录青春的载体，更是一场长达二十年、未完待续的热爱奔赴。\n我和CS的故事 奖\n"
+            },
+            {
+              "end_index": null,
+              "start_index": null,
+              "title": "在 Steam 上购买 DON'T SCREAM TOGETHER 立省 38%",
+              "type": "url_citation",
+              "url": "https://store.steampowered.com/app/2692990/DONT_SCREAM_TOGETHER/?l=schinese",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/cae93631ba99edadb81e8fee76f2f19a~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212931&x-signature=X%2FfyVJ%2FC3sfdZQ4Cku39HqAq47I%3D",
+              "site_name": "搜索引擎-Steam",
+              "publish_time": "2025年12月04日 00:00:00(CST) 星期四",
+              "cover_image": {
+                "url": "https://shared.st.dl.eccdnx.com/store_item_assets/steam/apps/2692990/70f62ca9bb864f84a9c2a373cdac815d26eba195/ss_70f62ca9bb864f84a9c2a373cdac815d26eba195.1920x1080.jpg?t=1764784845",
+                "width": 0,
+                "height": 0
+              },
+              "summary": "系列: Digital Cybercherries发行日期:2025 年 12 月 4 日语言简体中文及其他 16 种语言内容包括互动元素在线互动, 游戏内聊天包括 21 项 Steam 成就近期活动与公告定期更新Hey all, I hope your weekend is going well. When we woke up this morning, we saw a huge influx of players reporting strange audio issues.Audio Fix Update - Thank You to Everyone Who Helped!关于此游戏《DON’T SCREAM TOGETHER》是一款温馨的四人在线合作突发惊吓恐怖模拟游戏，讲述了关于友情与团结的故事。你可以把它想象成跟好友一起体验刺激的鬼屋……只不过这次你们要置身广袤无边的漆黑森林，这里可能中了恶毒的诅咒，也可能潜伏着连环杀手、超自然现象和野生动物。又或者……其实很安全？"
+            },
+            {
+              "end_index": null,
+              "start_index": null,
+              "title": "网易BUFF 电脑版模拟器",
+              "type": "url_citation",
+              "url": "https://syzs.qq.com/game/default/com.netease.buff",
+              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/img/ee21e16b22269765b924432da3a9168d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212930&x-signature=tv9mG49C9V%2BgzjK8CZKJ6SAvugI%3D",
+              "site_name": "搜索引擎-腾讯手游助手",
+              "publish_time": "2025年12月04日 00:00:00(CST) 星期四",
+              "cover_image": {
+                "url": "https://pp.myapp.com/ma_pic2/0/shot_52654709_1_1764034120/0",
+                "width": 0,
+                "height": 0
+              },
+              "summary": "网易BUFF当前版本：敬请期待游戏标签：多人更新时间：2025-12-04开发厂商：广州网易计算机系统有限公司手游助手特性高清画质 大屏畅享智能键位 还原端游安卓7.1 完美兼容极致多开 多屏操作自研引擎 极速畅快独家反外挂 公平竞技网易BUFF 电脑版模拟器网易旗下游戏饰品交易平台 网易BUFF旨在为广大Steam游戏玩家提供一个安全易用的饰品交易平台，当前支持CS2、DOTA2等游戏。 【交易快】海量饰品，选择多，发货快，交易秒到账，百万玩家的优先选择。 【安全可靠】库存上架，边玩边卖，直接到库存，远离骗子。 【功能强大】购买、求购、供应、还价等多种交易方式，全方位满足你的需求。 【便捷易用】各种贴心功能，关注收藏、印花搜枪、宝石款式筛选。 【磨损排行】CS2皮肤磨损排行榜，宝贝排名一览无遗。 【皮肤鉴定】多普勒款式、淬火AK档位，渐变百分比、冰火档位、印花磨损百分比等。 【高清检视图】不用启动游戏，即可检视CS2饰品超高清效果图。 【饰品维基】随时查阅DOTA2海量饰品资料库。 【玩家秀社区】与广大饰品玩家分享交流饰品搭配。 【客户支持】内置客服反馈系统，全天候为你排忧解难，倾听用户意见建议，提供贴心服务。 官方网站 https://buff.163.com"
             },
             {
               "end_index": null,
@@ -261,7 +233,7 @@
               "title": "更新日志:新版cache、海豹短刀箱上线",
               "type": "url_citation",
               "url": "https://m.chaofan.com/news/7epjsgfms2q3sge.html",
-              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/d605571a821763f512883395a202255d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=8mv3OjD0mT%2FCvlCXsI6dZJ7Cukc%3D",
+              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/d605571a821763f512883395a202255d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212931&x-signature=1r%2B0xsqUo%2FMTeiuyPczOkBMifAw%3D",
               "site_name": "搜索引擎-超凡电竞",
               "publish_time": "2025年12月03日 00:00:00(CST) 星期三",
               "summary": "更新日志：新版cache、海豹短刀箱上线\nCSGO资讯君\n2025-12-03\n2019年10月19日凌晨，CSGO迎来了又一轮更新，本次更新补丁大小290.5MB，与以往改改地图模型，修修系统BUG相比，这一次诚意满满。主要内容包括新版Cache已经正式上线CSGO客服端，玩家们可以在休闲、死亡竞赛和军备竞赛模式中体验。同时还加入了海豹短刀武器箱（CS20武器箱）和印花胶囊，以庆祝CS诞生20周年。\n由FMPONE和Volcano制作的重制版Cache已经更新，可在官方服务器休闲、死亡竞技、混战模式玩到。\nCS20武器箱和印花胶囊\nCSGO发布了CS20武器箱，以庆祝《反恐精英》20周年。该武器箱包含了Steam创意工坊各种主题皮肤，并以经典海豹短刀作为特色物品。另外你还可以购买到CS20贴纸胶囊，包含20个社区设计的贴纸。\nCS20武器箱中红色品质的大狙\n地图\nCache旧版本已被此前在创意工坊中与大家见面的重置版正式取代，但还没有在竞技模式中启用，大家可以在官方服务器休闲、死亡竞技、混战模式玩到。\n杂项\n添加了新启动项-lowmemworkshop，以允许Steam创意工坊更新非常大的地图文件\n添加了控制台命令fov_tv_debug，以允许在GOTV或Demo演示的自由观看修改观看范围\n提高了area portals性能优化\n海豹短刀皮肤预览\n下面应该是大家最为关注的东西了，所有海豹短刀的涂装皮肤如下：\n转载自：5EPlay 作者：Koro111\n"
@@ -269,91 +241,10 @@
             {
               "end_index": null,
               "start_index": null,
-              "title": "Bloodhound Gloves | Guerrilla",
-              "type": "url_citation",
-              "url": "https://wiki.cs.trade/gloves/Bloodhound%20Gloves+Guerrilla",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/9a67c5f833b68c0c215801f53ed0a020~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=B5FE0D4bUT1VIsnGBlxGfKf2DH4%3D",
-              "site_name": "搜索引擎-CS:GO & CS2 Skins and Items Wikipedia",
-              "publish_time": "2025年12月04日 11:51:07(CST) 星期四",
-              "summary": "Bloodhound Gloves | Guerrilla\nFound in 2 cases\nExtraordinary Gloves\nInspect (FN) Inspect (MW) Inspect (FT) Inspect (WW) Inspect (BS)\nCS.TRADE PRICES\nCondition Price\nFactory New $1066.74\nMinimal Wear $529.02\nField-Tested $498.8\nWell-Worn $154.32\nBattle-Scarred $132.24\nPrices updated 29 minutes ago\nGlove Case\nOperation Hydra Case\nDescription\nThese fingerless gloves have been decorated with metal studs and the Operation Bloodhound logo. It was made with a mix of brown leather and synthetic leather with a camo print.\nThe 'Bloodhound Gloves | Guerrilla' are one of the most popular gloves in the CS:\nInspect ScreenshotBuy on CS.TRADEBuy or trade for Bloodhound Gloves | Guerrilla skins listed below on CS.TRADE trade bot.★ Bloodhound Gloves | Guerrilla (Battle-Scarred)$136.21"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "《CS2》布达佩斯 Major 二阶段:TYLOO 暂居 1-2，Faze、NAVI 率先晋级",
-              "type": "url_citation",
-              "url": "http://finance.sina.cn/tech/2025-12-01/detail-infzhauk4411923.d.html",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/cdd5e6f45478019b5da99c02938cfd77~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=NqK1LHFy2IonQwVdkIQH8MIvn88%3D",
-              "site_name": "搜索引擎-新浪财经",
-              "publish_time": "2025年12月01日 10:24:07(CST) 星期一",
-              "cover_image": {
-                "url": "https://n.sinaimg.cn/spider20251201/402/w1440h562/20251201/0101-f29acfcf531c02248901e6de711ac709.png",
-                "width": 0,
-                "height": 0
-              },
-              "summary": "《CS2》布达佩斯 Major 二阶段：TYLOO 暂居 1-2，Faze、NAVI 率先晋级IT之家IT之家官方账号 12.01 10:10IT之家 12 月 1 日消息，《CS2》Starladder 布达佩斯 Major 2025 的第二阶段已在周末结束了前三轮的比拼，中国战队 TYLOO 目前位于 1-2 组别，Faze、NAVI 率先 3-0 晋级，FlyQuest 和 MIBR 则是 0-3 出局。TYLOO 首战面对的是 PARIVISION，在荒漠迷城 (mirage) 上以 13:5 轻取对手。不过在与 NIP 的核子危机 (nuke)、与 M80 的列车停放站 (train) 中，TYLOO 尽管都创造了不错的开局，但最终分别以 8:13、10:13 负于对手。TYLOO 接下来需要连续赢得 2 个 BO3 的胜利方能晋级到 Major 第三阶段，其第四轮将在北京时间 12 月 2 日约 03:00 面对 Liquid。"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "一分钟接入SteamDT开放平台 - SteamDT开放平台",
-              "type": "url_citation",
-              "url": "https://doc.steamdt.com/6279815m0",
-              "logo_url": "",
-              "site_name": "搜索引擎",
-              "publish_time": "1970年01月01日 08:00:00(CST) 星期四",
-              "summary": "一分钟接入SteamDT开放平台前期准备 #接入方需要准备以下信息：注册SteamDT账号：您需要打开SteamDT进行免费的账号注册.API_KEY：所有接口都需要在请求头中填写您的API_KEY,API_KEY可以在「个人中心-API管理」申请开通，目前限时免费.请求结构 #调用开放平台的接口时，是指通过向我们的服务地址发送请求，需要按照接口的地址，请求方式，请求参数构造请求，否则不能调用成功.一条请求磨损信息请求示例如下：curl --location --request POST 'https://open.steamdt.com/open/cs2/v1/wear' \\--header 'Authorization: Bearer YOU_API_KEY' \\--header 'Content-Type: application/json' \\--data-raw '{\"inspectUrl\": \"steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20S76561198369689629A42204298773D11704554603329073305\",\"notifyUrl\": \"https://yourdomain.com\"}'服务地址 #SteamDT开放平台已有的服务接入地址如下服务地域 域名 备注国内外 https://open.steamdt.com 开放平台OpenAPI接入地址通信协议 #提供的所有接口均通过 HTTPS 进行通信，提供高安全性的通信通道。请求方式 #根据各个接口的具体需求，选择 GET 或 POST 方式发起请求。请求参数 #在发起请求时，请求体中可能会包含两类参数：公共请求参数和接口特有的业务参数。公共请求参数是每一个接口需要包含的，目前为Header中的Authorization，内容格式为\"Bearer {YOU_API_KEY}\"接口特有的业务参数是各个接口特有的，参考各接口的参数描述。字符编码 #请求及返回结果使用 UTF-8 的字符集进行编码。签名机制 #目前无返回结果 #API请求返回以下结果调用成功:{\"success\": true,\"data\": {},\"errorCode\":0,\"errorMsg\": \"\",\"errorData"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "2025年徽章csgo的品牌销量排行榜(徽章csgo十大产品排行榜)",
-              "type": "url_citation",
-              "url": "https://maisui1.com/art-wbnN3Ygu6596b5.htm",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/image/4297be20c0ae28257721eccde023edd5~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1827997166&x-signature=%2BoaG0TNG3bva1h6zMS9gvcymSYc%3D",
-              "site_name": "搜索引擎-麦穗日记",
-              "publish_time": "2025年12月05日 13:01:33(CST) 星期五",
-              "cover_image": {
-                "url": "https://img.alicdn.com/bao/uploaded/O1CN01PFw3QF287Nsu6lbwk_!!6000000007885-0-yinhe.jpg_310x310.jpg",
-                "width": 0,
-                "height": 0
-              },
-              "summary": "该宝贝原价¥249， 现价¥249 ，  ★最低 249元。销量No.7：幽游社 CSGO反恐精英全球攻势游戏周边 咆哮金属珐琅胸针徽章pin幽游社 CSGO反恐精英全球攻势游戏周边 咆哮金属珐琅胸针徽章pin天猫超市在售价¥38券￥2 券后 ¥36幽游社游戏周边全球攻势珐琅pin 类目：模玩/动漫/周边/娃圈三坑/桌游，游戏/电竞实物周边；该宝贝原价¥38， 现价¥36，  淘金币：淘金币可抵3%； ★最低 36元。销量No.8：包包挂件配饰csgo钥匙扣合金G2徽章挂饰cs2胸针项链包包挂件配饰csgo钥匙扣合金G2徽章挂饰cs2胸针项链天猫超市在售价¥29.8券￥12 券后 ¥17.8包包挂件配饰csgo钥匙扣合金G2徽章挂饰cs2胸针项链 类目：服饰配件/皮带/帽子/围巾，钥匙扣；该宝贝原价¥29.8， 现价¥29.8 ，  限时优惠：限时优惠12元； ★最低 17.8元。销量No.9：The MongolZ高清徽章吧唧乌兰巴托战队csgo一哥队伍收藏谷子"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "10.25版本前瞻:大量英雄加强!新增女帝、长者之森皮肤",
-              "type": "url_citation",
-              "url": "https://m.chaofan.com/news/ek8sos9smwyktoe.html",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/d605571a821763f512883395a202255d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=eIi23bw0kiWYKvpEe%2B%2Fsa5kCzqc%3D",
-              "site_name": "搜索引擎-超凡电竞",
-              "publish_time": "2025年12月02日 00:00:00(CST) 星期二",
-              "summary": "10.25版本前瞻：大量英雄加强！新增女帝、长者之森皮肤\nGiannamiin\n2025-12-02\n超凡电竞12月9日讯 今日更新了10.25版本前瞻：大量英雄加强！新增女帝、长者之森皮肤。具体内容如下：\n削弱：安妮、小鱼人、烬、凯尔、凯隐、莫甘娜、莎弥拉\n增强：凤凰、艾克、酒桶、刀妹、艾翁、死歌、盲僧、璐璐、铁男、狗头、豹女、潘森、萨勒芬妮、岩雀、老鼠、亚索、永恩\n新增：女帝、长者之森皮肤\n"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "2025年徽章csgo的品牌销量排行榜(徽章csgo十大产品排行榜)",
-              "type": "url_citation",
-              "url": "https://maisui1.com/art-wbnN3Ygu6596b5.htm",
-              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/image/4297be20c0ae28257721eccde023edd5~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=IpPb2L9W3OwEuxlZAU9JqE%2FXLEI%3D",
-              "site_name": "搜索引擎-麦穗日记",
-              "publish_time": "2025年12月05日 13:01:33(CST) 星期五",
-              "cover_image": {
-                "url": "https://img.alicdn.com/bao/uploaded/O1CN01PFw3QF287Nsu6lbwk_!!6000000007885-0-yinhe.jpg_310x310.jpg",
-                "width": 0,
-                "height": 0
-              },
-              "summary": "2025年徽章csgo的品牌销量排行榜（徽章csgo十大产品排行榜）\n如何选购徽章csgo，有为青年CSGO周边 : CS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章，\n2025-12-05 13:01:33\n徽章csgo销量第一名：CS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章\nCS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章\n天猫超市\n在售价¥15\n券\n￥0 券后 ¥15\nCS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章 类目：模玩/动漫/周边/娃圈三坑/桌游，游戏/电竞实物周边； \n该宝贝原价¥15， 现价¥15，  淘金币频道专享：淘金币频道抵扣1%起； ★最低 15元。\n销量No.2：幽游社CSGO反恐精英全球攻势2.0游戏周边10年老兵合金纪念币徽章\n幽游社CSGO反恐精英全球攻势2.0游戏周边10年老兵合金纪念币徽章\n天猫超市\n在售价¥58\n券\n￥10 券后 ¥48\n幽游社CS2CSGO10年老兵纪念币 类目：模玩/动漫/周边/娃圈三坑/桌游，游戏/电竞实物周边； \n该宝贝原价¥58， 现价¥48，  淘金币频道专享：淘金币频道抵扣7%起； ★最低 48元。\n销量No.3：Eleven原创csgo胸针AWP二西莫夫皮肤AK47徽章ins潮流背包配饰礼物\nEleven原创csgo胸针AWP二西莫夫皮肤AK47徽章ins潮流背包配饰礼物\n天猫超市\n在售价¥39.9\n券\n￥0 券后 ¥39.9\n原创胸针ins背包配饰礼物徽章 类目：饰品/流行首饰/时尚饰品新，胸针； \n该宝贝原价¥39.9， 现价¥39.9 ，  淘金币频道专享：淘金币频道抵扣3%起； ★最低 39.9元。\n销量No.4：CSGO反恐精英游戏幸运币 紫铜色硬币全球攻势纪念章CS徽章纪念章\nCSGO反恐精英游戏幸运币 紫铜色硬币全球攻势纪念章CS徽章纪念章\n天猫超市\n在售价¥15\n券\n￥9 券后 ¥6\ncsgo反恐精英游戏cs硬币幸运币 类目：节庆用品/礼品，创意/设计玩具； \n该宝贝原价¥15， 现价¥6，  淘金币频道专享：淘金币频道抵扣8%起； ★最低 6元。\n销量No.5：csgo游戏周边全球精英徽章礼盒装水平组大地球徽章纪念品白银黄金\ncs"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
               "title": "2025年csgo国服品牌销量排行?淘宝天猫销量前10",
               "type": "url_citation",
               "url": "https://www.am10.com/art-QjcaevbW_bnN3Y.htm",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/labis/image/2ed7b464e75507e657e76c230d2a6e25~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206582&x-signature=L1McOaflYmeBIquGYPHtkyNuIJk%3D",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/labis/image/2ed7b464e75507e657e76c230d2a6e25~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=5GzS%2FAFxkFSdiP3mMhM%2Fd29%2BVVc%3D",
               "site_name": "搜索引擎-爱美日记",
               "publish_time": "2025年12月06日 11:27:10(CST) 星期六",
               "cover_image": {
@@ -366,92 +257,102 @@
             {
               "end_index": null,
               "start_index": null,
-              "title": "更新日志:新版cache、海豹短刀箱上线",
+              "title": "期望与现实:CS2两周年回望",
               "type": "url_citation",
-              "url": "https://m.chaofan.com/news/7epjsgfms2q3sge.html",
-              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/d605571a821763f512883395a202255d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=8mv3OjD0mT%2FCvlCXsI6dZJ7Cukc%3D",
-              "site_name": "搜索引擎-超凡电竞",
-              "publish_time": "2025年12月03日 00:00:00(CST) 星期三",
-              "summary": "更新日志：新版cache、海豹短刀箱上线\nCSGO资讯君\n2025-12-03\n2019年10月19日凌晨，CSGO迎来了又一轮更新，本次更新补丁大小290.5MB，与以往改改地图模型，修修系统BUG相比，这一次诚意满满。主要内容包括新版Cache已经正式上线CSGO客服端，玩家们可以在休闲、死亡竞赛和军备竞赛模式中体验。同时还加入了海豹短刀武器箱（CS20武器箱）和印花胶囊，以庆祝CS诞生20周年。\n由FMPONE和Volcano制作的重制版Cache已经更新，可在官方服务器休闲、死亡竞技、混战模式玩到。\nCS20武器箱和印花胶囊\nCSGO发布了CS20武器箱，以庆祝《反恐精英》20周年。该武器箱包含了Steam创意工坊各种主题皮肤，并以经典海豹短刀作为特色物品。另外你还可以购买到CS20贴纸胶囊，包含20个社区设计的贴纸。\nCS20武器箱中红色品质的大狙\n地图\nCache旧版本已被此前在创意工坊中与大家见面的重置版正式取代，但还没有在竞技模式中启用，大家可以在官方服务器休闲、死亡竞技、混战模式玩到。\n杂项\n添加了新启动项-lowmemworkshop，以允许Steam创意工坊更新非常大的地图文件\n添加了控制台命令fov_tv_debug，以允许在GOTV或Demo演示的自由观看修改观看范围\n提高了area portals性能优化\n海豹短刀皮肤预览\n下面应该是大家最为关注的东西了，所有海豹短刀的涂装皮肤如下：\n转载自：5EPlay 作者：Koro111\n"
+              "url": "https://games.sina.cn/esports/2025-09-28/edetail-infrzuim8903285.d.html",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/dd4d3bdc277d42ac11d6d4d06cf53973~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212930&x-signature=J4KOqoLVypNwNI%2FeZc%2BrXdeI9nY%3D",
+              "site_name": "搜索引擎-手机新浪游戏",
+              "publish_time": "2025年09月28日 16:48:00(CST) 星期日",
+              "cover_image": {
+                "url": "http://n.sinaimg.cn/games/c5a7ee11/20160905/addfa.png",
+                "width": 0,
+                "height": 0
+              },
+              "summary": "期望与现实：CS2两周年回望\n2025-09-28 16:48 新浪电竞\n2023年9月，CS2接替CS:GO正式上线时，其热度堪称空前。Valve曾承诺，基于Source 2引擎打造的CS2将带来一场革新：更出色的画质、更流畅的物理效果、sub-tick精度技术，以及无限的模组开发潜力。两年过去，当初的狂热已然降温。CS2不再是“下一个现象级大作”，而只是我们日常游玩的普通游戏。但它真的超越CS:GO了吗？\n热度真实存在，期望却未实现\n在CS2上线前的几周里，玩家的期待值达到了顶峰。Valve发布的每一则预告，从首个烟雾弹演示到sub-tick服务器的承诺，都在Reddit和Twitch上迅速发酵、广为传播。职业选手在直播中进行封闭测试，粉丝们刷屏发送“CS:GO 2”相关表情包，内容创作者更是将其称作“CS史上最大规模更新”。\n为进一步助推这股热度，Valve在CS2上线当天便从Steam平台下架了CS:GO，迫使整个玩家社区“被迫升级”。对许多人而言，这仿佛是一个新时代的开启：CS基于Source 2引擎从零重建。但短短几天内，梦想便与现实撞了个满怀，缺失的地图、晦涩的机制与层出不穷的漏洞提醒着所有人：他们期待的“革新”，或许并非一蹴而就。\n两年过去，CS2仍有未竟之路\n画质与氛围\nSource 2引擎为CS带来了现代化升级。动态光影、阴影效果与烟雾物理机制，让比赛呈现出更具电影感的视觉体验。例如，在Source 2引擎的光影渲染下，Inferno几乎像一张全新的地图。\n但多位职业选手认为“竞技清晰度”并非总能达到理想状态，Valve官方也承认，他们不得不“通过着色器调整提升玩家可见度”，以回应相关投诉。\n优化与性能\n在上线初期的混乱过后，如今CS2的帧率稳定性已大幅提升。即便是中端配置的电脑，也能流畅运行游戏；一系列补丁更新还修复了诸多性能瓶颈问题。\n然而sub-tick技术的争议至今未休。ropz曾直言该技术的不稳定性：“当你在游戏中平移、射击、连跳、扔雷，或是遭遇糟糕的命中判定时，很容易察觉自己仿佛在玩64tick服务器的游戏。我希望Valve能让sub-tick技术达到如今128tick服务器的稳定性，甚至超越它。”\n而s1mple在游戏上线初期也毫不掩饰自己的不满：“如果你们想成为CS2职业选手，还有3个月时间，现在别玩这破游戏，等更新完善了再说。”"
             },
             {
               "end_index": null,
               "start_index": null,
-              "title": "Unity团结引擎重磅发布新版本，广州网易一周内上演高管人事变动风云",
+              "title": "2025年csgo国服品牌销量排行?淘宝天猫销量前10",
               "type": "url_citation",
-              "url": "https://douyintang.cn/c77917c0c116d1f6f50a4d2c3.html",
-              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/image/82901d59372727df0eb1458c954d8c55~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=i0LtyKlCz8AGdalZTJ3Uhqg9xB8%3D",
-              "site_name": "搜索引擎",
-              "publish_time": "2025年12月02日 11:42:00(CST) 星期二",
-              "summary": "这一更新直接引发了《CS2》二手交易市场的震荡，手套、刀具饰品价格暴跌，不少饰品价格直接腰斩。比如原版“蝴蝶刀”，价格已从2万余元跌至1万元左右。此次价格暴跌，通过改变顶级饰品的获取途径，打破了原有的市场供需平衡与稀缺性逻辑，直接冲击了CS2二手市场。此前投入重金，甚至不惜贷款囤积游戏皮肤的玩家面临严重的账面亏损。值得一提的是，有消息称汰换出的饰品可交易，但需要等待7天交易冷却。这次更新对《CS2》二手交易市场的影响仍未平息，市值三天内波动巨大。在更新当天，有消息称其皮肤总市场单日蒸发20亿美元。而在昨日，SteamDB援引统计机构数据称，《CS2》皮肤总市场估值从59亿美元暴跌至31亿美元，下跌近49%。今日则出现新动向，csfloat数据显示，市场总市值再次增长约10亿美元，部分饰品价格较昨日翻倍。5.腾讯投资的上海二游公司被强制执行上海莫彼吾斯科技（以下简称莫彼吾斯）于近日新增一则法院公告，案由为“有限合伙纠纷”。该公司在早些时候拖欠合作方账款，并未履行还款义务，公司的六名股东追加为被执行人，其中也包括了莫彼吾斯的投资方腾讯。"
+              "url": "https://www.am10.com/art-QjcaevbW_bnN3Y.htm",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/labis/image/2ed7b464e75507e657e76c230d2a6e25~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=5GzS%2FAFxkFSdiP3mMhM%2Fd29%2BVVc%3D",
+              "site_name": "搜索引擎-爱美日记",
+              "publish_time": "2025年12月06日 11:27:10(CST) 星期六",
+              "cover_image": {
+                "url": "https://img.alicdn.com/bao/uploaded/i3/3098479780/O1CN01a8ZcG22M7IXfYmpqL_!!3098479780.png_310x310.jpg",
+                "width": 0,
+                "height": 0
+              },
+              "summary": "该宝贝原价¥97.9， 现价¥96.9，  ★最低 96.9元。销量No.3：csgo/cs2/完美世界/steam黑科技/csgo/cs2/完美世界/steam黑科技/天猫超市在售价¥50券￥20.2 券后 ¥29.8csgo/cs2/完美世界/steam黑科技/ 类目：电玩/配件/游戏/攻略，STEAM；该宝贝原价¥50， 现价¥29.8，  ★最低 29.8元。销量No.4：csgo2官匹攻略上分定制款cs2csgo专拍steam国服国际服子弹追踪csgo2官匹攻略上分定制款cs2csgo专拍steam国服国际服子弹追踪天猫超市在售价¥6.88券￥0 券后 ¥6.88csgo2官匹攻略上分定制款cs2csgo专拍steam国服国际服子弹追踪 类目：电玩/配件/游戏/攻略，STEAM；该宝贝原价¥6.88， 现价¥6.88，  淘金币：淘金币可抵2%； ★最低 6.88元。销量No.5：cs2优先账号定级完美临时开黑号"
             },
             {
               "end_index": null,
               "start_index": null,
-              "title": "《CS2》布达佩斯 Major 二阶段:TYLOO 暂居 1-2，Faze、NAVI 率先晋级",
+              "title": "TYLOO取得中国队布达佩斯首胜，FaZe两战全胜直上天堂!A队、液体已命悬一线",
               "type": "url_citation",
-              "url": "http://finance.sina.cn/tech/2025-12-01/detail-infzhauk4411923.d.html",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/cdd5e6f45478019b5da99c02938cfd77~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=NqK1LHFy2IonQwVdkIQH8MIvn88%3D",
+              "url": "http://news.qq.com/rain/a/20251130A01OUA00",
+              "logo_url": "https://p11-volcsearch-sign.byteimg.com/isp-i18n-media/img/4de782aa583bda88c8448344ff36c656~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212943&x-signature=YAeUoznTKAUxVmZGjeD3JVG4lKk%3D",
+              "site_name": "搜索引擎-腾讯网",
+              "publish_time": "2025年11月30日 06:04:00(CST) 星期日",
+              "summary": "TYLOO取得中国队布达佩斯首胜，FaZe两战全胜直上天堂！A队、液体已命悬一线\nCSGO\n2025-11-30 06:04 发布于上海\n2025年11月24日-12月14日，总奖金125万美元的布达佩斯Major在匈牙利举行。32支豪门战队云集，争夺CS界的至高荣誉。\n布达佩斯Major\n第一阶段\n布达佩斯Major赛程\n第一阶段：11月24日-11月27日已结束\n第二阶段：11月29日-12月2日\n瑞士轮赛制：三胜晋级、三败淘汰\n第三阶段：12月4日-12月7日\n瑞士轮赛制：三胜晋级、三败淘汰\n决胜赛阶段：12月11日-12月14日\n单败淘汰制：决赛Bo5，其余为Bo3\n第二阶段第1轮战况\nAstralis 10-13 NIP\nNuke上A队赢得手枪局4-0开，但长枪局凭借sjuush和xKacpersky的强大火力，NIP打出一波7-1进攻潮结束半场。换边尽管A队再拿手枪局一度8-7反超，但长枪局起xKacpersky统治外场，NIP依托稳固阵线一波7-2防守拿下胜利。\nfnatic 13-6 3DMAX\n在Inferno，fnatic拿下手枪局随即被翻，法国队由Lucky和Maka领衔打出5-1攻势反超。不过随后大光头、jambo和jackasmo轮番输出，fnatic由守转攻打出一波11-1狂潮取得首胜。\nTYLOO 13-5 PARIVISION\nMirage上TYLOO在0-2开局后，Moseyuh、白菜、Jee火力全开，中国队打出一波8-2铁血防守结束半场。换边小鞠拿下手枪局，TYLOO全员对枪无解，直接平推对手豪取首胜，而且这也是布达佩斯Major开赛以来，中国队获得的首场胜利。\nFaZe 13-10 Passion UA\n在Dust2，两队你来我往先后战至3平、7平。长枪局起broky、jcobbb轮番输出取得11-7领先，而nicx、Grim联手一度顽强追至10-11。关键局PUA折戟A门丢掉赛点，FaZe有惊无险拿下胜利。\nAurora 13-6 M80\nDust2上M80赢下手枪局全取3分，但自长枪局起土耳其礼神和左手狙神手感爆炸，两人联手帮助土耳其队由守转攻打出一波13-3狂潮轻松终结比赛，Wicadia单图砍下23杀笑傲全场。\nNAVI 13-2 FlyQuest\nTrain上半场NAVI完全统治赛场，大B哥各种乱杀，澳洲队被打的溃不成"
+            },
+            {
+              "end_index": null,
+              "start_index": null,
+              "title": "AMD新驱动AntiLag功能功能将导致CS2封号详情",
+              "type": "url_citation",
+              "url": "http://m.28210.com/shouyou/531477.html",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/image/cdb0fdb706cffc37a8b10108f1571f58~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212943&x-signature=pugE7%2BRwOvf%2FBOArXBvVBGMuFvg%3D",
+              "site_name": "搜索引擎-千橙手游网",
+              "publish_time": "2025年12月03日 11:21:16(CST) 星期三",
+              "summary": "AMD新驱动AntiLag功能功能将导致CS2封号详情\n时间：2025-12-03 11:21:16 作者：毒盅\ncs2里AMD新驱动Anti-Lag+功能功能将导致《CS2》封号详情的具体内容是什么呢？可能游戏内许多玩家都有这样的困扰，那么哪里能帮助大家解答困惑呢？不要着急千橙手游网小编已经准备好了具体攻略分享给大家了，喜欢cs2的小伙伴快来了解具体攻略吧！\nAMD发布了适用于其显卡的Radeon Software Adrenalin 23.10.1驱动程序。该驱动程序为RX 7000系列显卡启用了《CS2》的Anti-Lag+功能。然而，Valve已经公开表示Anti-Lag+是通过重定向引擎dll函数来实现的，由于Anti-Lag+篡改了《CS2》的代码，玩家使用的话将会受到VAC封禁。Valve建议玩家目前禁用Anti-Lag+。一旦AMD团队对其驱动进行更新，开发人员将识别受影响的用户并解除封禁。\n相信千橙手游网小编整理的AMD新驱动Anti-Lag+功能功能将导致《CS2》封号详情对大家都能有所帮助，还想知道游戏其他攻略的小伙伴们别忘了把网站收藏，后面还有更多精彩内容等着大家！\n"
+            },
+            {
+              "end_index": null,
+              "start_index": null,
+              "title": "反恐精英游戏饰品暴跌，蒸发20亿敲响虚拟投资警钟",
+              "type": "url_citation",
+              "url": "http://finance.sina.cn/2025-10-28/detail-infvmrrs9701036.d.html",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/cdd5e6f45478019b5da99c02938cfd77~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212943&x-signature=L5nQCj3vND2n%2Fsjy6uK9a7iGTXc%3D",
               "site_name": "搜索引擎-新浪财经",
-              "publish_time": "2025年12月01日 10:24:07(CST) 星期一",
+              "publish_time": "2025年10月28日 14:31:55(CST) 星期二",
               "cover_image": {
-                "url": "https://n.sinaimg.cn/spider20251201/402/w1440h562/20251201/0101-f29acfcf531c02248901e6de711ac709.png",
+                "url": "https://n.sinaimg.cn/front20251028ac/300/w720h380/20251028/3823-fab6db83d7972ce5387873df4cd64905.jpg",
                 "width": 0,
                 "height": 0
               },
-              "summary": "《CS2》布达佩斯 Major 二阶段：TYLOO 暂居 1-2，Faze、NAVI 率先晋级IT之家IT之家官方账号 12.01 10:10IT之家 12 月 1 日消息，《CS2》Starladder 布达佩斯 Major 2025 的第二阶段已在周末结束了前三轮的比拼，中国战队 TYLOO 目前位于 1-2 组别，Faze、NAVI 率先 3-0 晋级，FlyQuest 和 MIBR 则是 0-3 出局。TYLOO 首战面对的是 PARIVISION，在荒漠迷城 (mirage) 上以 13:5 轻取对手。不过在与 NIP 的核子危机 (nuke)、与 M80 的列车停放站 (train) 中，TYLOO 尽管都创造了不错的开局，但最终分别以 8:13、10:13 负于对手。TYLOO 接下来需要连续赢得 2 个 BO3 的胜利方能晋级到 Major 第三阶段，其第四轮将在北京时间 12 月 2 日约 03:00 面对 Liquid。"
+              "summary": "反恐精英游戏饰品暴跌，蒸发20亿敲响虚拟投资警钟\n第一财经\n第一财经官方账号 10.28 14:23\n（本文作者樊仲琛，西安交通大学经济与金融学院助理教授）\n2025年10月23日，对于全球数以百万计的《CS2》（反恐精英2）游戏饰品投资者而言，是一个名副其实的“黑色星期四”。游戏开发商Valve发布的一次常规更新引发了整个饰品交易市场的剧烈崩盘。\n数小时内，被玩家和投机者们追捧为“数字黄金”的顶级虚拟饰品，如各种稀有“蝴蝶刀”和“专业手套”，价格普遍遭遇腰斩，跌幅超过50%。据估算，整个《CS2》饰品市场总估值在一天之内蒸发了近20亿美元，无数炒家血本无归。昔日“开箱稳赚”“一件饰品一套房”的造富神话，转瞬间变为“一地鸡毛”。\n这场风波绝非偶然。它以一种极端的方式，再次暴露了虚拟物品投资的核心悖论与巨大风险：\n这是一种边际生产成本几乎为零，其“稀缺性”完全由生产方（游戏公司）单方面控制的数字资产。\n虚拟的“稀缺性”，正在制造真实的高风险，并带来严重的后果。\n一、人造的“稀缺”，虚拟泡沫成型\n此前，《CS2》的饰品经济是一个价值近60亿美元的庞大市场，早已超越了“游戏道具”的范畴，异化为一个复杂的、带有浓厚金融属性的投机领域。\n其价值基础便是Valve精心设计的稀缺性。在长达十余年里，顶级饰品（金色品质的刀与手套）的获取途径极其单一。玩家必须购买钥匙开启游戏内的“武器箱”，而开出金色饰品(俗称“出金”)的概率被严格控制在约0.26%。这种极低的获取率，创造了堪比奢侈品的稀缺价值。一把外观罕见的“蝴蝶刀”，在二级市场的价格可以轻松炒至数万甚至数十万元人民币。\n围绕这些饰品，一个庞大且高效的第三方交易市场应运而生。玩家们像分析股票一样分析饰品价格走势（“盯盘”），市场甚至演化出了“T+7”的交易规则（新购入饰品7天后才能再次交易），这进一步增加了投机色彩。\n门槛低、涨幅快的《CS2》饰品，自然吸引了大量追求“短平快”收益的投机者，其中不乏缺乏风险意识的未成年人。他们相信，只要Valve不倒，游戏热度不减，这些代码组成的“数字黄金”就能永远保值，甚至升值。\n然而，这场狂欢下的投机者们忽视了一个根本性的风险：\n这种稀缺性是人为设定的，而非自然存在的。\n相比黄金的稀缺源于物理储量和开采成本，虚拟饰品的稀缺性则完全掌握在游戏厂商手中——它仅仅是一行代码。\n二、规则突变，价值体系"
             },
             {
               "end_index": null,
               "start_index": null,
-              "title": "一分钟接入SteamDT开放平台 - SteamDT开放平台",
+              "title": "Patch 25.24 Notes: Exciting Updates and Changes to Look Forward To",
               "type": "url_citation",
-              "url": "https://doc.steamdt.com/6279815m0",
-              "logo_url": "",
-              "site_name": "搜索引擎",
-              "publish_time": "1970年01月01日 08:00:00(CST) 星期四",
-              "summary": "一分钟接入SteamDT开放平台前期准备 #接入方需要准备以下信息：注册SteamDT账号：您需要打开SteamDT进行免费的账号注册.API_KEY：所有接口都需要在请求头中填写您的API_KEY,API_KEY可以在「个人中心-API管理」申请开通，目前限时免费.请求结构 #调用开放平台的接口时，是指通过向我们的服务地址发送请求，需要按照接口的地址，请求方式，请求参数构造请求，否则不能调用成功.一条请求磨损信息请求示例如下：curl --location --request POST 'https://open.steamdt.com/open/cs2/v1/wear' \\--header 'Authorization: Bearer YOU_API_KEY' \\--header 'Content-Type: application/json' \\--data-raw '{\"inspectUrl\": \"steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20S76561198369689629A42204298773D11704554603329073305\",\"notifyUrl\": \"https://yourdomain.com\"}'服务地址 #SteamDT开放平台已有的服务接入地址如下服务地域 域名 备注国内外 https://open.steamdt.com 开放平台OpenAPI接入地址通信协议 #提供的所有接口均通过 HTTPS 进行通信，提供高安全性的通信通道。请求方式 #根据各个接口的具体需求，选择 GET 或 POST 方式发起请求。请求参数 #在发起请求时，请求体中可能会包含两类参数：公共请求参数和接口特有的业务参数。公共请求参数是每一个接口需要包含的，目前为Header中的Authorization，内容格式为\"Bearer {YOU_API_KEY}\"接口特有的业务参数是各个接口特有的，参考各接口的参数描述。字符编码 #请求及返回结果使用 UTF-8 的字符集进行编码。签名机制 #目前无返回结果 #API请求返回以下结果调用成功:{\"success\": true,\"data\": {},\"errorCode\":0,\"errorMsg\": \"\",\"errorData"
+              "url": "https://m.sohu.com/a/961550959_122342248/",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/6b1d3a6f49304d84d8268210e144399e~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828212943&x-signature=XhPysQmvNUpERTDwqUBVptK5AJU%3D",
+              "site_name": "搜索引擎-手机搜狐网",
+              "publish_time": "2025年12月04日 18:00:00(CST) 星期四",
+              "summary": "Additionally, the patch brings exciting new champions and skins. Players can look forward to the release of Winter Wonder skins, including Winter Wonder Milio and Winter Wonder Zeri, available from December 3, 2025. These cosmetic updates not only add visual flair to the game but also celebrate the holiday spirit.Champion AdjustmentsPatch 25.24 also features crucial balance adjustments for several champions. For instance, Braum receives a much-needed buff to his base health and damage on follow-up attacks, enhancing his brawling capabilities. In contrast, champions like Dr. Mundo and Kha'Zix are on the receiving end of nerfs aimed at balancing their dominance in the jungle."
             },
             {
               "end_index": null,
               "start_index": null,
-              "title": "CS2",
+              "title": "2025年csgo国服的品牌销量排行榜(csgo国服十大产品排行榜)",
               "type": "url_citation",
-              "url": "http://mobile.163.com/keywords/0/4/004300530032/1.html",
-              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/img/09ab011f1e4b45a3d2c0e666c0de791a~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206582&x-signature=zW%2B9%2FfoSfpwQ4vPv%2F6dTgb2Rbto%3D",
-              "site_name": "搜索引擎-网易手机",
-              "publish_time": "2025年12月03日 00:00:00(CST) 星期三",
-              "summary": "如何看待《CS2》饰品市场崩溃：「虚拟郁金香」泡沫重演？闻号说经济 2025-10-28《CS2》新规致市场价格大崩盘手谈姬 2025-10-27CS2更新后饰品暴跌超50%，市值蒸发10亿美金成都商报 2025-10-27《CS2》饰品市值蒸发20亿美元，但玩家给出好评：让游戏回归游戏疯狂的《CS2》：玩家一夜亏损百万，游戏更新致交易市场闪崩【短讯】《CS2》饰品价格崩盘丨唐家三少当选北京作协分会主席丨《宝可梦传说：Z-A》销量突破580万情报姬 2025-10-24饰品市值蒸发近20亿美元《CS2》汰换更新后各种皮肤不值钱游戏之美 2025-10-24《CS2》饰品价格崩盘 市场一日蒸发近20亿美元财联社 2025-10-24V社为《CS2》引入“五红换一金”道具兑换规则IT之家 2025-10-24雷蛇《CS2》联名第二弹：旋风黑鲨 V3 PRO 耳机与风神 V2 X 座椅IT之家 2025-10-09"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "10.25版本前瞻:大量英雄加强!新增女帝、长者之森皮肤",
-              "type": "url_citation",
-              "url": "https://m.chaofan.com/news/ek8sos9smwyktoe.html",
-              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/img/d605571a821763f512883395a202255d~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206920&x-signature=eIi23bw0kiWYKvpEe%2B%2Fsa5kCzqc%3D",
-              "site_name": "搜索引擎-超凡电竞",
-              "publish_time": "2025年12月02日 00:00:00(CST) 星期二",
-              "summary": "10.25版本前瞻：大量英雄加强！新增女帝、长者之森皮肤\nGiannamiin\n2025-12-02\n超凡电竞12月9日讯 今日更新了10.25版本前瞻：大量英雄加强！新增女帝、长者之森皮肤。具体内容如下：\n削弱：安妮、小鱼人、烬、凯尔、凯隐、莫甘娜、莎弥拉\n增强：凤凰、艾克、酒桶、刀妹、艾翁、死歌、盲僧、璐璐、铁男、狗头、豹女、潘森、萨勒芬妮、岩雀、老鼠、亚索、永恩\n新增：女帝、长者之森皮肤\n"
-            },
-            {
-              "end_index": null,
-              "start_index": null,
-              "title": "2025年徽章csgo的品牌销量排行榜(徽章csgo十大产品排行榜)",
-              "type": "url_citation",
-              "url": "https://maisui1.com/art-wbnN3Ygu6596b5.htm",
-              "logo_url": "https://p3-volcsearch-sign.byteimg.com/isp-i18n-media/image/4297be20c0ae28257721eccde023edd5~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=vAjgmStfuRONv0iowzlMH19Ctzk%3D",
+              "url": "https://maisui1.com/art-QjcaevbW_bnN3Y.htm",
+              "logo_url": "https://p26-volcsearch-sign.byteimg.com/isp-i18n-media/image/4297be20c0ae28257721eccde023edd5~tplv-obj.jpeg?lk3s=7acb411c&scene=volc_search&x-expires=1828206907&x-signature=jV8ZmS26JIGR3ROBRov%2B8R3N%2BnY%3D",
               "site_name": "搜索引擎-麦穗日记",
-              "publish_time": "2025年12月07日 09:45:53(CST) 星期日",
+              "publish_time": "2025年12月06日 14:36:07(CST) 星期六",
               "cover_image": {
-                "url": "https://img.alicdn.com/bao/uploaded/O1CN01PFw3QF287Nsu6lbwk_!!6000000007885-0-yinhe.jpg_310x310.jpg",
+                "url": "https://img.alicdn.com/bao/uploaded/i3/3098479780/O1CN01a8ZcG22M7IXfYmpqL_!!3098479780.png_310x310.jpg",
                 "width": 0,
                 "height": 0
               },
-              "summary": "2025年徽章csgo的品牌销量排行榜（徽章csgo十大产品排行榜）\n如何选购徽章csgo，有为青年CSGO周边 : CS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章，\n2025-12-07 09:45:53\n徽章csgo销量第一名：CS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章\nCS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章\n天猫超市\n在售价¥15\n券\n￥0 券后 ¥15\nCS2布章CS2徽章csgo周边实体CS2胸章CS2周边实物CSGO勋章csgo徽章 类目：模玩/动漫/周边/娃圈三坑/桌游，游戏/电竞实物周边； \n该宝贝原价¥15， 现价¥15，  淘金币频道专享：淘金币频道抵扣5%起； ★最低 15元。\n销量No.2：幽游社CSGO反恐精英全球攻势2.0游戏周边10年老兵合金纪念币徽章\n幽游社CSGO反恐精英全球攻势2.0游戏周边10年老兵合金纪念币徽章\n天猫超市\n在售价¥58\n券\n￥10 券后 ¥48\n幽游社CS2CSGO10年老兵纪念币 类目：模玩/动漫/周边/娃圈三坑/桌游，游戏/电竞实物周边； \n该宝贝原价¥58， 现价¥48，  淘金币频道专享：淘金币频道抵扣7%起； ★最低 48元。\n销量No.3：Eleven原创csgo胸针AWP二西莫夫皮肤AK47徽章ins潮流背包配饰礼物\nEleven原创csgo胸针AWP二西莫夫皮肤AK47徽章ins潮流背包配饰礼物\n天猫超市\n在售价¥39.9\n券\n￥0 券后 ¥39.9\n原创胸针ins背包配饰礼物徽章 类目：饰品/流行首饰/时尚饰品新，胸针； \n该宝贝原价¥39.9， 现价¥39.9 ，  淘金币频道专享：淘金币频道抵扣3%起； ★最低 39.9元。\n销量No.4：CSGO反恐精英游戏幸运币 紫铜色硬币全球攻势纪念章CS徽章纪念章\nCSGO反恐精英游戏幸运币 紫铜色硬币全球攻势纪念章CS徽章纪念章\n天猫超市\n在售价¥15\n券\n￥9 券后 ¥6\ncsgo反恐精英游戏cs硬币幸运币 类目：节庆用品/礼品，创意/设计玩具； \n该宝贝原价¥15， 现价¥6，  淘金币频道专享：淘金币频道抵扣8%起； ★最低 6元。\n销量No.5：csgo游戏周边全球精英徽章礼盒装水平组大地球徽章纪念品白银黄金\ncs"
+              "summary": "无畏契约国服点券代充极速到账5-30分钟瓦罗兰特点券快充198/348 类目：电玩/配件/游戏/攻略，STEAM；该宝贝原价¥97.9， 现价¥96.9 ，  ★最低 96.9元。销量No.3：csgo/cs2/世界/steam官匹黑科技/5E平台国服国际服稳定辅协助csgo/cs2/世界/steam官匹黑科技/5E平台国服国际服稳定辅协助天猫超市在售价¥50券￥20.2 券后 ¥29.8csgo/cs2/完美世界/steam黑科技/ 类目：电玩/配件/游戏/攻略，STEAM；该宝贝原价¥50， 现价¥29.8，  ★最低 29.8元。销量No.4：csgo2官匹攻略上分定制款cs2csgo专拍steam国服国际服子弹追踪csgo2官匹攻略上分定制款cs2csgo专拍steam国服国际服子弹追踪天猫超市在售价¥6.88券￥0 券后 ¥6.88csgo2官匹攻略上分定制款cs2csgo专拍steam国服国际服子弹追踪 类目：电玩/配件/游戏/攻略，STEAM；"
             }
           ],
-          "text": "\n根据近期CS2饰品市场动态及权威信源分析，结合12月最新资讯，以下是市场核心趋势与未来预测：\n\n\n### **一、当前市场核心动态（2025年12月）**\n#### 1. **饰品价格波动与供需失衡**\n- **汰换系统冲击持续**：10月23日V社推出“五红换一金”规则后，蝴蝶刀、手套等顶级饰品价格暴跌75%（如原版蝴蝶刀从2万元跌至1万元），总市值从59亿美元蒸发至31亿美元，跌幅近49%。尽管csfloat数据显示12月1日市值回升约10亿美元，但部分饰品价格仍不稳定，市场呈现“暴跌-反弹-震荡”态势。\n- **新皮肤与武器箱上线**：12月3日CS20武器箱（含海豹短刀皮肤）及新版Cache地图更新，新增创意工坊主题皮肤，短期内可能稀释高端饰品稀缺性，进一步压制价格。\n\n#### 2. **赛事与社区热度**\n- **布达佩斯Major战况**：中国战队TYLOO、LVG、RA在第二阶段瑞士轮中表现不佳，已全部出局。国际豪强Faze、NAVI以3-0晋级，赛事关注度带动部分纪念周边（如“Bloodhound Gloves | Guerrilla”手套）小幅上涨，但整体未扭转市场颓势。\n- **二手交易市场分化**：高端饰品（如刀、手套）仍处低谷，而低价值皮肤（如CS2布章、纪念币徽章）因价格亲民（15-48元），销量逆势增长，12月天猫数据显示实体周边销量前三产品均价低于50元。\n\n\n### **二、关键影响因素分析**\n#### 1. **政策与系统更新**\n- **V社“汰换”规则刚性**：新合成饰品需7天交易冷却，导致囤积商无法快速抛售，市场流动性受限。SteamDT数据显示，12月1日-7日日均交易量仅为10月峰值的35%，供需矛盾加剧。\n- **技术迭代风险**：Unity引擎新版本可能优化饰品渲染，但未直接影响交易系统，短期对价格影响有限。\n\n#### 2. **玩家行为与市场预期**\n- **散户撤离与机构观望**：中小玩家因亏损（如“贷款囤货者”账面亏损超百万）转向低风险实体周边消费，而机构投资者持续观望政策动向，未大规模入场。\n- **社区情绪影响**：电竞粉丝因Major赛事热度提升对主题饰品需求，但传统高保值饰品（如“二西莫夫”AK）因合成成本降低，保值性进一步削弱。\n\n\n### **三、未来走势预测**\n#### 1. **短期（1-2周）**\n- **价格震荡筑底**：受“7天冷却期”效应延迟及新武器箱铺货影响，蝴蝶刀、手套等核心饰品价格或在8000-12000元区间波动，低价值皮肤（如普通步枪皮肤）可能小幅回升5%-10%。\n- **赛事周边短期红利**：Major决赛（12月14日）前，纪念徽章、战队周边或短暂冲高（如Eleven原创二西莫夫胸针或上涨至45元），但赛事结束后回落概率大。\n\n#### 2. **中期（1-3个月）**\n- **市场分化加剧**：  \n  - **风险资产**：顶级饰品（如“久经沙场”蝴蝶刀）因库存清理压力，价格或再跌15%-20%，但长期可能因合成限制逐渐恢复稀缺性。  \n  - **防御性资产**：低价值皮肤、实体周边（如15元布章）及纪念币因价格稳定，或成为散户避险选择，预计维持10%-15%增长。\n- **政策不确定性**：若V社推出新合成规则（如“十红换一金”），市场可能二次崩盘；若无重大更新，2026年Q1或逐步企稳。\n\n\n### **四、投资与消费建议**\n- **投机者**：规避高风险武器/手套，关注低价值皮肤（如AK-47 | 火蛇）或赛事周边，快进快出。  \n- **收藏者**：优先选择实体周边（如“10年老兵纪念币”）或CS20武器箱中的海豹短刀（磨损度低的藏品），等待市场情绪缓和。  \n- **普通玩家**：以自用为核心，避免“数字郁金香”泡沫，优先购买50元以下的实用皮肤或纪念徽章。\n\n\n**总结**：CS2饰品市场正经历“去泡沫化”阵痛，短期需警惕政策与库存压力，长期关注V社对交易系统的优化及电竞IP衍生价值。建议理性看待虚拟资产波动，回归游戏本身体验。",
+          "text": "### 2025年12月CS2饰品市场与重大更新资讯总结\n\n#### **一、起源2引擎上线，饰品视觉体验升级**\n- **引擎革新影响**：N卡驱动更新与舅舅党爆料显示，CS2（起源2引擎版本）即将上线。测试玩家反馈，饰品在光照效果和质感上有显著提升，例如金贴纸、红宝石皮肤呈现“熔岩般光泽”，视觉表现力接近“真实材质”。\n- **市场反应**：投资者已开始“扫货”，金贴纸均价单日翻倍，在售数量锐减，预示新引擎发布后高价值饰品需求激增。\n\n#### **二、布达佩斯Major赛事动态**\n- **赛事阶段**：2025年11月24日-12月14日，总奖金125万美元的布达佩斯Major举行，采用瑞士轮+单败淘汰制。\n- **中国队表现**：TYLOO在第二阶段首战以13-5击败PARIVISION，取得中国队首场胜利。\n- **赛程关键点**：12月4日-7日为瑞士轮第三阶段，12月11日-14日为决胜赛（Bo5决赛）。\n\n#### **三、饰品市场与虚拟投资风险**\n- **崩盘回顾**：2025年10月23日，Valve“以旧换新”政策导致饰品市场单日蒸发20亿美元，蝴蝶刀、专业手套等价格腰斩（跌幅超50%）。虚拟饰品稀缺性由游戏公司单方面控制，边际成本近乎为零，暴露投资高风险。\n- **当前波动**：尽管市场逐步企稳，部分饰品价格较10月低点反弹，但整体仍受“汰换规则”（如5件隐秘皮肤合成1把刀）影响，投机属性被削弱。\n\n#### **四、Steam与网易平台更新**\n- **Steam更新**：新增海豹短刀武器箱（CS20）及印花胶囊，庆祝CS诞生20周年。武器箱含经典海豹短刀皮肤，可在休闲/死亡竞赛模式体验新版Cache地图。\n- **网易BUFF功能**：推出电脑版模拟器，支持高清检视、磨损排行、皮肤鉴定等功能，交易秒到账，安全可靠。\n\n#### **五、行业争议与技术调整**\n- **AMD驱动封号事件**：2025年12月，Valve封禁使用AMD Anti-Lag+功能的玩家，因该功能篡改游戏代码。Valve建议禁用并等待驱动更新后解封。\n- **引擎优化争议**：职业选手ropz、s1mple反映sub-tick技术稳定性不足，Valve通过着色器调整提升可见度，但帧率优化仍需改进。\n\n#### **六、投资建议与注意事项**\n1. **短期关注**：起源2引擎上线前后，高价值饰品（如金贴纸、红宝石皮肤）或因视觉升级涨价。\n2. **风险提示**：虚拟饰品价格受游戏公司政策（如汰换规则、T+14交易冷却）影响极大，建议分散投资，避免集中持有单一品类。\n3. **赛事联动**：布达佩斯Major期间，赛事相关贴纸、胶囊可能因热度上涨，可结合赛程动态布局。\n\n**总结**：CS2饰品市场正处于“引擎升级”与“赛事周期”双重驱动阶段，短期波动加剧，但长期稀缺性逻辑未变。投资者需警惕政策风险，关注官方公告与赛事动态，理性评估虚拟资产价值。",
           "type": "output_text",
           "logprobs": null
         }
@@ -493,23 +394,23 @@
   "top_logprobs": null,
   "truncation": null,
   "usage": {
-    "input_tokens": 68081,
+    "input_tokens": 36478,
     "input_tokens_details": {
       "cached_tokens": 0
     },
-    "output_tokens": 4781,
+    "output_tokens": 5641,
     "output_tokens_details": {
-      "reasoning_tokens": 3302
+      "reasoning_tokens": 4563
     },
-    "total_tokens": 72862,
+    "total_tokens": 42119,
     "tool_usage": {
-      "web_search": 20
+      "web_search": 18
     },
     "tool_usage_details": {
       "web_search": {
-        "douyin": 20,
-        "search_engine": 20,
-        "toutiao": 20
+        "douyin": 13,
+        "search_engine": 18,
+        "toutiao": 18
       }
     }
   },
@@ -518,5 +419,5 @@
     "type": "disabled"
   },
   "store": true,
-  "expire_at": 1765394085
+  "expire_at": 1765400096
 }

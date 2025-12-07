@@ -1,8 +1,7 @@
 # --- Environment & Credentials ---
 # Ignore environment variables file
 .env
-# Ignore API keys and sensitive configuration backups
-buffotte_backups/
+
 
 # --- Python ---
 # Ignore Python bytecode and cache
