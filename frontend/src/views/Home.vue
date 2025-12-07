@@ -23,10 +23,30 @@
         </div>
       </div>
       <div class="card">
+        <div class="card-header">用户档案</div>
+        <div class="card-body profile-card-body">
+          <div>
+            <div class="profile-line">
+              <span class="profile-label">用户名:</span>
+              <span class="profile-value">{{ user?.username || '未设置' }}</span>
+            </div>
+            <div class="profile-line">
+              <span class="profile-label">邮箱:</span>
+              <span class="profile-value">{{ user?.email || '未设置' }}</span>
+            </div>
+            <div class="profile-line">
+              <span class="profile-label">注册时间:</span>
+              <span class="profile-value">{{ formatRegistrationTime(user?.created_at) || '未设置' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-header">快速操作</div>
         <div class="card-body">
-          <router-link to="/profile" class="action-link">→ 查看档案</router-link>
+          <!-- 移除了指向 /profile 的链接 -->
           <router-link to="/kline" class="action-link">→ K线数据</router-link>
+          <router-link to="/news" class="action-link">→ 查看资讯</router-link>
         </div>
       </div>
       <div class="card placeholder">
@@ -61,6 +81,15 @@ export default {
       sessionTime.value = `${h}:${m}:${s}`
     }
 
+    const formatRegistrationTime = (timestamp) => {
+      if (!timestamp) return ''
+      const createdDate = new Date(timestamp)
+      const now = new Date()
+      const diffTime = now - createdDate
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      return `注册 ${diffDays} 天`
+    }
+
     onMounted(() => {
       try {
         user.value = JSON.parse(localStorage.getItem('user'))
@@ -80,7 +109,7 @@ export default {
       if (timer) clearInterval(timer)
     })
 
-    return { user, sessionTime, showBoot }
+    return { user, sessionTime, showBoot, formatRegistrationTime }
   }
 }
 </script>
@@ -198,44 +227,96 @@ export default {
 .stat-line {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
-  color: rgba(0, 255, 127, 0.8);
+  margin-bottom: 8px;
   font-size: 13px;
 }
 
 .stat-label {
-  opacity: 0.7;
+  color: var(--secondary-green);
+  opacity: 0.8;
 }
 
 .stat-value {
-  font-weight: 600;
+  color: var(--primary-green);
+  font-weight: 500;
 }
 
 .stat-value.online {
-  color: #00ff88;
+  color: #00ff8b;
+  text-shadow: 0 0 8px rgba(0, 255, 139, 0.5);
 }
 
 .action-link {
   display: block;
-  padding: 10px 12px;
-  margin: 8px 0;
-  color: rgba(0, 255, 127, 0.8);
+  color: var(--primary-green);
   text-decoration: none;
-  border-left: 2px solid transparent;
-  transition: all 0.2s;
+  padding: 8px 0;
+  transition: color 0.2s, transform 0.2s;
+  font-size: 13px;
+
+  &:hover {
+    color: #00cc66;
+    transform: translateX(5px);
+    text-shadow: 0 0 8px rgba(0, 204, 102, 0.3);
+  }
 }
 
-.action-link:hover {
+.profile-card-body {
+  padding: 16px;
+}
+
+.profile-line {
+  display: flex;
+  margin-bottom: 8px;
+  font-size: 13px;
+  align-items: center;
+}
+
+.profile-label {
+  color: var(--secondary-green);
+  opacity: 0.8;
+  width: 60px; /* 固定标签宽度 */
+  flex-shrink: 0;
+}
+
+.profile-value {
   color: var(--primary-green);
-  background: rgba(0, 255, 127, 0.05);
-  border-left-color: var(--primary-green);
-  padding-left: 16px;
+  font-weight: 500;
+  flex-grow: 1;
+  word-break: break-all;
+}
+
+.profile-action {
+  margin-top: 15px;
+  border-top: 1px dashed rgba(0, 255, 127, 0.1);
+  padding-top: 15px;
+  text-align: center;
+}
+
+.action-button {
+  background: rgba(0, 255, 127, 0.1);
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 13px;
+
+  &:hover {
+    background: var(--primary-green);
+    color: #0a0e0a;
+    box-shadow: 0 0 15px rgba(0, 255, 127, 0.6);
+    transform: translateY(-2px);
+  }
 }
 
 .placeholder-text {
-  color: rgba(0, 255, 127, 0.4);
-  font-style: italic;
+  color: var(--secondary-green);
+  opacity: 0.5;
   text-align: center;
   padding: 20px;
+  font-size: 14px;
 }
 </style>

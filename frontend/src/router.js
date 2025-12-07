@@ -4,7 +4,6 @@ import Register from './views/Register.vue'
 import MainLayout from './layouts/MainLayout.vue'
 import Home from './views/Home.vue'
 import Kline from './views/Kline.vue'
-import Profile from './views/Profile.vue'
 import NewsView from './views/NewsView.vue'
 
 const routes = [
@@ -16,7 +15,6 @@ const routes = [
     redirect: '/dashboard',
     children: [
       { path: 'dashboard', component: Home, alias: '/home' },
-      { path: 'profile', component: Profile },
       { path: 'kline', component: Kline },
       { path: 'news', component: NewsView }
     ]

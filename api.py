@@ -92,14 +92,17 @@ async def login(request: LoginRequest, http_request: Request):
             raise HTTPException(status_code=500, detail=str(e))
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT username FROM user WHERE email = %s", (request.email,))
+                cursor.execute("SELECT username, created_at FROM user WHERE email = %s", (request.email,))
                 result = cursor.fetchone()
                 if result:
                     username = result[0]
+                    created_at = result[1]
+                    # 将 datetime 对象转换为 ISO 格式字符串
+                    created_at_str = created_at.isoformat() if created_at else None
                     return {
                         "success": True,
                         "message": "登录成功",
-                        "user": {"email": request.email, "username": username}
+                        "user": {"email": request.email, "username": username, "created_at": created_at_str}
                     }
                 else:
                     raise HTTPException(status_code=404, detail="用户不存在")

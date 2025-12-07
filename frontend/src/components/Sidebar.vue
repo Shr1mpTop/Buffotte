@@ -9,10 +9,6 @@
         <span class="icon">■</span>
         <span class="text">首页</span>
       </router-link>
-      <router-link to="/profile" class="nav-item" active-class="active">
-        <span class="icon">▣</span>
-        <span class="text">档案</span>
-      </router-link>
       <router-link to="/kline" class="nav-item" active-class="active">
         <span class="icon">▤</span>
         <span class="text">市场</span>
