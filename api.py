@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from user_manager import UserManager
 from db.kline_data_processor import KlineDataProcessor
 import pymysql
+from datetime import date, datetime
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -112,18 +113,31 @@ async def login(request: LoginRequest, http_request: Request):
     else:
         raise HTTPException(status_code=401, detail="邮箱或密码错误")
 
-@app.get("/api/kline/data")
-async def get_kline_data():
+@app.get("/api/kline/chart-data")
+async def get_chart_data():
+    """
+    统一的图表数据接口，一次性返回历史K线和预测数据。
+    """
+    conn = None  # Ensure conn is defined
     try:
         conn = kline_processor.get_db_connection()
+        
+        # 1. 获取历史数据
         with conn.cursor() as cursor:
-            cursor.execute("SELECT timestamp, open_price, high_price, low_price, close_price, volume, turnover FROM kline_data_day ORDER BY timestamp")
+            # 获取最新的 1000 条历史数据
+            cursor.execute("""
+                SELECT timestamp, open_price, high_price, low_price, close_price, volume, turnover 
+                FROM (
+                    SELECT * FROM kline_data_day ORDER BY timestamp DESC LIMIT 1000
+                ) AS sub 
+                ORDER BY timestamp ASC
+            """)
             rows = cursor.fetchall()
-        conn.close()
-        data = []
+        
+        historical_data = []
         for row in rows:
-            data.append({
-                'timestamp': row[0],
+            historical_data.append({
+                'timestamp': row[0] * 1000, # 转换为毫秒时间戳
                 'open': float(row[1]),
                 'high': float(row[2]),
                 'low': float(row[3]),
@@ -131,11 +145,33 @@ async def get_kline_data():
                 'volume': row[5],
                 'turnover': float(row[6])
             })
-        return {"data": data}
+
+        # 2. 获取预测数据
+        prediction_data = []
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor: # 使用 DictCursor 更方便
+            # 只获取今天及未来的预测
+            cursor.execute("SELECT * FROM kline_data_prediction WHERE date >= %s ORDER BY date", (date.today(),))
+            predictions = cursor.fetchall()
+
+        for pred in predictions:
+            # 将 date 对象转换为毫秒时间戳
+            ts = int(datetime.combine(pred['date'], datetime.min.time()).timestamp() * 1000)
+            prediction_data.append({
+                "timestamp": ts,
+                "predicted_close_price": float(pred['predicted_close_price']) if pred['predicted_close_price'] is not None else None,
+                "rolling_std_7": float(pred['rolling_std_7']) if pred['rolling_std_7'] is not None else None,
+            })
+            
+        return {"historical": historical_data, "prediction": prediction_data}
+
     except pymysql.err.OperationalError as e:
         raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取K线数据失败: {e}")
+        logging.exception("获取图表数据失败")
+        raise HTTPException(status_code=500, detail=f"获取图表数据失败: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
 
 @app.post("/api/kline/refresh")
 async def refresh_kline_data():

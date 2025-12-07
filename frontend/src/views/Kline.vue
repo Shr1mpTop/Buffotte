@@ -1,484 +1,398 @@
 <template>
-  <div class="kline">
-    <div class="kline-header">
-      <h1 class="title">$ ./kline_monitor.sh</h1>
-      <div class="stats-bar">
-        <span class="stat-item">TOTAL: {{ totalDays }} DAYS</span>
-        <span class="stat-item">RANGE: {{ dateRange }}</span>
-        <button class="refresh-btn" @click="refreshData" :disabled="isRefreshing">
-          <span v-if="!isRefreshing">REFRESH</span>
-          <span v-else>⏳ LOADING...</span>
-        </button>
+  <div class="kline-container">
+    <div class="controls">
+      <div class="switch-container">
+        <label for="prediction-toggle">预测</label>
+        <label class="switch">
+          <input type="checkbox" id="prediction-toggle" v-model="showPrediction" @change="updateChart">
+          <span class="slider round"></span>
+        </label>
       </div>
-      <div v-if="toastMessage" class="toast" :class="{ show: showToast }">
-        {{ toastMessage }}
-      </div>
-    </div>
-    <div class="kline-content">
-      <div class="chart-container">
-        <v-chart :option="chartOption" :autoresize="true" />
+      <div class="switch-container">
+        <label for="confidence-toggle">置信区间</label>
+        <label class="switch">
+          <input type="checkbox" id="confidence-toggle" v-model="showConfidence" @change="updateChart" :disabled="!showPrediction">
+          <span class="slider round"></span>
+        </label>
       </div>
     </div>
+    <div ref="chart" class="chart"></div>
   </div>
 </template>
 
-<script>
-import { ref, onMounted } from 'vue'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { CandlestickChart } from 'echarts/charts'
-import { DataZoomComponent, GridComponent, TooltipComponent } from 'echarts/components'
-import VChart from 'vue-echarts'
-import axios from 'axios'
-
-use([
-  CanvasRenderer,
-  CandlestickChart,
-  DataZoomComponent,
+<script setup>
+import { ref, onMounted, shallowRef, watch } from 'vue';
+import * as echarts from 'echarts/core';
+import {
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
   GridComponent,
-  TooltipComponent
-])
+  DataZoomComponent,
+  MarkPointComponent,
+  MarkLineComponent
+} from 'echarts/components';
+import { CandlestickChart, LineChart } from 'echarts/charts';
+import { CanvasRenderer } from 'echarts/renderers';
+import axios from 'axios';
 
-export default {
-  name: 'Kline',
-  components: {
-    VChart
+echarts.use([
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+  DataZoomComponent,
+  MarkPointComponent,
+  MarkLineComponent,
+  CandlestickChart,
+  LineChart,
+  CanvasRenderer
+]);
+
+const chart = ref(null);
+const myChart = shallowRef(null);
+const showPrediction = ref(true);
+const showConfidence = ref(true);
+
+const upColor = '#00ff00';
+const downColor = '#ff0000';
+
+let allData = {}; // 用于存储从 API 获取的原始数据
+
+// ECharts 配置项
+const option = {
+  backgroundColor: '#000',
+  title: {
+    text: 'Futuristic K-Line',
+    left: 'center',
+    textStyle: { color: '#00ff00' }
   },
-  setup() {
-    const totalDays = ref(0)
-    const dateRange = ref('')
-    const isRefreshing = ref(false)
-    const toastMessage = ref('')
-    const showToast = ref(false)
-    const refreshTimestamps = ref([])
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'cross' },
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderColor: '#00ff00',
+    textStyle: { color: '#00ff00' }
+  },
+  legend: {
+    data: ['Daily K', 'MA5', 'MA10', 'Prediction', 'Confidence Interval'],
+    top: '10%',
+    textStyle: { color: '#ccc' },
+    inactiveColor: '#555',
+    selected: {
+      'Prediction': true,
+      'Confidence Interval': true
+    }
+  },
+  grid: { left: '10%', right: '10%', bottom: '15%' },
+  xAxis: {
+    type: 'category',
+    scale: true,
+    boundaryGap: false,
+    axisLine: { onZero: false, lineStyle: { color: '#8392A5' } },
+    splitLine: { show: false },
+    min: 'dataMin',
+    max: 'dataMax'
+  },
+  yAxis: {
+    scale: true,
+    splitArea: { show: true, areaStyle: { color: ['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.4)'] } },
+    axisLine: { lineStyle: { color: '#8392A5' } }
+  },
+  dataZoom: [
+    { type: 'inside', start: 50, end: 100 },
+    {
+      show: true,
+      type: 'slider',
+      top: '90%',
+      start: 50,
+      end: 100,
+      handleIcon: 'M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
+      handleSize: '80%',
+      handleStyle: {
+        color: '#fff',
+        shadowBlur: 3,
+        shadowColor: 'rgba(0, 0, 0, 0.6)',
+        shadowOffsetX: 2,
+        shadowOffsetY: 2
+      }
+    }
+  ],
+  series: [] // 系列将动态生成
+};
+
+// 数据处理函数
+function splitData(rawData) {
+  let categoryData = [];
+  let values = [];
+  let volumes = [];
+  for (let i = 0; i < rawData.length; i++) {
+    categoryData.push(new Date(rawData[i].timestamp).toLocaleDateString());
+    values.push([rawData[i].open, rawData[i].close, rawData[i].low, rawData[i].high]);
+    volumes.push([i, rawData[i].volume, rawData[i].open > rawData[i].close ? 1 : -1]);
+  }
+  return { categoryData, values, volumes };
+}
+
+function calculateMA(dayCount, data) {
+  var result = [];
+  for (var i = 0, len = data.length; i < len; i++) {
+    if (i < dayCount) {
+      result.push('-');
+      continue;
+    }
+    var sum = 0;
+    for (var j = 0; j < dayCount; j++) {
+      sum += data[i - j][1]; // close price
+    }
+    result.push((sum / dayCount).toFixed(2));
+  }
+  return result;
+}
+
+function processPredictionData(predictionRaw) {
+    const predictionLine = [];
+    const confidenceArea = [];
     
-    const chartOption = ref({
-      backgroundColor: 'transparent',
-      grid: {
-        left: '60px',
-        right: '60px',
-        bottom: '80px',
-        top: '40px'
-      },
-      xAxis: {
-        type: 'time',
-        min: function(value) {
-          return value.min
-        },
-        max: function(value) {
-          // X轴最大值向未来偏移一天
-          return value.max + 24 * 3600 * 1000
-        },
-        axisLine: {
-          lineStyle: {
-            color: 'rgba(0, 255, 127, 0.5)',
-            width: 2
-          }
-        },
-        axisLabel: {
-          color: 'rgba(0, 255, 127, 0.8)',
-          formatter: function(value) {
-            // 直接使用UTC日期，因为数据点已经在23:55:10
-            const date = new Date(value)
-            const year = date.getUTCFullYear()
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-            const day = String(date.getUTCDate()).padStart(2, '0')
-            return `${year}-${month}-${day}`
-          },
-          rotate: 45,
-          fontSize: 11,
-          fontFamily: 'monospace'
-        },
-        splitLine: {
-          show: false
-        }
-      },
-      yAxis: {
-        type: 'value',
-        scale: true,
-        axisLine: {
-          lineStyle: {
-            color: 'rgba(0, 255, 127, 0.5)',
-            width: 2
-          }
-        },
-        axisLabel: {
-          color: 'rgba(0, 255, 127, 0.8)',
-          fontSize: 11,
-          fontFamily: 'monospace',
-          formatter: '{value}'
-        },
-        splitLine: {
-          lineStyle: {
-            color: 'rgba(0, 255, 127, 0.08)',
-            type: 'dashed'
-          }
-        }
-      },
-      dataZoom: [
-        {
-          type: 'inside',
-          xAxisIndex: [0],
-          start: 0,
-          end: 100,
-          minValueSpan: 3600 * 24 * 1000 * 7 // 最小7天
-        },
-        {
-          show: true,
-          xAxisIndex: [0],
-          type: 'slider',
-          bottom: '10px',
-          start: 0,
-          end: 100,
-          height: 30,
-          handleIcon: 'path://M10.7,11.9H9.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4h1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z',
-          handleSize: '100%',
-          handleStyle: {
-            color: 'rgba(0, 255, 127, 0.6)',
-            shadowColor: 'rgba(0, 255, 127, 0.4)',
-            shadowBlur: 10
-          },
-          textStyle: {
-            color: 'rgba(0, 255, 127, 0.7)',
-            fontFamily: 'monospace'
-          },
-          borderColor: 'rgba(0, 255, 127, 0.3)',
-          fillerColor: 'rgba(0, 255, 127, 0.1)',
-          dataBackground: {
-            lineStyle: {
-              color: 'rgba(0, 255, 127, 0.3)'
-            },
-            areaStyle: {
-              color: 'rgba(0, 255, 127, 0.1)'
-            }
-          }
-        }
-      ],
-      series: [
-        {
-          name: 'K线',
-          type: 'candlestick',
-          data: [],
-          itemStyle: {
-            color: '#00ff7f',
-            color0: '#ff4444',
-            borderColor: '#00ff7f',
-            borderColor0: '#ff4444',
-            borderWidth: 1.5
-          },
-          emphasis: {
-            itemStyle: {
-              color: '#00ffaa',
-              color0: '#ff6666',
-              borderColor: '#00ffaa',
-              borderColor0: '#ff6666',
-              borderWidth: 2,
-              shadowColor: 'rgba(0, 255, 127, 0.5)',
-              shadowBlur: 10
-            }
-          }
-        }
-      ],
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'cross',
-          lineStyle: {
-            color: 'rgba(0, 255, 127, 0.5)',
-            type: 'dashed'
-          }
-        },
-        backgroundColor: 'rgba(0, 0, 0, 0.95)',
-        borderColor: 'rgba(0, 255, 127, 0.6)',
-        borderWidth: 2,
-        textStyle: {
-          color: '#00ff7f',
-          fontFamily: 'monospace',
-          fontSize: 12
-        },
-        padding: 12,
-        formatter: function (params) {
-          if (!params || !params[0]) return ''
-          const data = params[0].data
-          const timestamp = data[0]
-          // 使用UTC方法获取正确的日期
-          const date = new Date(timestamp)
-          const year = date.getUTCFullYear()
-          const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-          const day = String(date.getUTCDate()).padStart(2, '0')
-          const dateStr = `${year}-${month}-${day}`
-          
-          const change = ((data[2] - data[1]) / data[1] * 100).toFixed(2)
-          const changeColor = change >= 0 ? '#00ff7f' : '#ff4444'
-          const changeSymbol = change >= 0 ? '+' : ''
-          
-          return `
-            <div style="font-family: monospace;">
-              <div style="border-bottom: 1px solid rgba(0, 255, 127, 0.3); padding-bottom: 6px; margin-bottom: 6px;">
-                <span style="color: #00ff7f;">📅 ${dateStr}</span>
-              </div>
-              <div style="margin: 4px 0;">开盘: <span style="color: #00ffaa;">${data[1].toFixed(2)}</span></div>
-              <div style="margin: 4px 0;">收盘: <span style="color: #00ffaa;">${data[2].toFixed(2)}</span></div>
-              <div style="margin: 4px 0;">最低: <span style="color: #00ffaa;">${data[3].toFixed(2)}</span></div>
-              <div style="margin: 4px 0;">最高: <span style="color: #00ffaa;">${data[4].toFixed(2)}</span></div>
-              <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(0, 255, 127, 0.3);">
-                涨跌幅: <span style="color: ${changeColor}; font-weight: bold;">${changeSymbol}${change}%</span>
-              </div>
-            </div>
-          `
-        }
-      }
-    })
+    predictionRaw.forEach(p => {
+        const date = new Date(p.timestamp).toLocaleDateString();
+        const price = p.predicted_close_price;
+        const std = p.rolling_std_7;
 
-    const loadKlineData = async () => {
-      try {
-        const response = await axios.get('http://localhost:8000/api/kline/data')
-        const data = response.data.data
-        const klineData = []
-        let minTime = Infinity
-        let maxTime = -Infinity
+        predictionLine.push([date, price]);
         
-        data.forEach(item => {
-          // 后端返回的timestamp已经是UTC+8时间戳，直接转换为毫秒
-          const timestamp = item.timestamp * 1000
-          klineData.push([timestamp, item.open, item.close, item.low, item.high])
-          if (timestamp < minTime) minTime = timestamp
-          if (timestamp > maxTime) maxTime = timestamp
-        })
-        
-        chartOption.value.series[0].data = klineData
-
-        // 计算统计信息
-        totalDays.value = data.length
-        const startDate = new Date(minTime)
-        const endDate = new Date(maxTime)
-        dateRange.value = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`
-
-        // 设置默认缩放范围为最近一个月
-        if (totalDays.value > 30) {
-          const startPercentage = 100 - (30 / totalDays.value) * 100
-          // 应用于所有 dataZoom 组件
-          chartOption.value.dataZoom.forEach(dz => {
-            dz.start = startPercentage
-            dz.end = 100
-          })
-        } else {
-          // 如果数据不足一个月，则显示全部
-           chartOption.value.dataZoom.forEach(dz => {
-            dz.start = 0
-            dz.end = 100
-          })
+        if (std !== null) {
+            confidenceArea.push([
+                date,
+                price - 1.96 * std, // 95% confidence lower bound
+                price + 1.96 * std  // 95% confidence upper bound
+            ]);
         }
+    });
 
-        // 根据时间范围动态设置X轴标签间隔
-        const timeRange = maxTime - minTime
-        const days = timeRange / (24 * 3600 * 1000)
-        let interval
-        if (days <= 30) {
-          interval = 2 * 24 * 3600 * 1000 // 每2天
-        } else if (days <= 90) {
-          interval = 7 * 24 * 3600 * 1000 // 每周
-        } else {
-          interval = 14 * 24 * 3600 * 1000 // 每两周
-        }
-        chartOption.value.xAxis.axisLabel.interval = interval
-      } catch (error) {
-        console.error('加载K线数据失败:', error)
-      }
+    return { predictionLine, confidenceArea };
+}
+
+
+// 更新图表函数
+function updateChart() {
+  if (!myChart.value || !allData.historical) return;
+
+  const { categoryData, values } = splitData(allData.historical);
+  const { predictionLine, confidenceArea } = processPredictionData(allData.prediction);
+
+  // 将预测数据的日期添加到 categoryData
+  const combinedCategoryData = [...categoryData];
+  predictionLine.forEach(p => {
+    if (!combinedCategoryData.includes(p[0])) {
+      combinedCategoryData.push(p[0]);
     }
+  });
 
-    const showToastMessage = (message) => {
-      toastMessage.value = message
-      showToast.value = true
-      setTimeout(() => {
-        showToast.value = false
-      }, 3000)
-    }
-
-    const refreshData = async () => {
-      // 检查速率限制：1分钟内最多3次
-      const now = Date.now()
-      const oneMinuteAgo = now - 60000
-      
-      // 清除1分钟前的记录
-      refreshTimestamps.value = refreshTimestamps.value.filter(t => t > oneMinuteAgo)
-      
-      if (refreshTimestamps.value.length >= 3) {
-        showToastMessage('⚠️ 点击太快了，休息一下吧~')
-        return
+  const series = [
+    {
+      name: 'Daily K',
+      type: 'candlestick',
+      data: values,
+      itemStyle: {
+        color: upColor,
+        color0: downColor,
+        borderColor: upColor,
+        borderColor0: downColor
       }
-      
-      isRefreshing.value = true
-      try {
-        // 调用后端刷新接口
-        const refreshResponse = await axios.post('http://localhost:8000/api/kline/refresh')
-        if (refreshResponse.data.success) {
-          // 刷新成功后重新加载数据
-          await loadKlineData()
-          refreshTimestamps.value.push(now)
-          showToastMessage('✅ 数据刷新成功')
-        }
-      } catch (error) {
-        console.error('刷新数据失败:', error)
-        showToastMessage('❌ 刷新失败: ' + (error.response?.data?.detail || error.message))
-      } finally {
-        isRefreshing.value = false
-      }
+    },
+    {
+      name: 'MA5',
+      type: 'line',
+      data: calculateMA(5, values),
+      smooth: true,
+      lineStyle: { opacity: 0.5 }
+    },
+    {
+      name: 'MA10',
+      type: 'line',
+      data: calculateMA(10, values),
+      smooth: true,
+      lineStyle: { opacity: 0.5 }
     }
+  ];
 
-    onMounted(() => {
-      loadKlineData()
-    })
+  if (showPrediction.value) {
+    series.push({
+      name: 'Prediction',
+      type: 'line',
+      data: predictionLine,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: {
+        color: '#00ffff',
+        width: 2,
+        type: 'dashed'
+      }
+    });
 
-    return {
-      chartOption,
-      totalDays,
-      dateRange,
-      isRefreshing,
-      toastMessage,
-      showToast,
-      refreshData
+    if (showConfidence.value) {
+      series.push({
+        name: 'Confidence Interval',
+        type: 'line',
+        data: confidenceArea.map(d => [d[0], d[1]]), // Lower bound
+        lineStyle: { opacity: 0 },
+        stack: 'confidence',
+        symbol: 'none'
+      });
+      series.push({
+        name: 'Confidence Interval Upper',
+        type: 'line',
+        data: confidenceArea.map(d => [d[0], d[2] - d[1]]), // Difference for stacking
+        lineStyle: { opacity: 0 },
+        areaStyle: { color: 'rgba(0, 255, 255, 0.2)' },
+        stack: 'confidence',
+        symbol: 'none'
+      });
     }
   }
+
+  myChart.value.setOption({
+    ...option,
+    xAxis: { ...option.xAxis, data: combinedCategoryData },
+    legend: {
+      ...option.legend,
+      selected: {
+        'Prediction': showPrediction.value,
+        'Confidence Interval': showPrediction.value && showConfidence.value,
+        'Daily K': true,
+        'MA5': true,
+        'MA10': true
+      }
+    },
+    series: series
+  });
 }
+
+// 监听开关变化
+watch([showPrediction, showConfidence], () => {
+    if (!showPrediction.value) {
+        showConfidence.value = false;
+    }
+    updateChart();
+});
+
+
+onMounted(async () => {
+  myChart.value = echarts.init(chart.value, 'dark');
+  myChart.value.showLoading();
+
+  try {
+    const response = await axios.get('http://localhost:8000/api/kline/chart-data');
+    allData = response.data;
+    updateChart();
+  } catch (error) {
+    console.error('Failed to fetch chart data:', error);
+    // You can show an error message on the chart here
+  } finally {
+    myChart.value.hideLoading();
+  }
+});
+
 </script>
 
 <style scoped>
-.kline {
+.kline-container {
   width: 100%;
-  max-width: 1400px;
-  padding: 24px;
-  margin: 40px auto 0;
-  animation: fadeIn 0.6s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.kline-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid rgba(0, 255, 127, 0.3);
-}
-
-.title {
-  color: #00ff7f;
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  font-family: 'Courier New', monospace;
-  text-shadow: 0 0 15px rgba(0, 255, 127, 0.4);
-  letter-spacing: 1px;
-}
-
-.stats-bar {
+  height: 100vh;
+  background-color: #000;
   display: flex;
-  gap: 24px;
-  margin-top: 12px;
-}
-
-.stat-item {
-  color: rgba(0, 255, 127, 0.8);
-  font-size: 13px;
-  font-family: 'Courier New', monospace;
-  padding: 6px 12px;
-  background: rgba(0, 255, 127, 0.05);
-  border: 1px solid rgba(0, 255, 127, 0.2);
-  border-radius: 4px;
-  letter-spacing: 0.5px;
-}
-
-.refresh-btn {
-  color: rgba(0, 255, 127, 0.9);
-  font-size: 13px;
-  font-family: 'Courier New', monospace;
-  padding: 6px 16px;
-  background: rgba(0, 255, 127, 0.1);
-  border: 1px solid rgba(0, 255, 127, 0.4);
-  border-radius: 4px;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 600;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: rgba(0, 255, 127, 0.2);
-  border-color: rgba(0, 255, 127, 0.6);
-  box-shadow: 0 0 10px rgba(0, 255, 127, 0.3);
-  transform: translateY(-1px);
-}
-
-.refresh-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.toast {
-  position: fixed;
-  top: 100px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-100px);
-  background: rgba(0, 0, 0, 0.95);
-  color: #00ff7f;
-  padding: 12px 24px;
-  border-radius: 6px;
-  border: 2px solid rgba(0, 255, 127, 0.5);
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  box-shadow: 0 0 20px rgba(0, 255, 127, 0.3);
-  opacity: 0;
-  transition: all 0.4s ease;
-  z-index: 10000;
-  pointer-events: none;
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.kline-content {
-  display: flex;
+  flex-direction: column;
   justify-content: center;
-}
-
-.chart-container {
-  width: 100%;
-  height: 650px;
-  background: rgba(0, 0, 0, 0.7);
-  border: 2px solid rgba(0, 255, 127, 0.3);
-  border-radius: 8px;
+  align-items: center;
   padding: 20px;
-  box-shadow: 
-    0 0 20px rgba(0, 255, 127, 0.1),
-    inset 0 0 30px rgba(0, 255, 127, 0.03);
-  position: relative;
 }
 
-.chart-container::before {
-  content: '';
+.controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.switch-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #00ff8b;
+  font-family: 'Source Code Pro', monospace;
+}
+
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
   position: absolute;
+  cursor: pointer;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    linear-gradient(90deg, transparent 0%, rgba(0, 255, 127, 0.02) 50%, transparent 100%),
-    linear-gradient(0deg, transparent 0%, rgba(0, 255, 127, 0.02) 50%, transparent 100%);
-  pointer-events: none;
-  border-radius: 6px;
+  background-color: #333;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #00ff8b;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #00ff8b;
+}
+
+input:disabled + .slider {
+  background-color: #222;
+  cursor: not-allowed;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 24px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.chart {
+  width: 100%;
+  height: 85%;
 }
 </style>
