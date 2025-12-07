@@ -22,6 +22,6 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 4173,
-    allowedHosts: ['buffotte.hezhili.online', 'localhost', '127.0.0.1']
+    allowedHosts: ['buffotte.hezhili.online', 'home.hezhili.online', 'localhost', '127.0.0.1']
   }
 })

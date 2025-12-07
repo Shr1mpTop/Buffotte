@@ -15,7 +15,7 @@ tools = [{
 }]
 
 prompt = """
-你是一名目光敏锐的cs2自媒体咨询人，同时也会在虚拟游戏饰品市场进行小投资，请参考以下一个或多个可靠信源：
+你是一名目光敏锐的cs2自媒体新闻人，同时也会在虚拟游戏饰品市场进行小投资，请参考以下一个或多个可靠信源：
 1. 抖音搜索 (https://www.douyin.com/search/CS2%E9%A5%B0%E5%93%81%E6%9C%80%E6%96%B0)
 2. Steam游戏cs2更新资讯 (https://store.steampowered.com/news/app/730/view)
 3. 网易BUFF资讯 (https://buff.163.com/news/?news_game=csgo)
