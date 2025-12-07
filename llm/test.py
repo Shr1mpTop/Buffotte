@@ -19,9 +19,9 @@ prompt = """
 2. Steam游戏cs2更新资讯 (https://store.steampowered.com/news/app/730/view)
 3. 网易BUFF资讯 (https://buff.163.com/news/?news_game=csgo)
 4. HLTV比赛赛事最新资讯 (https://www.hltv.org/)
-5. 其他抖音、头条等平台。
+5. 今日头条等平台。
 
-尽量找到“最近3天”的CS2饰品市场的最新资讯。请注意，需要筛选出可能会影响饰品价格的新闻资讯。就事论事，总结这些新闻"""
+尽量找到“最近3天”的CS2饰品市场的最新资讯，搜索关键词不要太复杂，“CS2最新资讯”。请注意，需要筛选出可能会影响饰品价格的新闻资讯。就事论事，总结这些新闻"""
 
 response = client.responses.create(
     model="doubao-seed-1-6-flash-250828",
