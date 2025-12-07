@@ -53,6 +53,7 @@ const chart = ref(null);
 const myChart = shallowRef(null);
 const showPrediction = ref(true);
 const showConfidence = ref(true);
+let isInitialLoad = true; // Flag for initial zoom setting
 
 const upColor = '#00ff00';
 const downColor = '#ff0000';
@@ -252,11 +253,9 @@ function updateChart() {
     }
   }
 
-  myChart.value.setOption({
-    ...option,
-    xAxis: { ...option.xAxis, data: combinedCategoryData },
+  const optionToSet = {
+    xAxis: { data: combinedCategoryData },
     legend: {
-      ...option.legend,
       selected: {
         'Prediction': showPrediction.value,
         'Confidence Interval': showPrediction.value && showConfidence.value,
@@ -266,7 +265,24 @@ function updateChart() {
       }
     },
     series: series
-  });
+  };
+
+  if (isInitialLoad && combinedCategoryData.length > 1) {
+    const lastHistoricalIndex = categoryData.length > 0 ? categoryData.length - 1 : 0;
+    const startIndex = Math.max(0, lastHistoricalIndex - 29); // Last 30 days of history
+    const endIndex = Math.min(combinedCategoryData.length - 1, lastHistoricalIndex + 7); // Next 7 days of prediction
+    
+    const startPercent = (startIndex / (combinedCategoryData.length - 1)) * 100;
+    const endPercent = (endIndex / (combinedCategoryData.length - 1)) * 100;
+
+    optionToSet.dataZoom = [
+        { start: startPercent, end: endPercent },
+        { start: startPercent, end: endPercent }
+    ];
+    isInitialLoad = false;
+  }
+
+  myChart.value.setOption(optionToSet);
 }
 
 // 监听开关变化
@@ -280,6 +296,7 @@ watch([showPrediction, showConfidence], () => {
 
 onMounted(async () => {
   myChart.value = echarts.init(chart.value, 'dark');
+  myChart.value.setOption(option); // Set base option first
   myChart.value.showLoading();
 
   try {
