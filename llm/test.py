@@ -10,7 +10,8 @@ client = OpenAI(
 
 tools = [{
     "type": "web_search",
-    "sources": ["douyin", "toutiao"]
+    "sources": ["douyin", "toutiao"],
+    "max_keyword": 4,
 }]
 
 prompt = """
