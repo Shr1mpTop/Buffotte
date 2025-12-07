@@ -13,7 +13,7 @@ const routes = [
   { 
     path: '/', 
     component: MainLayout,
-    redirect: '/dashboard',
+    redirect: '/login',
     children: [
       { path: 'dashboard', component: Home, alias: '/home' },
       { path: 'kline', component: Kline },
