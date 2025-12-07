@@ -8,7 +8,7 @@
 
     <!-- 新闻网格流 -->
     <div class="news-grid">
-      <div class="news-card" v-for="item in news" :key="item.url">
+      <div class="news-card" :class="{ highlighted: item.highlighted }" v-for="item in news" :key="item.url">
         <h3 class="news-title">
           <a :href="item.url" target="_blank">{{ item.title }}</a>
         </h3>
@@ -36,6 +36,7 @@ import DOMPurify from 'dompurify';
 
 const newsViewContainer = ref(null);
 const summary = ref(null);
+const summaryId = ref(null);
 const renderedSummary = ref('');
 const news = ref([]);
 const loading = ref(false);
@@ -51,6 +52,7 @@ const fetchSummary = async () => {
     }
     const data = await response.json();
     summary.value = data.summary;
+    summaryId.value = data.summary_id;
     renderedSummary.value = DOMPurify.sanitize(marked(data.summary));
   } catch (error) {
     console.error('Error fetching summary:', error);
@@ -63,7 +65,10 @@ const fetchNews = async () => {
   if (loading.value || page.value > totalPages.value) return;
   loading.value = true;
   try {
-    const response = await fetch(`http://localhost:8000/api/news?page=${page.value}&size=20`);
+    const url = summaryId.value 
+      ? `http://localhost:8000/api/news?page=${page.value}&size=20&summary_id=${summaryId.value}`
+      : `http://localhost:8000/api/news?page=${page.value}&size=20`;
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -103,9 +108,10 @@ const formatTime = (timeStr) => {
   return new Date(timeStr).toLocaleString('zh-CN');
 };
 
-onMounted(() => {
-  fetchSummary();
-  fetchNews();
+onMounted(async () => {
+  // 先获取summary，然后再获取news（这样news才能知道哪些需要高亮）
+  await fetchSummary();
+  await fetchNews();
   // 监听父容器的滚动事件
   const container = newsViewContainer.value?.parentElement;
   if (container) {
@@ -162,7 +168,7 @@ onUnmounted(() => {
   }
 }
 
-/* 洞察板块 - 固定顶部，避开侧边栏 */
+/* 洞察板块 - 固定顶部，避开侧边栏，带示波管特效 */
 .insight-container {
   position: fixed;
   top: 0;
@@ -175,6 +181,53 @@ onUnmounted(() => {
   z-index: 50;
   max-height: 200px;
   overflow-y: auto;
+  overflow-x: hidden; /* 隐藏水平滚动条 */
+
+  /* 示波管扫描线效果 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0; /* 改用right代替width: 100% */
+    height: 2px;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      var(--primary-green) 50%, 
+      transparent 100%);
+    box-shadow: 0 0 10px var(--glow-green);
+    animation: oscilloscope-scan 4s linear infinite;
+    opacity: 0.6;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* 电子波纹效果 */
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0; /* 改用right代替width */
+    bottom: 0; /* 改用bottom代替height */
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 127, 0.03) 2px,
+      rgba(0, 255, 127, 0.03) 4px
+    );
+    background-size: 40px 100%;
+    animation: wave-move 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .insight-title,
+  .insight-content {
+    position: relative;
+    z-index: 2;
+  }
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -192,6 +245,32 @@ onUnmounted(() => {
       background: var(--primary-green);
       box-shadow: 0 0 6px var(--glow-green);
     }
+  }
+}
+
+@keyframes oscilloscope-scan {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.8;
+  }
+  95% {
+    opacity: 0.8;
+  }
+  100% {
+    top: calc(100% - 2px);
+    opacity: 0;
+  }
+}
+
+@keyframes wave-move {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 40px 0;
   }
 }
 
@@ -329,6 +408,47 @@ onUnmounted(() => {
     &::before {
       opacity: 1;
     }
+  }
+
+  /* 洞察提及的新闻高亮效果 - 柔和版 */
+  &.highlighted {
+    border: 1.5px solid var(--primary-green);
+    box-shadow: 
+      0 0 12px rgba(0, 255, 127, 0.25),
+      0 0 20px rgba(0, 255, 127, 0.12),
+      inset 0 0 15px rgba(0, 255, 127, 0.06);
+    animation: glow-pulse 3s ease-in-out infinite;
+
+    &::before {
+      opacity: 0.6;
+    }
+
+    &:hover {
+      box-shadow: 
+        0 0 18px rgba(0, 255, 127, 0.35),
+        0 0 30px rgba(0, 255, 127, 0.18),
+        0 8px 24px rgba(0, 0, 0, 0.5),
+        inset 0 0 20px rgba(0, 255, 127, 0.08);
+      
+      &::before {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 12px rgba(0, 255, 127, 0.25),
+      0 0 20px rgba(0, 255, 127, 0.12),
+      inset 0 0 15px rgba(0, 255, 127, 0.06);
+  }
+  50% {
+    box-shadow: 
+      0 0 16px rgba(0, 255, 127, 0.32),
+      0 0 28px rgba(0, 255, 127, 0.16),
+      inset 0 0 18px rgba(0, 255, 127, 0.08);
   }
 }
 

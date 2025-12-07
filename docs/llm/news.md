@@ -1,0 +1,5 @@
+目前暂时通过llm/test.py进行每日的信息获取
+保存在response中
+
+然后db/news_processor进行解析，将信息插入在news,summary和一个联立表格中
+作为前端页面资讯的数据源

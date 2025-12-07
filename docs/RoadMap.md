@@ -19,8 +19,14 @@ LangChain，构造一个强大的分析工作流，进行数据分析和建议
 
 ### 具体设计
 1. 新闻爬取，我找到了四个可靠的信息源："https://www.douyin.com/search/CS2%E9%A5%B0%E5%93%81%E6%9C%80%E6%96%B0"（抖音搜索）,"https://store.steampowered.com/news/app/730/view"（Steam游戏更新咨询）,"https://buff.163.com/news/?news_game=csgo"（网易BUFF资讯）,"https://www.hltv.org/"（HLTV比赛赛事最新资讯）
-返回爬取到的新闻详细
+  返回爬取到的新闻详细
 2. 新闻分析，将新闻爬取 --> 新闻分析，
+
+![image-20251208042015801](https://cdn.jsdelivr.net/gh/Shr1mpTop/picgo-images/images/image-20251208042015801.png)
+
+3. 
+
+
 
 ## 8. 邮箱订阅投送
 每日定时投送关键信息

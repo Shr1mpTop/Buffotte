@@ -220,20 +220,20 @@ async def get_latest_summary():
             # 获取东八区今天的日期
             today_utc8 = datetime.now(pytz.timezone('Asia/Shanghai')).date()
             cursor.execute("""
-                SELECT summary FROM summary 
+                SELECT id, summary FROM summary 
                 WHERE DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = %s
                 ORDER BY created_at DESC 
                 LIMIT 1
             """, (today_utc8,))
             result = cursor.fetchone()
             if result:
-                return {"summary": result['summary']}
+                return {"summary": result['summary'], "summary_id": result['id']}
             else:
                 # 如果今天没有，就返回最新的一个
-                cursor.execute("SELECT summary FROM summary ORDER BY created_at DESC LIMIT 1")
+                cursor.execute("SELECT id, summary FROM summary ORDER BY created_at DESC LIMIT 1")
                 result = cursor.fetchone()
                 if result:
-                    return {"summary": result['summary']}
+                    return {"summary": result['summary'], "summary_id": result['id']}
                 else:
                     raise HTTPException(status_code=404, detail="未找到摘要")
     except pymysql.err.OperationalError as e:
@@ -246,21 +246,35 @@ async def get_latest_summary():
             conn.close()
 
 @app.get("/api/news")
-async def get_news(page: int = 1, size: int = 10):
+async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
     conn = None
     try:
-        logging.info(f"Attempting to get DB connection for news. Page: {page}, Size: {size}")
+        logging.info(f"Attempting to get DB connection for news. Page: {page}, Size: {size}, Summary ID: {summary_id}")
         conn = user_manager.get_db_connection()
         logging.info("DB connection for news successful.")
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
             offset = (page - 1) * size
             logging.info(f"Executing news query with offset: {offset}, limit: {size}")
             cursor.execute(
-                "SELECT title, url, source, publish_time, summary as preview FROM news ORDER BY publish_time DESC LIMIT %s OFFSET %s", 
+                "SELECT id, title, url, source, publish_time, summary as preview FROM news ORDER BY publish_time DESC LIMIT %s OFFSET %s", 
                 (size, offset)
             )
             news_list = cursor.fetchall()
             logging.info(f"Fetched {len(news_list)} news items.")
+            
+            # 如果提供了summary_id，查询关联的新闻ID
+            highlighted_news_ids = set()
+            if summary_id:
+                cursor.execute(
+                    "SELECT news_id FROM summary_news_association WHERE summary_id = %s",
+                    (summary_id,)
+                )
+                highlighted_news_ids = {row['news_id'] for row in cursor.fetchall()}
+                logging.info(f"Highlighted news IDs for summary {summary_id}: {highlighted_news_ids}")
+            
+            # 标记新闻是否被洞察提及
+            for news in news_list:
+                news['highlighted'] = news['id'] in highlighted_news_ids
             
             # 获取总数用于分页
             cursor.execute("SELECT COUNT(*) as total FROM news")
