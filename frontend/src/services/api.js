@@ -8,6 +8,8 @@ const externalClient = axios.create({
   timeout: 10000 
 })
 
+export { client, externalClient }
+
 export default {
   async register(payload) {
     try {

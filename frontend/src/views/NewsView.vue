@@ -46,7 +46,7 @@ const showRocket = ref(false);
 
 const fetchSummary = async () => {
   try {
-    const response = await fetch('http://localhost:8000/api/summary/latest');
+    const response = await fetch('/api/summary/latest');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -66,8 +66,8 @@ const fetchNews = async () => {
   loading.value = true;
   try {
     const url = summaryId.value 
-      ? `http://localhost:8000/api/news?page=${page.value}&size=20&summary_id=${summaryId.value}`
-      : `http://localhost:8000/api/news?page=${page.value}&size=20`;
+      ? `/api/news?page=${page.value}&size=20&summary_id=${summaryId.value}`
+      : `/api/news?page=${page.value}&size=20`;
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

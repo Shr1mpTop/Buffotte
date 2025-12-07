@@ -34,7 +34,7 @@ import {
 } from 'echarts/components';
 import { CandlestickChart, LineChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
-import axios from 'axios';
+import { client } from '../services/api.js';
 
 echarts.use([
   TitleComponent,
@@ -300,7 +300,7 @@ onMounted(async () => {
   myChart.value.showLoading();
 
   try {
-    const response = await axios.get('http://localhost:8000/api/kline/chart-data');
+    const response = await client.get('/kline/chart-data');
     allData = response.data;
     updateChart();
   } catch (error) {
