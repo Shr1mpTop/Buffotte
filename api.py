@@ -301,6 +301,45 @@ async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
             conn.close()
             logging.info("DB connection for news closed.")
 
+# 代理到 buff-tracker API
+@app.api_route("/api/bufftracker/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def proxy_bufftracker(request: Request, path: str):
+    """
+    代理 buff-tracker API 请求，避免 HTTPS 网站的 Mixed Content 问题
+    """
+    import httpx
+
+    # 构建目标 URL
+    target_url = f"http://bufftracker.hezhili.online:8010/api/{path}"
+
+    # 添加查询参数
+    if request.url.query:
+        target_url += f"?{request.url.query}"
+
+    try:
+        # 转发请求
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # 获取请求体
+            body = await request.body()
+
+            # 转发请求
+            response = await client.request(
+                method=request.method,
+                url=target_url,
+                headers={k: v for k, v in request.headers.items() if k.lower() not in ['host', 'content-length']},
+                content=body
+            )
+
+            # 返回响应
+            return JSONResponse(
+                status_code=response.status_code,
+                content=response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text
+            )
+
+    except Exception as e:
+        logging.error(f"Buff-tracker proxy error: {e}")
+        raise HTTPException(status_code=503, detail=f"Buff-tracker service unavailable: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -11,6 +11,11 @@ export default defineConfig({
         // Use IPv4 loopback to avoid IPv6 (::1) connection issues on some systems
         target: 'http://127.0.0.1:8000',
         changeOrigin: true
+      },
+      '/bufftracker-api': {
+        target: 'http://bufftracker.hezhili.online:8010',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/bufftracker-api/, '/api')
       }
     }
   },
