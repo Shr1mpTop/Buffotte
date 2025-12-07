@@ -17,6 +17,10 @@
           <span class="label">STATUS:</span>
           <span class="value active">● ACTIVE</span>
         </div>
+        <div class="info-row">
+          <span class="label">REGISTERED DAYS:</span>
+          <span class="value">{{ daysRegistered }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -25,17 +29,32 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 export default {
   name: 'Profile',
   setup () {
     const user = ref(null)
+    const daysRegistered = ref(0)
     const router = useRouter()
-    onMounted(() => {
+    onMounted(async () => {
       try { user.value = JSON.parse(localStorage.getItem('user')) } catch (e) {}
       if (!user.value) router.push('/login')
+      else {
+        // 获取注册天数
+        try {
+          const response = await axios.get(`http://localhost:8000/api/user/profile?email=${user.value.email}`)
+          const createdAt = new Date(response.data.created_at)
+          const now = new Date()
+          const diffTime = Math.abs(now - createdAt)
+          daysRegistered.value = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1
+        } catch (error) {
+          console.error('获取注册天数失败:', error)
+          daysRegistered.value = 0
+        }
+      }
     })
-    return { user }
+    return { user, daysRegistered }
   }
 }
 </script>

@@ -113,8 +113,21 @@ class UserManager:
         finally:
             conn.close()
 
-if __name__ == "__main__":
-    manager = UserManager()
-    manager.create_user_table()
-    # 示例注册
-    manager.register_user("testuser", "test@example.com", "password123")
+    def get_user_created_at(self, email: str):
+        """
+        获取用户的创建时间。
+        """
+        conn = self.get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT created_at FROM user WHERE email = %s", (email,))
+                result = cursor.fetchone()
+                if result:
+                    return result[0]
+                else:
+                    return None
+        except Exception as e:
+            print(f"获取用户创建时间失败: {e}")
+            return None
+        finally:
+            conn.close()

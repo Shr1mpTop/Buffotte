@@ -5,6 +5,7 @@ import traceback
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from user_manager import UserManager
+from db.kline_data_processor import KlineDataProcessor
 import pymysql
 
 app = FastAPI()
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 user_manager = UserManager()
+kline_processor = KlineDataProcessor()
 
 class RegisterRequest(BaseModel):
     username: str
@@ -109,6 +111,68 @@ async def login(request: LoginRequest, http_request: Request):
                 pass
     else:
         raise HTTPException(status_code=401, detail="邮箱或密码错误")
+
+@app.get("/api/kline/data")
+async def get_kline_data():
+    try:
+        conn = kline_processor.get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT timestamp, open_price, high_price, low_price, close_price, volume, turnover FROM kline_data_day ORDER BY timestamp")
+            rows = cursor.fetchall()
+        conn.close()
+        data = []
+        for row in rows:
+            data.append({
+                'timestamp': row[0],
+                'open': float(row[1]),
+                'high': float(row[2]),
+                'low': float(row[3]),
+                'close': float(row[4]),
+                'volume': row[5],
+                'turnover': float(row[6])
+            })
+        return {"data": data}
+    except pymysql.err.OperationalError as e:
+        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取K线数据失败: {e}")
+
+@app.post("/api/kline/refresh")
+async def refresh_kline_data():
+    try:
+        import subprocess
+        import os
+        # 获取项目根目录
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        # 执行数据更新脚本
+        result = subprocess.run(
+            ["python", "-m", "db.kline_data_processor"],
+            cwd=base_dir,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        if result.returncode == 0:
+            return {"success": True, "message": "数据刷新成功"}
+        else:
+            raise HTTPException(status_code=500, detail=f"数据刷新失败: {result.stderr}")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="数据刷新超时")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"数据刷新失败: {e}")
+
+@app.get("/api/user/profile")
+async def get_user_profile(email: str):
+    try:
+        created_at = user_manager.get_user_created_at(email)
+        if created_at:
+            return {"created_at": created_at.isoformat()}
+        else:
+            raise HTTPException(status_code=404, detail="用户不存在")
+    except pymysql.err.OperationalError as e:
+        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取用户信息失败: {e}")
 
 if __name__ == "__main__":
     import uvicorn

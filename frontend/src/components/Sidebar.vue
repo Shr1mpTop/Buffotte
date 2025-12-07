@@ -15,7 +15,7 @@
       </router-link>
       <router-link to="/kline" class="nav-item" active-class="active">
         <span class="icon">▤</span>
-        <span class="text">K线</span>
+        <span class="text">市场</span>
       </router-link>
     </nav>
     <div class="sidebar-footer">
