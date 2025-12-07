@@ -5,6 +5,7 @@ import MainLayout from './layouts/MainLayout.vue'
 import Home from './views/Home.vue'
 import Kline from './views/Kline.vue'
 import Profile from './views/Profile.vue'
+import NewsView from './views/NewsView.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -16,7 +17,8 @@ const routes = [
     children: [
       { path: 'dashboard', component: Home, alias: '/home' },
       { path: 'profile', component: Profile },
-      { path: 'kline', component: Kline }
+      { path: 'kline', component: Kline },
+      { path: 'news', component: NewsView }
     ]
   }
 ]

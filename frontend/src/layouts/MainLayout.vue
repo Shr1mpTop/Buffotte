@@ -29,10 +29,31 @@ export default {
   padding: 0;
   margin: 0 0 0 220px;
   height: 100vh;
-  overflow: hidden;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #000;
+
+  /* 隐藏滚动条 */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #0a0e0a;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 127, 0.3);
+    border-radius: 3px;
+    
+    &:hover {
+      background: #00ff7f;
+      box-shadow: 0 0 8px rgba(0, 255, 127, 0.6);
+    }
+  }
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 127, 0.3) #0a0e0a;
 }
 </style>

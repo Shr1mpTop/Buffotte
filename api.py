@@ -8,6 +8,7 @@ from db.user_manager import UserManager
 from db.kline_data_processor import KlineDataProcessor
 import pymysql
 from datetime import date, datetime
+import pytz
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -209,6 +210,79 @@ async def get_user_profile(email: str):
         raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取用户信息失败: {e}")
+
+@app.get("/api/summary/latest")
+async def get_latest_summary():
+    conn = None
+    try:
+        conn = user_manager.get_db_connection()
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            # 获取东八区今天的日期
+            today_utc8 = datetime.now(pytz.timezone('Asia/Shanghai')).date()
+            cursor.execute("""
+                SELECT summary FROM summary 
+                WHERE DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = %s
+                ORDER BY created_at DESC 
+                LIMIT 1
+            """, (today_utc8,))
+            result = cursor.fetchone()
+            if result:
+                return {"summary": result['summary']}
+            else:
+                # 如果今天没有，就返回最新的一个
+                cursor.execute("SELECT summary FROM summary ORDER BY created_at DESC LIMIT 1")
+                result = cursor.fetchone()
+                if result:
+                    return {"summary": result['summary']}
+                else:
+                    raise HTTPException(status_code=404, detail="未找到摘要")
+    except pymysql.err.OperationalError as e:
+        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
+    except Exception as e:
+        logging.exception("获取最新摘要失败")
+        raise HTTPException(status_code=500, detail=f"获取最新摘要失败: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+
+@app.get("/api/news")
+async def get_news(page: int = 1, size: int = 10):
+    conn = None
+    try:
+        logging.info(f"Attempting to get DB connection for news. Page: {page}, Size: {size}")
+        conn = user_manager.get_db_connection()
+        logging.info("DB connection for news successful.")
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            offset = (page - 1) * size
+            logging.info(f"Executing news query with offset: {offset}, limit: {size}")
+            cursor.execute(
+                "SELECT title, url, source, publish_time, summary as preview FROM news ORDER BY publish_time DESC LIMIT %s OFFSET %s", 
+                (size, offset)
+            )
+            news_list = cursor.fetchall()
+            logging.info(f"Fetched {len(news_list)} news items.")
+            
+            # 获取总数用于分页
+            cursor.execute("SELECT COUNT(*) as total FROM news")
+            total = cursor.fetchone()['total']
+            logging.info(f"Total news items: {total}")
+            
+            return {
+                "items": news_list,
+                "total": total,
+                "page": page,
+                "size": size
+            }
+    except pymysql.err.OperationalError as e:
+        logging.error(f"Database operational error in get_news: {e}")
+        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
+    except Exception as e:
+        logging.exception("获取新闻列表失败")
+        raise HTTPException(status_code=500, detail=f"获取新闻列表失败: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+            logging.info("DB connection for news closed.")
 
 if __name__ == "__main__":
     import uvicorn

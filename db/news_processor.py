@@ -61,7 +61,7 @@ class NewsProcessor:
             print(f"创建表失败: {e}")
 
     def _parse_publish_time(self, time_str: str) -> datetime | None:
-        """解析非标准的日期时间字符串。"""
+        """解析非标准的日期时间字符串"""
         if not time_str:
             return None
         try:
