@@ -1,3 +1,6 @@
+"""
+已经可以归档了，完成了历史使命
+"""
 import requests
 import time
 from .kline_data_processor import KlineDataProcessor

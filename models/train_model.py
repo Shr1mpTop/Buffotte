@@ -3,6 +3,8 @@ import numpy as np
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 import os
+import sys
+import subprocess
 
 # 定义评估函数：皮尔逊相关系数
 def pearson_correlation(y_true, y_pred):
@@ -12,10 +14,45 @@ def pearson_correlation(y_true, y_pred):
     corr = np.corrcoef(y_true, y_pred)[0, 1]
     return corr
 
+def run_script(module_path, cwd):
+    """
+    将指定的 Python 脚本作为模块执行。
+    """
+    try:
+        print(f"--- 开始执行模块: {module_path} ---")
+        # 使用 -m 将脚本作为模块运行，并设置工作目录为项目根目录
+        result = subprocess.run(
+            [sys.executable, "-m", module_path],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=cwd
+        )
+        print(result.stdout)
+        print(f"--- 模块 {module_path} 执行成功 ---")
+    except subprocess.CalledProcessError as e:
+        print(f"!!! 执行 {module_path} 时发生错误 !!!")
+        print(e.stderr)
+        raise
+
 def train_and_predict():
     """
     完整的模型训练、评估和预测流程。
     """
+    # --- 步骤 0: 更新数据 ---
+    print("步骤 0: 更新数据...")
+
+    # 获取项目根目录的绝对路径
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # 定义需要执行的模块
+    kline_processor_module = 'db.kline_data_processor'
+    create_dataset_module = 'db.create_dataset'
+
+    # 依次执行脚本
+    run_script(kline_processor_module, project_root)
+    run_script(create_dataset_module, project_root)
+    
     # --- 步骤 1: 加载与清洗数据 ---
     print("步骤 1: 加载与清洗数据...")
     

@@ -4,6 +4,8 @@ from typing import List, Tuple, Optional
 import pymysql
 from dotenv import load_dotenv
 import os
+from datetime import datetime
+import pytz
 
 # 加载环境变量
 load_dotenv()
@@ -22,6 +24,13 @@ class KlineDataProcessor:
     def get_db_connection(self):
         return pymysql.connect(**self.remote_config)
 
+    def _timestamp_to_date_str(self, ts: int) -> str:
+        """
+        将 UTC+8 时间戳（秒）转换为 YYYY-MM-DD 格式的日期字符串。
+        """
+        tz = pytz.timezone('Asia/Shanghai')
+        return datetime.fromtimestamp(ts, tz).strftime('%Y-%m-%d')
+
     def create_table_if_not_exists(self, conn):
         """
         如果表不存在，创建 kline_data_day 表。
@@ -29,6 +38,7 @@ class KlineDataProcessor:
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS kline_data_day (
             timestamp BIGINT PRIMARY KEY,
+            date DATE,
             open_price DECIMAL(10,2),
             high_price DECIMAL(10,2),
             low_price DECIMAL(10,2),
@@ -37,7 +47,6 @@ class KlineDataProcessor:
             turnover DECIMAL(15,2)
         )
         """
-        
     def delete_latest_row(self, conn):
         """
         删除数据库中最新的（timestamp 最大的）一行数据。
@@ -117,10 +126,14 @@ class KlineDataProcessor:
 
         with conn.cursor() as cursor:
             sql = """
-            INSERT INTO kline_data_day (timestamp, open_price, high_price, low_price, close_price, volume, turnover)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO kline_data_day (timestamp, date, open_price, high_price, low_price, close_price, volume, turnover)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
-            values = [(d['timestamp'], d['open'], d['high'], d['low'], d['close'], d['volume'], d['turnover']) for d in new_data]
+            values = [(
+                d['timestamp'],
+                self._timestamp_to_date_str(d['timestamp']),
+                d['open'], d['high'], d['low'], d['close'], d['volume'], d['turnover']
+            ) for d in new_data]
             cursor.executemany(sql, values)
             conn.commit()
             print(f"插入 {len(new_data)} 条新历史数据")
@@ -134,10 +147,14 @@ class KlineDataProcessor:
             # 先删除旧的实时数据（如果有），然后插入新实时数据
             cursor.execute("DELETE FROM kline_data_day WHERE timestamp = %s", (data['timestamp'],))
             sql = """
-            INSERT INTO kline_data_day (timestamp, open_price, high_price, low_price, close_price, volume, turnover)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO kline_data_day (timestamp, date, open_price, high_price, low_price, close_price, volume, turnover)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
-            cursor.execute(sql, (data['timestamp'], data['open'], data['high'], data['low'], data['close'], data['volume'], data['turnover']))
+            cursor.execute(sql, (
+                data['timestamp'],
+                self._timestamp_to_date_str(data['timestamp']),
+                data['open'], data['high'], data['low'], data['close'], data['volume'], data['turnover']
+            ))
             conn.commit()
             print("插入实时数据")
 
