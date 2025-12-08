@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from db.user_manager import UserManager
 from db.kline_data_processor import KlineDataProcessor
 from db.item_kline_processor import ItemKlineProcessor
+from db.user_actions import UserActions
 from crawler.item_price import DailyKlineCrawler
 import pymysql
 from datetime import date, datetime
@@ -46,6 +47,7 @@ user_manager = UserManager()
 kline_processor = KlineDataProcessor()
 item_kline_processor = ItemKlineProcessor()
 item_crawler = DailyKlineCrawler()
+user_actions = UserActions()
 
 class RegisterRequest(BaseModel):
     username: str
@@ -55,6 +57,11 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class TrackRequest(BaseModel):
+    email: str
+    market_hash_name: str
+
 
 @app.post("/api/register")
 async def register(request: RegisterRequest):
@@ -145,7 +152,7 @@ async def get_chart_data():
         historical_data = []
         for row in rows:
             historical_data.append({
-                'timestamp': row[0] * 1000, # 转换为毫秒时间戳
+                'timestamp': row[0] ,
                 'open': float(row[1]),
                 'high': float(row[2]),
                 'low': float(row[3]),
@@ -158,12 +165,12 @@ async def get_chart_data():
         prediction_data = []
         with conn.cursor(pymysql.cursors.DictCursor) as cursor: # 使用 DictCursor 更方便
             # 只获取今天及未来的预测
-            cursor.execute("SELECT * FROM kline_data_prediction WHERE date >= %s ORDER BY date", (date.today(),))
+            cursor.execute("SELECT * FROM kline_data_prediction ORDER BY date")
             predictions = cursor.fetchall()
 
         for pred in predictions:
             # 将 date 对象转换为毫秒时间戳
-            ts = int(datetime.combine(pred['date'], datetime.min.time()).timestamp() * 1000)
+            ts = int(datetime.combine(pred['date'], datetime.min.time()).timestamp())
             prediction_data.append({
                 "timestamp": ts,
                 "predicted_close_price": float(pred['predicted_close_price']) if pred['predicted_close_price'] is not None else None,
@@ -475,6 +482,30 @@ async def get_item_kline_data(market_hash_name: str):
     except Exception as e:
         logging.exception(f"获取饰品 {market_hash_name} 的 K线数据失败")
         raise HTTPException(status_code=500, detail=f"获取饰品 K线数据失败: {e}")
+
+@app.post("/api/track/add")
+async def add_track(request: TrackRequest):
+    result = user_actions.add_track_item(request.email, request.market_hash_name)
+    if result["success"]:
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result["message"])
+
+@app.get("/api/track/list/{email}")
+async def get_tracked_items(email: str):
+    result = user_actions.get_tracked_items_by_email(email)
+    if result["success"]:
+        return result["data"]
+    else:
+        raise HTTPException(status_code=400, detail=result["message"])
+
+@app.post("/api/track/remove")
+async def remove_track(request: TrackRequest):
+    result = user_actions.remove_track_item(request.email, request.market_hash_name)
+    if result["success"]:
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result["message"])
 
 if __name__ == "__main__":
     import uvicorn

@@ -158,8 +158,13 @@
 
       <!-- 追踪按钮 -->
       <div class="tracking-panel">
-        <button class="track-button">⭐ 追踪此饰品</button>
-        <p class="panel-placeholder">追踪功能将在后续版本添加。</p>
+        <button
+          class="track-button"
+          @click="trackItem(selectedItem.market_hash_name)"
+          :disabled="!selectedItem"
+        >
+          ⭐ 追踪此饰品
+        </button>
       </div>
     </div>
   </div>
@@ -167,8 +172,9 @@
 
 <script>
 import { ref, shallowRef, onMounted, watch, nextTick } from 'vue'
-import api from '../services/api'
+import api, { client } from '../services/api'
 import * as echarts from 'echarts/core'
+import { useToast } from '../composables/useToast'
 import {
   TitleComponent,
   TooltipComponent,
@@ -213,7 +219,31 @@ export default {
     const myDataChart = shallowRef(null) // 用于数据图表实例的引用
     const highestSellPrice = ref(null) // 用于最高售卖价
     const lowestBiddingPrice = ref(null) // 用于最低求购价
+    const user = ref(JSON.parse(localStorage.getItem('user')))
     let searchTimeout = null
+    const toast = useToast()
+
+    const trackItem = async (marketHashName) => {
+      if (!user.value) {
+        toast.error('请先登录再追踪饰品。')
+        return
+      }
+      try {
+        const result = await client.post('/track/add', {
+          email: user.value.email,
+          market_hash_name: marketHashName
+        })
+        if (result.data.success) {
+          toast.success('饰品已成功追踪！')
+        } else {
+          toast.error(`追踪失败: ${result.data.message}`)
+        }
+      } catch (error) {
+        console.error('追踪饰品时出错:', error)
+        toast.error('追踪饰品时出错，请查看控制台获取更多信息。')
+      }
+    }
+
 
     const handleSearch = () => {
       if (searchTimeout) clearTimeout(searchTimeout)
@@ -741,7 +771,8 @@ export default {
       dataChart,
       myDataChart,
       highestSellPrice,
-      lowestBiddingPrice
+      lowestBiddingPrice,
+      trackItem
     }
   }
 }
@@ -762,10 +793,10 @@ export default {
   grid-template-rows: auto auto 1fr; /* 搜索区、价格区、K线区、数据图表区 */
   gap: 20px;
   grid-template-areas:
-    "search price"
+    "tracking price"
     "search kline"
     "search data"
-    "tracking data";
+    "search data";
 }
 
 @media (max-width: 900px) {

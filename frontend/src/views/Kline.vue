@@ -128,7 +128,7 @@ function splitData(rawData) {
   let values = [];
   let volumes = [];
   for (let i = 0; i < rawData.length; i++) {
-    categoryData.push(new Date(rawData[i].timestamp).toLocaleDateString());
+    categoryData.push(new Date(rawData[i].timestamp * 1000).toLocaleDateString());
     values.push([rawData[i].open, rawData[i].close, rawData[i].low, rawData[i].high]);
     volumes.push([i, rawData[i].volume, rawData[i].open > rawData[i].close ? 1 : -1]);
   }
@@ -156,7 +156,7 @@ function processPredictionData(predictionRaw) {
     const confidenceArea = [];
     
     predictionRaw.forEach(p => {
-        const date = new Date(p.timestamp).toLocaleDateString();
+        const date = new Date(p.timestamp * 1000).toLocaleDateString();
         const price = p.predicted_close_price;
         const std = p.rolling_std_7;
 
@@ -242,7 +242,7 @@ function updateChart() {
         symbol: 'none'
       });
       series.push({
-        name: 'Confidence Interval Upper',
+        name: 'Confidence Interval',
         type: 'line',
         data: confidenceArea.map(d => [d[0], d[2] - d[1]]), // Difference for stacking
         lineStyle: { opacity: 0 },

@@ -18,7 +18,8 @@ const routes = [
       { path: 'dashboard', component: Home, alias: '/home' },
       { path: 'kline', component: Kline },
       { path: 'items', component: Items },
-      { path: 'news', component: NewsView }
+      { path: 'news', component: NewsView },
+      { path: 'tracking', component: () => import('./views/Tracking.vue') }
     ]
   }
 ]

@@ -21,6 +21,10 @@
         <span class="icon">📰</span>
         <span class="text">资讯</span>
       </router-link>
+      <router-link to="/tracking" class="nav-item" active-class="active">
+        <span class="icon">★</span>
+        <span class="text">追踪</span>
+      </router-link>
     </nav>
     <div class="sidebar-footer">
       <button class="logout-btn" @click="logout">
