@@ -5,6 +5,7 @@ import time
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import pytz
+from fastapi import HTTPException # 新增导入
 
 # 加载环境变量
 load_dotenv()
@@ -23,6 +24,29 @@ class ItemKlineProcessor:
     def get_db_connection(self):
         """获取数据库连接"""
         return pymysql.connect(**self.config)
+    
+    def get_item_id_from_db(self, market_hash_name: str) -> Optional[str]:
+        """
+        从 cs2_items 表中查询饰品的 c5_id (即 item_id)
+        """
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT c5_id FROM cs2_items WHERE market_hash_name = %s LIMIT 1",
+                    (market_hash_name,)
+                )
+                result = cursor.fetchone()
+                if result:
+                    return str(result[0])
+                return None
+        except Exception as e:
+            print(f"从数据库查询 item_id 失败: {e}")
+            return None
+        finally:
+            if conn:
+                conn.close()
 
     def parse_item_kline_data(self, raw_data: dict, market_hash_name: str, item_id: str) -> List[Dict]:
         """
@@ -305,6 +329,55 @@ class ItemKlineProcessor:
         finally:
             if conn:
                 conn.close()
+
+    async def get_item_kline_data_for_chart(self, market_hash_name: str):
+        """
+        获取饰品K线数据用于图表展示，不保存到数据库。
+        """
+        print(f"🚀 准备为图表获取饰品K线数据: {market_hash_name}")
+
+        try:
+            # 导入爬虫
+            import sys
+            import os
+            # 确保父目录在sys.path中，以便正确导入crawler
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if project_root not in sys.path:
+                sys.path.append(project_root)
+            
+            from crawler.item_price import DailyKlineCrawler
+
+            # 从数据库获取 item_id
+            item_id = self.get_item_id_from_db(market_hash_name)
+            if not item_id:
+                print(f"❌ 数据库中未找到饰品 {market_hash_name} 的 c5_id")
+                raise HTTPException(status_code=404, detail=f"数据库中未找到饰品 '{market_hash_name}' 的ID,请确认饰品名称是否正确")
+            
+            # 创建爬虫实例并获取数据
+            print("📡 正在获取API数据...")
+            crawler = DailyKlineCrawler()
+            raw_data = crawler.fetch_item_details(item_id) # 默认 type_day="3" (周数据)
+
+            if not raw_data:
+                print("❌ 获取API数据失败")
+                return []
+
+            # 解析数据
+            print("🔍 正在解析数据...")
+            parsed_data = self.parse_item_kline_data(raw_data, market_hash_name, item_id)
+
+            if not parsed_data:
+                print("❌ 无有效数据可处理")
+                return []
+
+            print(f"🎉 成功为图表获取并解析 {len(parsed_data)} 条饰品K线数据！")
+            return parsed_data
+
+        except Exception as e:
+            print(f"❌ 为图表获取饰品K线数据失败: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 def main():

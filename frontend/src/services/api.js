@@ -70,5 +70,22 @@ export default {
       console.error('获取历史价格失败:', err)
       return { success: false, error: err.response?.data || err.message }
     }
+  },
+
+  // 获取饰品历史 K 线数据
+  async getItemKlineData(marketHashName) {
+    try {
+      const { data } = await client.get(`/item/kline-data/${marketHashName}`)
+      // 后端返回格式: {success: true, data: [...]}
+      return { success: true, data: data.data || [] }
+    } catch (err) {
+      console.error(`获取饰品 ${marketHashName} 的 K线数据失败:`, err)
+      // 返回包含状态码的错误信息
+      const error = {
+        message: err.response?.data?.detail || err.message,
+        status: err.response?.status
+      }
+      return { success: false, error }
+    }
   }
 }

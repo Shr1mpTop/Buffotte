@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db.user_manager import UserManager
 from db.kline_data_processor import KlineDataProcessor
+from db.item_kline_processor import ItemKlineProcessor
 from crawler.item_price import DailyKlineCrawler
 import pymysql
 from datetime import date, datetime
@@ -43,6 +44,7 @@ app.add_middleware(
 
 user_manager = UserManager()
 kline_processor = KlineDataProcessor()
+item_kline_processor = ItemKlineProcessor()
 item_crawler = DailyKlineCrawler()
 
 class RegisterRequest(BaseModel):
@@ -460,6 +462,19 @@ async def get_item_price_history(item_id: str):
     except Exception as e:
         logging.error(f"获取饰品历史价格失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取饰品历史价格失败: {str(e)}")
+
+@app.get("/api/item/kline-data/{market_hash_name}")
+async def get_item_kline_data(market_hash_name: str):
+    try:
+        # 调用 item_kline_processor 中的方法来获取 K 线数据
+        # 注意: 这里调用的是一个只获取数据而不保存到数据库的方法
+        historical_data = await item_kline_processor.get_item_kline_data_for_chart(market_hash_name)
+        return {"success": True, "data": historical_data}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logging.exception(f"获取饰品 {market_hash_name} 的 K线数据失败")
+        raise HTTPException(status_code=500, detail=f"获取饰品 K线数据失败: {e}")
 
 if __name__ == "__main__":
     import uvicorn
