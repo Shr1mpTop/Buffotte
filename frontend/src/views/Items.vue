@@ -66,12 +66,18 @@
                 <div class="price-info">
                   <div class="price-line">
                     <span class="label">卖出价:</span>
-                    <span class="value price">¥{{ platform.sellPrice }}</span>
+                    <span
+                      class="value price"
+                      :class="{ 'highest-sell': platform.sellPrice === highestSellPrice && highestSellPrice !== null }"
+                    >¥{{ platform.sellPrice }}</span>
                     <span class="count">({{ platform.sellCount }})</span>
                   </div>
                   <div class="price-line">
                     <span class="label">求购价:</span>
-                    <span class="value price">¥{{ platform.biddingPrice }}</span>
+                    <span
+                      class="value price"
+                      :class="{ 'lowest-bidding': platform.biddingPrice === lowestBiddingPrice && lowestBiddingPrice !== null }"
+                    >¥{{ platform.biddingPrice }}</span>
                     <span class="count">({{ platform.biddingCount }})</span>
                   </div>
                 </div>
@@ -205,6 +211,8 @@ export default {
     const myKlineChart = shallowRef(null) // 用于ECharts实例的引用
     const dataChart = ref(null) // 用于数据图表容器的引用
     const myDataChart = shallowRef(null) // 用于数据图表实例的引用
+    const highestSellPrice = ref(null) // 用于最高售卖价
+    const lowestBiddingPrice = ref(null) // 用于最低求购价
     let searchTimeout = null
 
     const handleSearch = () => {
@@ -237,6 +245,8 @@ export default {
       klineError.value = null
       loadingPrice.value = true
       loadingKlineData.value = true
+      highestSellPrice.value = null // 重置最高售卖价
+      lowestBiddingPrice.value = null // 重置最低求购价
 
       try {
         // 获取实时价格数据
@@ -246,6 +256,23 @@ export default {
             data: priceResult.data,
             updateTime: priceResult.data[0]?.updateTime || Date.now() / 1000
           }
+
+          // 计算最高售卖价和最低求购价
+          let maxSell = 0
+          let minBidding = Infinity
+          priceResult.data.forEach(p => {
+            // 排除Steam平台和价格为0的数据
+            if (p.platform === 'Steam' || p.sellPrice === 0 || p.biddingPrice === 0) {
+              return
+            }
+            if (p.sellPrice > maxSell) maxSell = p.sellPrice
+            if (p.biddingPrice < minBidding) minBidding = p.biddingPrice
+          })
+          highestSellPrice.value = maxSell > 0 ? maxSell : null
+          lowestBiddingPrice.value = minBidding !== Infinity ? minBidding : null
+          console.log('Calculated highestSellPrice:', highestSellPrice.value)
+          console.log('Calculated lowestBiddingPrice:', lowestBiddingPrice.value)
+
         }
       } catch (error) {
         console.error('获取价格失败:', error)
@@ -712,7 +739,9 @@ export default {
       klineChart,
       myKlineChart,
       dataChart,
-      myDataChart
+      myDataChart,
+      highestSellPrice,
+      lowestBiddingPrice
     }
   }
 }
@@ -1108,6 +1137,30 @@ export default {
   font-family: 'Courier New', monospace;
   font-size: 16px;
   text-align: center;
+}
+
+.highest-sell {
+  color: #ff0000 !important;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
+}
+
+.lowest-bidding {
+  color: #ffff00 !important;
+  text-shadow: 0 0 8px rgba(255, 255, 0, 0.7);
+}
+
+.empty-card {
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px dashed rgba(0, 255, 65, 0.1);
+  color: rgba(0, 255, 65, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-card .platform-name,
+.empty-card .price-info {
+  display: none;
 }
 
 /* 滚动条样式 */
