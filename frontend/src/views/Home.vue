@@ -38,6 +38,24 @@
               <span class="profile-label">注册时间:</span>
               <span class="profile-value">{{ formatRegistrationTime(user?.created_at) || '未设置' }}</span>
             </div>
+            <div v-if="loadingDetails" class="profile-line">
+                <span class="profile-label">等级:</span>
+                <span class="profile-value">加载中...</span>
+            </div>
+            <div v-else-if="detailsError" class="profile-line">
+                <span class="profile-label">等级:</span>
+                <span class="profile-value error">{{ detailsError }}</span>
+            </div>
+            <template v-else-if="userDetails">
+                <div class="profile-line">
+                    <span class="profile-label">等级:</span>
+                    <span class="profile-value">Lv.{{ userDetails.level }} ({{ userDetails.level_name }})</span>
+                </div>
+                <div class="profile-line">
+                    <span class="profile-label">可追踪:</span>
+                    <span class="profile-value">{{ userDetails.track_permit }} 个饰品</span>
+                </div>
+            </template>
           </div>
         </div>
       </div>
@@ -47,12 +65,19 @@
           <!-- 移除了指向 /profile 的链接 -->
           <router-link to="/kline" class="action-link">→ K线数据</router-link>
           <router-link to="/news" class="action-link">→ 查看资讯</router-link>
+          <router-link to="/tracking" class="action-link">→ 管理追踪</router-link>
         </div>
       </div>
-      <div class="card placeholder">
+      <div class="card">
         <div class="card-header">数据面板</div>
         <div class="card-body">
-          <div class="placeholder-text">[占位区域]</div>
+            <div v-if="loadingDetails" class="placeholder-text">加载中...</div>
+            <div v-else-if="detailsError" class="placeholder-text error">{{ detailsError }}</div>
+            <div v-else-if="userDetails" class="stat-line">
+                <span class="stat-label">▸ 已追踪饰品:</span>
+                <span class="stat-value">{{ userDetails.tracked_count }} / {{ userDetails.track_permit }}</span>
+            </div>
+            <div v-else class="placeholder-text">[占位区域]</div>
         </div>
       </div>
     </div>
@@ -62,6 +87,8 @@
 <script>
 import BootAnimation from '../components/BootAnimation.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
+import { client } from '../services/api'
+import { useToast } from '../composables/useToast'
 
 export default {
   name: 'Dashboard',
@@ -70,6 +97,9 @@ export default {
     const user = ref(null)
     const sessionTime = ref('00:00:00')
     const showBoot = ref(false)
+    const userDetails = ref(null)
+    const loadingDetails = ref(false)
+    const detailsError = ref(null)
     let startTime = Date.now()
     let timer = null
 
@@ -90,7 +120,7 @@ export default {
       return `注册 ${diffDays} 天`
     }
 
-    onMounted(() => {
+    onMounted(async () => {
       try {
         user.value = JSON.parse(localStorage.getItem('user'))
       } catch (e) {}
@@ -103,26 +133,34 @@ export default {
       }
       
       timer = setInterval(updateSessionTime, 1000)
+
+      // 获取用户详细信息
+      if (user.value?.email) {
+        loadingDetails.value = true
+        detailsError.value = null
+        try {
+          const response = await client.get(`/user/details/${user.value.email}`)
+          userDetails.value = response.data
+        } catch (e) {
+          console.error('获取用户详情失败:', e)
+          detailsError.value = '获取失败'
+        } finally {
+          loadingDetails.value = false
+        }
+      }
     })
 
     onUnmounted(() => {
       if (timer) clearInterval(timer)
     })
 
-    return { user, sessionTime, showBoot, formatRegistrationTime }
+    return { user, sessionTime, showBoot, formatRegistrationTime, userDetails, loadingDetails, detailsError }
   }
 }
 </script>
 
 <style scoped>
-.dashboard {
-  width: 100%;
-  max-width: 1200px;
-  padding: 24px;
-  margin: 40px 0 0 0;
-  animation: fadeIn 0.4s ease;
-}
-
+.dashboard{width:100%;max-width:1200px;padding:24px;margin:40px 0 0 0;animation:fadeIn .4s ease}
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -133,66 +171,19 @@ export default {
     transform: translateY(0);
   }
 }
-
-.dashboard-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(0, 255, 127, 0.2);
+.dashboard-header{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid rgba(0,255,127,.2)}
+.title{color:var(--primary-green);font-size:24px;font-weight:700;margin:0 0 12px 0;text-shadow:0 0 10px rgba(0,255,127,.3);animation:typing 1s steps(20) forwards;overflow:hidden;white-space:nowrap;width:0}
+@keyframes typing{from{width:0}
+to{width:100%}
 }
-
-.title {
-  color: var(--primary-green);
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  text-shadow: 0 0 10px rgba(0, 255, 127, 0.3);
-  animation: typing 1s steps(20) forwards;
-  overflow: hidden;
-  white-space: nowrap;
-  width: 0;
-}
-
-@keyframes typing {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
-}
-
-.user-info {
-  color: var(--secondary-green);
-  font-size: 14px;
-}
-
-.label {
-  opacity: 0.7;
-  margin-right: 8px;
-}
-
-.value {
-  font-weight: 600;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.card {
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(0, 255, 127, 0.2);
-  border-radius: 6px;
-  overflow: hidden;
-  transition: all 0.3s;
-  animation: slideUp 0.5s ease backwards;
-}
-
-.card:nth-child(1) { animation-delay: 0.1s; }
-.card:nth-child(2) { animation-delay: 0.2s; }
-.card:nth-child(3) { animation-delay: 0.3s; }
+.user-info{color:var(--secondary-green);font-size:14px}
+.label{opacity:.7;margin-right:8px}
+.value{font-weight:600}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.card{background:rgba(0,0,0,.6);border:1px solid rgba(0,255,127,.2);border-radius:6px;overflow:hidden;transition:all .3s;animation:slideUp .5s ease backwards}
+.card:first-child{animation-delay:.1s}
+.card:nth-child(2){animation-delay:.2s}
+.card:nth-child(3){animation-delay:.3s}
 
 @keyframes slideUp {
   from {
@@ -286,6 +277,11 @@ export default {
   word-break: break-all;
 }
 
+.profile-value.error {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
 .profile-action {
   margin-top: 15px;
   border-top: 1px dashed rgba(0, 255, 127, 0.1);
@@ -318,5 +314,10 @@ export default {
   text-align: center;
   padding: 20px;
   font-size: 14px;
+}
+
+.placeholder-text.error {
+  color: #ff6b6b;
+  font-weight: bold;
 }
 </style>

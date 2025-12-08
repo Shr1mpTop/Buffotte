@@ -225,6 +225,19 @@ async def get_user_profile(email: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取用户信息失败: {e}")
 
+@app.get("/api/user/details/{email}")
+async def get_user_details(email: str):
+    try:
+        details = user_manager.get_user_details(email)
+        if details:
+            return details
+        else:
+            raise HTTPException(status_code=404, detail="用户不存在")
+    except pymysql.err.OperationalError as e:
+        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取用户详情失败: {e}")
+
 @app.get("/api/summary/latest")
 async def get_latest_summary():
     conn = None
