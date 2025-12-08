@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db.user_manager import UserManager
 from db.kline_data_processor import KlineDataProcessor
+from crawler.item_price import DailyKlineCrawler
 import pymysql
 from datetime import date, datetime
 import pytz
@@ -42,6 +43,7 @@ app.add_middleware(
 
 user_manager = UserManager()
 kline_processor = KlineDataProcessor()
+item_crawler = DailyKlineCrawler()
 
 class RegisterRequest(BaseModel):
     username: str
@@ -339,6 +341,125 @@ async def proxy_bufftracker(request: Request, path: str):
     except Exception as e:
         logging.error(f"Buff-tracker proxy error: {e}")
         raise HTTPException(status_code=503, detail=f"Buff-tracker service unavailable: {str(e)}")
+
+@app.get("/api/item-price/{item_id}")
+async def get_item_price(item_id: str):
+    """
+    获取饰品实时价格数据（BUFF平台）
+    """
+    try:
+        # 调用爬虫获取数据
+        item_data = item_crawler.fetch_item_details(item_id)
+
+        if not item_data:
+            raise HTTPException(status_code=404, detail="无法获取饰品数据")
+
+        if not item_data.get("success"):
+            raise HTTPException(status_code=400, detail=f"API返回错误: {item_data.get('errorMsg', '未知错误')}")
+
+        # 获取最新的价格数据（数组中的最后一个元素）
+        price_data = item_data.get("data", [])
+        if not price_data:
+            raise HTTPException(status_code=404, detail="无价格数据")
+
+        # 取最新的价格数据（数组最后一个元素）
+        latest_price = price_data[-1] if price_data else None
+        if not latest_price:
+            raise HTTPException(status_code=404, detail="无最新价格数据")
+
+        # 解析数据格式：[timestamp, price, sell_count, buy_price, buy_count, turnover, volume, total_count]
+        try:
+            timestamp = int(latest_price[0])
+            price = float(latest_price[1])
+            sell_count = int(latest_price[2])
+            buy_price = float(latest_price[3])
+            buy_count = int(latest_price[4])
+            turnover = float(latest_price[5]) if latest_price[5] is not None else 0
+            volume = int(latest_price[6]) if latest_price[6] is not None else 0
+            total_count = int(latest_price[7]) if isinstance(latest_price[7], str) else latest_price[7]
+        except (IndexError, ValueError, TypeError) as e:
+            logging.error(f"数据解析失败: {latest_price}, 错误: {e}")
+            raise HTTPException(status_code=500, detail="价格数据格式错误")
+
+        # 返回格式化的实时价格数据
+        return {
+            "success": True,
+            "data": [{
+                "platform": "BUFF",
+                "sellPrice": price,
+                "sellCount": sell_count,
+                "biddingPrice": buy_price,
+                "biddingCount": buy_count,
+                "turnover": turnover,
+                "volume": volume,
+                "totalCount": total_count,
+                "updateTime": timestamp
+            }]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"获取饰品价格失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取饰品价格失败: {str(e)}")
+
+@app.get("/api/item-price-history/{item_id}")
+async def get_item_price_history(item_id: str):
+    """
+    获取饰品历史价格数据（用于K线图）
+    """
+    try:
+        # 调用爬虫获取数据
+        item_data = item_crawler.fetch_item_details(item_id)
+
+        if not item_data:
+            raise HTTPException(status_code=404, detail="无法获取饰品数据")
+
+        if not item_data.get("success"):
+            raise HTTPException(status_code=400, detail=f"API返回错误: {item_data.get('errorMsg', '未知错误')}")
+
+        # 获取所有历史价格数据
+        price_data = item_data.get("data", [])
+        if not price_data:
+            raise HTTPException(status_code=404, detail="无价格数据")
+
+        # 格式化所有历史数据
+        formatted_data = []
+        for price_point in price_data:
+            try:
+                timestamp = int(price_point[0])
+                price = float(price_point[1])
+                sell_count = int(price_point[2])
+                buy_price = float(price_point[3])
+                buy_count = int(price_point[4])
+                turnover = float(price_point[5]) if price_point[5] is not None else 0
+                volume = int(price_point[6]) if price_point[6] is not None else 0
+                total_count = int(price_point[7]) if isinstance(price_point[7], str) else price_point[7]
+
+                formatted_data.append({
+                    "timestamp": timestamp,
+                    "price": price,
+                    "sell_count": sell_count,
+                    "buy_price": buy_price,
+                    "buy_count": buy_count,
+                    "turnover": turnover,
+                    "volume": volume,
+                    "total_count": total_count
+                })
+            except (IndexError, ValueError, TypeError) as e:
+                logging.warning(f"跳过无效数据点: {price_point}, 错误: {e}")
+                continue
+
+        return {
+            "success": True,
+            "data": formatted_data
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"获取饰品历史价格失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取饰品历史价格失败: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

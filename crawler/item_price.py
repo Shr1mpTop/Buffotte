@@ -28,7 +28,7 @@ class DailyKlineCrawler:
             "x-device-id": "07a2f5d6-e3a0-45b3-8cbf-fed3767407da",
         }
 
-    def fetch_item_details(self, item_id: str, platform: str = "BUFF", type_day: str = "1", date_type: int = 3, access_token: str = "0de1a71e-2e31-4c4b-afba-24942aeff115") -> Optional[dict]:
+    def fetch_item_details(self, item_id: str, platform: str = "BUFF", type_day: str = "3", date_type: int = 3, access_token: str = "0de1a71e-2e31-4c4b-afba-24942aeff115") -> Optional[dict]:
         """抓取物品详情数据（POST 请求），复现 steamdt.com 的 API 调用。"""
         timestamp_ms = str(int(time.time() * 1000))  # 毫秒级时间戳
         params = {"timestamp": timestamp_ms}

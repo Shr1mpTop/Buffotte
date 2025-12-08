@@ -50,13 +50,24 @@ export default {
     }
   },
   
-  // 获取饰品价格
+  // 获取饰品价格（多平台实时价格）
   async getItemPrice(marketHashName) {
     try {
       const { data } = await externalClient.get(`/price/${encodeURIComponent(marketHashName)}`)
       return { success: true, ...data }
     } catch (err) {
       console.error('获取价格失败:', err)
+      return { success: false, error: err.response?.data || err.message }
+    }
+  },
+
+  // 获取饰品历史价格数据（用于K线图）
+  async getItemPriceHistory(itemId) {
+    try {
+      const { data } = await client.get(`/item-price/${itemId}`)
+      return { success: true, data: data.data || [] }
+    } catch (err) {
+      console.error('获取历史价格失败:', err)
       return { success: false, error: err.response?.data || err.message }
     }
   }
