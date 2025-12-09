@@ -37,6 +37,8 @@ logs/
 ca.pem
 # Ignore VS Code settings
 .vscode/
+# Ignore IntelliJ IDEA / PyCharm settings
+.idea/
 # Ignore macOS system files
 .DS_Store
 # Ignore Windows thumbnail cache
