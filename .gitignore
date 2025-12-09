@@ -34,6 +34,7 @@ logs/
 *.log
 
 # --- IDE & System Files ---
+ca.pem
 # Ignore VS Code settings
 .vscode/
 # Ignore macOS system files
