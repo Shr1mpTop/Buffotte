@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'buffotte-api',
       script: 'api.py',
-      interpreter: '/root/miniconda3/bin/python3',
+      interpreter: './.venv/bin/python',
       cwd: '/root/Buffotte',
       env: {
         NODE_ENV: 'production'
