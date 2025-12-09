@@ -5,4 +5,4 @@
 
 fork教程我之后项目开发成熟后给出
 现在可以先网页试用
-> buffotte.hezhili.online/login
+> https://buffotte.hezhili.online/login
