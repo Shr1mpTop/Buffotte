@@ -1,5 +1,6 @@
 services:
   backend:
+    image: buffotte-backend
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -9,6 +10,7 @@ services:
       - ./.env
 
   frontend:
+    image: buffotte-frontend
     build:
       context: .
       dockerfile: Dockerfile.frontend
