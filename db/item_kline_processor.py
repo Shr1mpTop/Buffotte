@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import pytz
 from fastapi import HTTPException # 新增导入
+import asyncio
 
 # 加载环境变量
 load_dotenv()
@@ -20,6 +21,7 @@ class ItemKlineProcessor:
             'database': os.getenv('DATABASE'),
             'charset': os.getenv('CHARSET', 'utf8mb4')
         }
+        self.create_tracked_items_table()
 
     def get_db_connection(self):
         """获取数据库连接"""
@@ -172,6 +174,7 @@ class ItemKlineProcessor:
     def process_and_store_item_kline(self, market_hash_name: str, item_id: str):
         """
         主处理函数：获取饰品数据并存储到数据库。
+        成功时返回解析后的数据列表，失败时返回空列表。
         """
         print(f"🚀 开始处理饰品K线数据: {market_hash_name} (ID: {item_id})")
 
@@ -189,7 +192,7 @@ class ItemKlineProcessor:
 
             if not raw_data:
                 print("❌ 获取API数据失败")
-                return False
+                return []
 
             # 解析数据
             print("🔍 正在解析数据...")
@@ -197,7 +200,7 @@ class ItemKlineProcessor:
 
             if not parsed_data:
                 print("❌ 无有效数据可处理")
-                return False
+                return []
 
             # 连接数据库并处理
             conn = self.get_db_connection()
@@ -209,7 +212,7 @@ class ItemKlineProcessor:
                 self.insert_item_kline_data(conn, parsed_data)
 
                 print("🎉 饰品K线数据处理完成！")
-                return True
+                return parsed_data
 
             finally:
                 conn.close()
@@ -218,7 +221,7 @@ class ItemKlineProcessor:
             print(f"❌ 处理失败: {e}")
             import traceback
             traceback.print_exc()
-            return False
+            return []
 
     def create_item_kline_day_table(self):
         """创建饰品日K线数据表"""
@@ -250,6 +253,27 @@ class ItemKlineProcessor:
                 print("表 'item_kline_day' 创建成功！")
         except Exception as e:
             print(f"创建表失败: {e}")
+            raise
+        finally:
+            if conn:
+                conn.close()
+
+    def create_tracked_items_table(self):
+        """创建被追踪的饰品表"""
+        create_table_sql = """
+        CREATE TABLE IF NOT EXISTS tracked_items (
+            market_hash_name VARCHAR(255) NOT NULL,
+            PRIMARY KEY (market_hash_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='被追踪的饰品列表';
+        """
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor() as cursor:
+                cursor.execute(create_table_sql)
+                print("表 'tracked_items' 初始化检查完成！")
+        except Exception as e:
+            print(f"创建表 'tracked_items' 失败: {e}")
             raise
         finally:
             if conn:
@@ -378,6 +402,51 @@ class ItemKlineProcessor:
             import traceback
             traceback.print_exc()
             raise
+
+    def is_item_tracked(self, market_hash_name: str) -> bool:
+        """
+        检查饰品是否在被追踪列表中。
+        """
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT 1 FROM tracked_items WHERE market_hash_name = %s LIMIT 1",
+                    (market_hash_name,)
+                )
+                return cursor.fetchone() is not None
+        except Exception as e:
+            print(f"查询饰品追踪状态失败: {e}")
+            return False  # 发生错误时，默认为不追踪
+        finally:
+            if conn:
+                conn.close()
+
+    async def handle_item_kline_request(self, market_hash_name: str):
+        """
+        根据饰品是否被追踪，决定是获取数据用于图表展示还是存入数据库。
+        这个方法是处理前端请求的主要入口点。
+        """
+        print(f"收到K线数据请求: {market_hash_name}")
+
+        if self.is_item_tracked(market_hash_name):
+            print(f"✅ 饰品 '{market_hash_name}' 在追踪列表中，将获取并存储数据。")
+
+            item_id = self.get_item_id_from_db(market_hash_name)
+            if not item_id:
+                raise HTTPException(status_code=404, detail=f"数据库中未找到饰品 '{market_hash_name}' 的ID。")
+
+            # 在异步环境中间接调用同步方法
+            loop = asyncio.get_running_loop()
+            # process_and_store_item_kline 是一个IO密集型和CPU密集型（少量）的操作, 在默认的executor中运行
+            result_data = await loop.run_in_executor(
+                None, self.process_and_store_item_kline, market_hash_name, item_id
+            )
+            return result_data
+        else:
+            print(f"ℹ️ 饰品 '{market_hash_name}' 不在追踪列表中，仅获取数据用于图表展示。")
+            return await self.get_item_kline_data_for_chart(market_hash_name)
 
 
 def main():

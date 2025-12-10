@@ -486,10 +486,9 @@ async def get_item_price_history(item_id: str):
 @app.get("/api/item/kline-data/{market_hash_name}")
 async def get_item_kline_data(market_hash_name: str):
     try:
-        # 调用 item_kline_processor 中的方法来获取 K 线数据
-        # 注意: 这里调用的是一个只获取数据而不保存到数据库的方法
-        historical_data = await item_kline_processor.get_item_kline_data_for_chart(market_hash_name)
-        return {"success": True, "data": historical_data}
+        # 调用新的处理器方法，该方法会根据饰品是否被追踪来决定是否存储数据
+        kline_data = await item_kline_processor.handle_item_kline_request(market_hash_name)
+        return {"success": True, "data": kline_data}
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -500,6 +499,13 @@ async def get_item_kline_data(market_hash_name: str):
 async def add_track(request: TrackRequest):
     result = user_actions.add_track_item(request.email, request.market_hash_name)
     if result["success"]:
+        # 追踪成功后，立即调用 handle_item_kline_request 获取并存储数据
+        try:
+            await item_kline_processor.handle_item_kline_request(request.market_hash_name)
+            logging.info(f"成功为新追踪的饰品 {request.market_hash_name} 获取并存储了K线数据。")
+        except Exception as e:
+            # 即使这里失败，也不应该影响追踪成功的主流程，所以只记录日志
+            logging.error(f"为新追踪的饰品 {request.market_hash_name} 获取K线数据失败: {e}")
         return result
     else:
         raise HTTPException(status_code=400, detail=result["message"])
