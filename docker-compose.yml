@@ -16,19 +16,3 @@ services:
       - "4173:80"
     depends_on:
       - backend
-
-  # 可选：本地 MySQL 数据库（如需使用，请在 .env 中设置 HOST=db）
-  # db:
-  #   image: mysql:8.0
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: Eminem20020908!
-  #     MYSQL_DATABASE: buffotte
-  #     MYSQL_USER: remote_admin
-  #     MYSQL_PASSWORD: Eminem20020908!
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - db_data:/var/lib/mysql
-
-# volumes:
-#   db_data:
