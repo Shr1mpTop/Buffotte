@@ -15,6 +15,7 @@ dependencies = [
     "lightgbm",
     "openai",
     "pytz",
+    "cryptography",
 ]
 
 [build-system]
