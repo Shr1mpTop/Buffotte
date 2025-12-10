@@ -1,3 +1,4 @@
+#!/bin/bash
 cd /root/Buffotte
 
 # 激活 conda 环境（如果需要）
