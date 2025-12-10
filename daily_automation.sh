@@ -1,20 +1,10 @@
 #!/bin/bash
 
 # Buffotte 自动化每日任务脚本
-# 北京时间 7:00 执行：数据训练预测 -> 新闻获取 -> 数据处理
+# 北京时间 7:00 执行: 新闻获取 -> 数据处理
 
 # 设置工作目录
 cd /root/Buffotte
-
-# 激活 conda 环境（如果需要）
-# source /root/miniconda3/bin/activate buffotte
-
-/root/miniconda3/bin/python models/train_model.py
-if [ $? -ne 0 ]; then
-    echo "❌ 数据训练预测失败，退出脚本"
-    exit 1
-fi
-
 # 循环获取新闻，直到找到参考文献
 while true; do
     cd llm
