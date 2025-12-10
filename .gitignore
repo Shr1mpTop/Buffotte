@@ -27,6 +27,8 @@ yarn-error.log*
 # Ignore generated training data and predictions
 training_dataset.csv
 models/next_month_prediction.csv
+models/train.csv
+llm/response.txt
 
 # --- Logs ---
 # Ignore log files
