@@ -1,6 +1,7 @@
 services:
   backend:
     image: buffotte-backend
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -11,6 +12,7 @@ services:
 
   frontend:
     image: buffotte-frontend
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile.frontend

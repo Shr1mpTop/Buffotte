@@ -21,7 +21,6 @@ class ItemKlineProcessor:
             'database': os.getenv('DATABASE'),
             'charset': os.getenv('CHARSET', 'utf8mb4')
         }
-        self.create_tracked_items_table()
 
     def get_db_connection(self):
         """获取数据库连接"""
@@ -106,7 +105,7 @@ class ItemKlineProcessor:
 
     def get_existing_records(self, conn, market_hash_name: str) -> set:
         """
-        获取数据库中已存在的记录 (market_hash_name, timestamp) 集合。
+        获取数据库中指定饰品已存在的 timestamp 集合。
         """
         with conn.cursor() as cursor:
             cursor.execute(
@@ -115,6 +114,29 @@ class ItemKlineProcessor:
             )
             existing = cursor.fetchall()
             return {row[0] for row in existing}
+
+    def delete_latest_row_for_item(self, conn, market_hash_name: str):
+        """
+        删除指定饰品数据库中最新的（timestamp 最大的）一行数据。
+        """
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT MAX(timestamp) FROM item_kline_day WHERE market_hash_name = %s",
+                    (market_hash_name,)
+                )
+                max_ts = cursor.fetchone()
+                if max_ts and max_ts[0]:
+                    cursor.execute(
+                        "DELETE FROM item_kline_day WHERE market_hash_name = %s AND timestamp = %s",
+                        (market_hash_name, max_ts[0])
+                    )
+                    conn.commit()
+                    print(f"已删除饰品 {market_hash_name} 的最新行，timestamp: {max_ts[0]}")
+                else:
+                    print(f"饰品 {market_hash_name} 数据库为空，无需删除")
+        except Exception as e:
+            print(f"删除饰品 {market_hash_name} 最新行失败: {e}")
 
     def insert_item_kline_data(self, conn, data_list: List[Dict]):
         """
@@ -208,6 +230,9 @@ class ItemKlineProcessor:
                 # 确保表存在
                 self.create_item_kline_day_table()
 
+                # 先删除数据库的最新一行数据
+                self.delete_latest_row_for_item(conn, market_hash_name)
+
                 # 插入数据
                 self.insert_item_kline_data(conn, parsed_data)
 
@@ -258,26 +283,7 @@ class ItemKlineProcessor:
             if conn:
                 conn.close()
 
-    def create_tracked_items_table(self):
-        """创建被追踪的饰品表"""
-        create_table_sql = """
-        CREATE TABLE IF NOT EXISTS tracked_items (
-            market_hash_name VARCHAR(255) NOT NULL,
-            PRIMARY KEY (market_hash_name)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='被追踪的饰品列表';
-        """
-        conn = None
-        try:
-            conn = self.get_db_connection()
-            with conn.cursor() as cursor:
-                cursor.execute(create_table_sql)
-                print("表 'tracked_items' 初始化检查完成！")
-        except Exception as e:
-            print(f"创建表 'tracked_items' 失败: {e}")
-            raise
-        finally:
-            if conn:
-                conn.close()
+
 
     def batch_insert_item_kline_data(self, data_list):
         """批量插入饰品K线数据"""
@@ -415,7 +421,9 @@ class ItemKlineProcessor:
                     "SELECT 1 FROM track WHERE market_hash_name = %s LIMIT 1",
                     (market_hash_name,)
                 )
-                return cursor.fetchone() is not None
+                result = cursor.fetchone()
+                print(f"DEBUG: is_item_tracked for '{market_hash_name}': {result is not None}")
+                return result is not None
         except Exception as e:
             print(f"查询饰品追踪状态失败: {e}")
             return False  # 发生错误时，默认为不追踪
