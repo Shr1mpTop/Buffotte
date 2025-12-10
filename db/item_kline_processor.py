@@ -412,7 +412,7 @@ class ItemKlineProcessor:
             conn = self.get_db_connection()
             with conn.cursor() as cursor:
                 cursor.execute(
-                    "SELECT 1 FROM tracked_items WHERE market_hash_name = %s LIMIT 1",
+                    "SELECT 1 FROM track WHERE market_hash_name = %s LIMIT 1",
                     (market_hash_name,)
                 )
                 return cursor.fetchone() is not None
