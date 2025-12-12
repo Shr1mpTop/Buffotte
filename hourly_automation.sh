@@ -14,10 +14,8 @@ fi
 # 设置工作目录
 cd /root/Buffotte
 
-# 激活 conda 环境（如果需要）
-# source /root/miniconda3/bin/activate buffotte
-
-/root/miniconda3/bin/python -m db.kline_data_processor
+# 在backend容器内运行
+docker exec buffotte-backend-1 python -m db.kline_data_processor
 if [ $? -ne 0 ]; then
     echo "❌ 日K实时数据更新失败"
     exit 1
