@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 import logging
 import traceback
@@ -334,7 +334,7 @@ async def proxy_bufftracker(request: Request, path: str):
     import httpx
 
     # 构建目标 URL
-    target_url = f"http://bufftracker.hezhili.online:8010/api/{path}"
+    target_url = f"http://host.docker.internal:8001/api/{path}"
 
     # 添加查询参数
     if request.url.query:
@@ -355,13 +355,10 @@ async def proxy_bufftracker(request: Request, path: str):
             )
 
             # 返回响应
-            return JSONResponse(
-                status_code=response.status_code,
-                content=response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text
-            )
+            return Response(content=response.content, status_code=response.status_code, headers=dict(response.headers))
 
     except Exception as e:
-        logging.error(f"Buff-tracker proxy error: {e}")
+        logging.error(f"Buff-tracker proxy error: {repr(e)}")
         raise HTTPException(status_code=503, detail=f"Buff-tracker service unavailable: {str(e)}")
 
 @app.get("/api/item-price/{item_id}")
