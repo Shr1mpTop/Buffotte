@@ -63,6 +63,20 @@ def save_predictions_to_db(predictions_df):
             cursor.execute(create_table_sql)
             print("预测表 'kline_data_prediction' 已确认存在。")
 
+            # 确保 date 唯一，避免重复行累积
+            cursor.execute(
+                """
+                SELECT COUNT(1) FROM information_schema.statistics
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'kline_data_prediction'
+                  AND index_name = 'idx_date_unique'
+                """
+            )
+            has_unique_index = cursor.fetchone()[0] > 0
+            if not has_unique_index:
+                cursor.execute("ALTER TABLE kline_data_prediction ADD UNIQUE KEY idx_date_unique (date)")
+                print("已为 kline_data_prediction 添加唯一索引 idx_date_unique。")
+
             # 3. 插入或更新新的预测数据
             insert_sql = """
             INSERT INTO kline_data_prediction (
