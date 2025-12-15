@@ -36,6 +36,7 @@ def create_tables(conn):
             CREATE TABLE IF NOT EXISTS summary_news_association (
                 summary_id INT,
                 news_id INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (summary_id, news_id),
                 FOREIGN KEY (summary_id) REFERENCES summary(id),
                 FOREIGN KEY (news_id) REFERENCES news(id)
@@ -62,6 +63,13 @@ def process_summary_from_response():
             if content:
                 summary_text = content[0].get('text')
                 annotations = content[0].get('annotations', [])
+                break
+        elif item.get('type') == 'reasoning':
+            summary = item.get('summary', [])
+            if summary:
+                summary_text = summary[0].get('text')
+                # annotations may not be present, set to empty
+                annotations = []
                 break
     
     if not summary_text or not annotations:
