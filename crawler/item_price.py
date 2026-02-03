@@ -1,7 +1,11 @@
 import time
 import json
 import requests
+import os
+from dotenv import load_dotenv
 from typing import Optional
+
+load_dotenv()
 
 class DailyKlineCrawler:
     TYPE_MAP = {"hour": 1, "day": 2, "week": 3}
@@ -11,7 +15,16 @@ class DailyKlineCrawler:
     def __init__(self):
         self.session = requests.Session()
 
-    def _build_headers(self, access_token: str = "0de1a71e-2e31-4c4b-afba-24942aeff115") -> dict:
+    def _build_headers(self, access_token: str = None) -> dict:
+        if access_token is None:
+            # 尝试从环境变量获取 API Key
+            api_keys = os.getenv('API_KEYS')
+            if api_keys:
+                access_token = api_keys.split(',')[0].strip()
+            else:
+                # 默认 fallback token
+                access_token = "0de1a71e-2e31-4c4b-afba-24942aeff115"
+
         return {
             "accept": "application/json",
             "accept-encoding": "gzip, deflate, br, zstd",
@@ -28,7 +41,7 @@ class DailyKlineCrawler:
             "x-device-id": "07a2f5d6-e3a0-45b3-8cbf-fed3767407da",
         }
 
-    def fetch_item_details(self, item_id: str, platform: str = "BUFF", type_day: str = "3", date_type: int = 3, access_token: str = "0de1a71e-2e31-4c4b-afba-24942aeff115") -> Optional[dict]:
+    def fetch_item_details(self, item_id: str, platform: str = "BUFF", type_day: str = "3", date_type: int = 3, access_token: str = None) -> Optional[dict]:
         """抓取物品详情数据（POST 请求），复现 steamdt.com 的 API 调用。"""
         timestamp_ms = str(int(time.time() * 1000))  # 毫秒级时间戳
         params = {"timestamp": timestamp_ms}

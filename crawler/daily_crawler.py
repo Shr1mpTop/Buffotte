@@ -1,7 +1,11 @@
 import time
 import json
 import requests
+import os
+from dotenv import load_dotenv
 from typing import Optional
+
+load_dotenv()
 
 class DailyKlineCrawler:
     TYPE_MAP = {"hour": 1, "day": 2, "week": 3}
@@ -11,11 +15,17 @@ class DailyKlineCrawler:
         self.session = requests.Session()
 
     def _build_headers(self) -> dict:
+        # 尝试从环境变量获取 API Key
+        access_token = "undefined"
+        api_keys = os.getenv('API_KEYS')
+        if api_keys:
+            access_token = api_keys.split(',')[0].strip()
+
         return {
             "accept": "*/*",
             "accept-encoding": "gzip, deflate, br, zstd",
             "accept-language": "zh-CN,zh;q=0.9",
-            "access-token": "undefined",
+            "access-token": access_token,
             "language": "zh_CN",
             "origin": "https://steamdt.com",
             "referer": "https://steamdt.com/",

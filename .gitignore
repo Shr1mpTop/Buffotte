@@ -46,3 +46,5 @@ ca.pem
 # Ignore Windows thumbnail cache
 Thumbs.db
 __pycache__/
+# Test 
+experiments/
