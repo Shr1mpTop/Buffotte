@@ -481,10 +481,20 @@ async def get_item_price_history(item_id: str):
         raise HTTPException(status_code=500, detail=f"获取饰品历史价格失败: {str(e)}")
 
 @app.get("/api/item/kline-data/{market_hash_name}")
-async def get_item_kline_data(market_hash_name: str):
+async def get_item_kline_data(
+    market_hash_name: str,
+    platform: str = "BUFF",
+    type_day: str = "1",
+    date_type: int = 3,
+):
     try:
-        # 调用新的处理器方法，该方法会根据饰品是否被追踪来决定是否存储数据
-        kline_data = await item_kline_processor.handle_item_kline_request(market_hash_name)
+        # 根据饰品是否被追踪来决定是否存储数据，并透传查询参数
+        kline_data = await item_kline_processor.handle_item_kline_request(
+            market_hash_name,
+            platform=platform,
+            type_day=type_day,
+            date_type=date_type,
+        )
         return {"success": True, "data": kline_data}
     except HTTPException as e:
         raise e

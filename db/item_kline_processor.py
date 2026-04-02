@@ -53,7 +53,7 @@ class ItemKlineProcessor:
         """
         解析API返回的饰品K线数据。
 
-        API数据格式: [timestamp, price, sell_count, buy_price, buy_count, turnover, volume, total_count]
+        新API数据格式: [timestamp, open_price, high_price, low_price, close_price, volume, turnover]
         """
         if not raw_data or not raw_data.get("success"):
             print("❌ API返回数据无效")
@@ -68,31 +68,30 @@ class ItemKlineProcessor:
         for point in data_points:
             try:
                 # 验证数据点长度
-                if len(point) < 8:
+                if len(point) < 7:
                     print(f"⚠️ 数据点格式不完整: {point}")
                     continue
 
-                # 解析数据点
+                # 解析数据点 - 新格式: [timestamp, open, high, low, close, volume, turnover]
                 timestamp = int(point[0])
-                price = float(point[1])
-                sell_count = int(point[2])
-                buy_price = float(point[3])
-                buy_count = int(point[4])
-                turnover = float(point[5]) if point[5] is not None else 0.0
-                volume = int(point[6]) if point[6] is not None else 0
-                total_count = str(point[7]) if point[7] is not None else "0"
+                open_price = float(point[1])
+                high_price = float(point[2])
+                low_price = float(point[3])
+                close_price = float(point[4])
+                volume = int(point[5]) if point[5] is not None else 0
+                turnover = float(point[6]) if point[6] is not None else 0.0
 
                 parsed_point = {
                     'market_hash_name': market_hash_name,
                     'timestamp': timestamp,
                     'item_id': item_id,
-                    'price': price,
-                    'sell_count': sell_count,
-                    'buy_price': buy_price,
-                    'buy_count': buy_count,
+                    'price': close_price,  # 使用收盘价作为当前价
+                    'sell_count': 0,  # 暂时设为0
+                    'buy_price': close_price,  # 使用收盘价
+                    'buy_count': 0,  # 暂时设为0
                     'turnover': turnover,
                     'volume': volume,
-                    'total_count': total_count
+                    'total_count': '0'  # 暂时设为空
                 }
                 parsed_data.append(parsed_point)
 
@@ -193,7 +192,14 @@ class ItemKlineProcessor:
 
         print(f"🎯 总共插入 {total_inserted} 条新记录")
 
-    def process_and_store_item_kline(self, market_hash_name: str, item_id: str):
+    def process_and_store_item_kline(
+        self,
+        market_hash_name: str,
+        item_id: str,
+        platform: str = "BUFF",
+        type_day: str = "1",
+        date_type: int = 3,
+    ):
         """
         主处理函数：获取饰品数据并存储到数据库。
         成功时返回解析后的数据列表，失败时返回空列表。
@@ -210,7 +216,12 @@ class ItemKlineProcessor:
             # 创建爬虫实例并获取数据
             print("📡 正在获取API数据...")
             crawler = DailyKlineCrawler()
-            raw_data = crawler.fetch_item_details(item_id)
+            raw_data = crawler.fetch_item_details(
+                item_id,
+                platform=platform,
+                type_day=type_day,
+                date_type=date_type,
+            )
 
             if not raw_data:
                 print("❌ 获取API数据失败")
@@ -360,7 +371,13 @@ class ItemKlineProcessor:
             if conn:
                 conn.close()
 
-    async def get_item_kline_data_for_chart(self, market_hash_name: str):
+    async def get_item_kline_data_for_chart(
+        self,
+        market_hash_name: str,
+        platform: str = "BUFF",
+        type_day: str = "1",
+        date_type: int = 3,
+    ):
         """
         获取饰品K线数据用于图表展示，不保存到数据库。
         """
@@ -386,7 +403,12 @@ class ItemKlineProcessor:
             # 创建爬虫实例并获取数据
             print("📡 正在获取API数据...")
             crawler = DailyKlineCrawler()
-            raw_data = crawler.fetch_item_details(item_id) # 默认 type_day="3" (周数据)
+            raw_data = crawler.fetch_item_details(
+                item_id,
+                platform=platform,
+                type_day=type_day,
+                date_type=date_type,
+            )
 
             if not raw_data:
                 print("❌ 获取API数据失败")
@@ -431,7 +453,13 @@ class ItemKlineProcessor:
             if conn:
                 conn.close()
 
-    async def handle_item_kline_request(self, market_hash_name: str):
+    async def handle_item_kline_request(
+        self,
+        market_hash_name: str,
+        platform: str = "BUFF",
+        type_day: str = "1",
+        date_type: int = 3,
+    ):
         """
         根据饰品是否被追踪，决定是获取数据用于图表展示还是存入数据库。
         这个方法是处理前端请求的主要入口点。
@@ -449,12 +477,23 @@ class ItemKlineProcessor:
             loop = asyncio.get_running_loop()
             # process_and_store_item_kline 是一个IO密集型和CPU密集型（少量）的操作, 在默认的executor中运行
             result_data = await loop.run_in_executor(
-                None, self.process_and_store_item_kline, market_hash_name, item_id
+                None,
+                self.process_and_store_item_kline,
+                market_hash_name,
+                item_id,
+                platform,
+                type_day,
+                date_type,
             )
             return result_data
         else:
             print(f"ℹ️ 饰品 '{market_hash_name}' 不在追踪列表中，仅获取数据用于图表展示。")
-            return await self.get_item_kline_data_for_chart(market_hash_name)
+            return await self.get_item_kline_data_for_chart(
+                market_hash_name,
+                platform=platform,
+                type_day=type_day,
+                date_type=date_type,
+            )
 
 
 def main():
