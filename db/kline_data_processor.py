@@ -66,6 +66,9 @@ class KlineDataProcessor:
     def parse_kline_data(self, raw_json: dict) -> Tuple[List[dict], dict]:
         """
         解析日K数据 JSON。
+        支持两种格式：
+          - v2/chart: [timestamp, close_price]  （2 字段）
+          - v1/kline: [timestamp, open, close, high, low, volume, turnover]  （7 字段）
         返回：(历史数据列表, 实时数据字典)
         """
         if not raw_json.get('success') or not raw_json.get('data'):
@@ -75,32 +78,36 @@ class KlineDataProcessor:
         if len(data) < 1:
             raise ValueError("数据为空")
 
+        # 判断数据格式
+        is_v2 = len(data[0]) == 2
+
         # 分离最后一个为实时数据
-        historical_data = data[:-1]  # 其余为历史数据
-        real_time_data = data[-1]    # 最后一个为实时数据
+        historical_data = data[:-1]
+        real_time_data = data[-1]
 
-        # 转换为字典格式，便于处理
-        historical_list = []
-        for item in historical_data:
-            historical_list.append({
-                'timestamp': int(item[0]),
-                'open': float(item[1]),
-                'high': float(item[3]),  # high 是 item[3]
-                'low': float(item[4]),   # low 是 item[4]
-                'close': float(item[2]), # close 是 item[2]
-                'volume': int(item[5]) if item[5] else 0,
-                'turnover': float(item[6]) if item[6] else 0.0
-            })
+        def to_dict(item):
+            if is_v2:
+                # v2/chart 格式: [timestamp, close_price]
+                close = float(item[1])
+                return {
+                    'timestamp': int(item[0]),
+                    'open': close, 'high': close, 'low': close, 'close': close,
+                    'volume': 0, 'turnover': 0.0
+                }
+            else:
+                # v1/kline 格式: [timestamp, open, close, high, low, volume, turnover]
+                return {
+                    'timestamp': int(item[0]),
+                    'open': float(item[1]),
+                    'high': float(item[3]),
+                    'low': float(item[4]),
+                    'close': float(item[2]),
+                    'volume': int(item[5]) if item[5] else 0,
+                    'turnover': float(item[6]) if item[6] else 0.0
+                }
 
-        real_time_dict = {
-            'timestamp': int(real_time_data[0]),
-            'open': float(real_time_data[1]),
-            'high': float(real_time_data[3]),  # high 是 item[3]
-            'low': float(real_time_data[4]),   # low 是 item[4]
-            'close': float(real_time_data[2]), # close 是 item[2]
-            'volume': int(real_time_data[5]) if real_time_data[5] else 0,
-            'turnover': float(real_time_data[6]) if real_time_data[6] else 0.0
-        }
+        historical_list = [to_dict(item) for item in historical_data]
+        real_time_dict = to_dict(real_time_data)
 
         return historical_list, real_time_dict
 

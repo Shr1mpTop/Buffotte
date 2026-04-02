@@ -11,7 +11,6 @@ load_dotenv()
 if not os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
     os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "/root/.cache/ms-playwright"
 
-# chromium headless shell 路径
 _CHROMIUM_HEADLESS = (
     "/root/.cache/ms-playwright/chromium_headless_shell-1208"
     "/chrome-headless-shell-linux64/chrome-headless-shell"
@@ -22,26 +21,28 @@ _CHROMIUM_FULL = (
 
 
 class DailyKlineCrawler:
-    KLINE_URL = "https://api.steamdt.com/user/statistics/v1/kline"
+    """
+    通过 playwright/chromium 绕过 Aliyun WAF 获取每日市场 K 线数据。
+
+    策略：
+      导航到 steamdt.com/section?type=BROAD，该页面自然发起 statistics/v2/chart
+      XHR 请求。通过 page.route() 拦截该请求，将 URL 重写为 statistics/v1/kline，
+      从而获取完整 7 字段 OHLCV 数据：
+      [timestamp, open, close, high, low, volume, turnover]
+    """
 
     def _sync_fetch_daily(self, timestamp_ms: int) -> Optional[dict]:
-        """
-        使用 playwright/chromium 绕过 Aliyun WAF 获取每日K线数据。
-
-        策略（与 buff-tracker ddrager.py 相同）：
-        1. 导航到 steamdt.com 首页，让浏览器完成 WAF JS 挑战。
-        2. 通过 page.on("response") 拦截 statistics/v1/kline 响应。
-        3. 若未自然捕获，回退到在浏览器上下文内用 page.evaluate() 发起 fetch。
-        """
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
             print("❌ playwright 未安装，请运行: pip install playwright && playwright install chromium")
             return None
 
+        _exe = _CHROMIUM_HEADLESS if os.path.exists(_CHROMIUM_HEADLESS) else _CHROMIUM_FULL
         captured_result: dict = {}
 
         def handle_response(response):
+            """捕获被重写后的 v1/kline 响应（URL 仍包含 v1/kline）"""
             if "statistics/v1/kline" in response.url and not captured_result:
                 try:
                     data = response.json()
@@ -50,9 +51,16 @@ class DailyKlineCrawler:
                 except Exception:
                     pass
 
+        def rewrite_to_v1_kline(route):
+            """拦截 v2/chart 请求，重写 URL 为 v1/kline"""
+            import re
+            url = route.request.url
+            new_url = url.replace("/statistics/v2/chart", "/statistics/v1/kline")
+            # 移除 dateType 参数（v1/kline 不需要）
+            new_url = re.sub(r'[&?]dateType=[^&]*', '', new_url)
+            route.continue_(url=new_url)
+
         with sync_playwright() as p:
-            # 优先用 headless shell，回退到全功能 chromium
-            _exe = _CHROMIUM_HEADLESS if os.path.exists(_CHROMIUM_HEADLESS) else _CHROMIUM_FULL
             browser = p.chromium.launch(
                 executable_path=_exe,
                 headless=True,
@@ -75,51 +83,40 @@ class DailyKlineCrawler:
                 """)
                 page = context.new_page()
                 page.on("response", handle_response)
+                # 拦截 v2/chart 请求 → 重写为 v1/kline
+                page.route("**/statistics/v2/chart**", rewrite_to_v1_kline)
 
-                # 第一步：导航到 steamdt.com 首页完成 WAF JS 挑战并获取 Cookie
                 try:
-                    page.goto("https://steamdt.com", wait_until="domcontentloaded", timeout=30000)
-                    page.wait_for_timeout(2000)
+                    page.goto(
+                        "https://steamdt.com/section?type=BROAD",
+                        wait_until="load",
+                        timeout=40000,
+                    )
                 except Exception:
                     pass
 
-                # 第二步：直接导航到 API URL——浏览器发出完整 GET 请求
-                # 携带首页已获取的 Cookie 及完整 sec-* headers，绕过 WAF
-                fetch_url = (
-                    f"https://api.steamdt.com/user/statistics/v1/kline"
-                    f"?timestamp={timestamp_ms}&type=2&maxTime="
-                )
-                api_json_re = __import__("re").compile(r"\{.*\}", __import__("re").DOTALL)
-
-                for attempt in range(3):
+                # 等待页面加载并触发 XHR
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                for _ in range(40):
                     if captured_result:
                         break
-                    try:
-                        resp = page.goto(fetch_url, wait_until="domcontentloaded", timeout=15000)
-                        if resp and resp.ok:
-                            try:
-                                data = resp.json()
-                            except Exception:
-                                raw = page.content()
-                                m = api_json_re.search(raw)
-                                data = json.loads(m.group()) if m else {}
-                            print("原始数据：")
-                            print(json.dumps(data, indent=4, ensure_ascii=False))
-                            if data.get("success") and data.get("data"):
-                                captured_result["result"] = data
-                            else:
-                                print("处理失败: 无效的 JSON 数据")
-                    except Exception as e:
-                        print(f"attempt {attempt+1} 失败: {e}")
-                    if not captured_result:
-                        page.wait_for_timeout(2000)
+                    page.wait_for_timeout(500)
+
             finally:
                 browser.close()
 
-        return captured_result.get("result")
+        result = captured_result.get("result")
+        if result:
+            items = result.get("data", [])
+            fields = len(items[0]) if items else 0
+            print(f"原始数据（{len(items)} 条，每条 {fields} 字段）：")
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print("处理失败: 无法从页面捕获 v1/kline 数据")
+        return result
 
     def fetch_daily_data(self, timestamp_s: Optional[int] = None) -> Optional[dict]:
-        """抓取每日K线数据，使用 playwright 绕过 Aliyun WAF。"""
+        """抓取每日K线数据，使用 playwright 拦截并重写 v2/chart → v1/kline。"""
         if timestamp_s is None:
             timestamp_s = int(time.time())
         timestamp_ms = timestamp_s * 1000
@@ -134,6 +131,6 @@ if __name__ == "__main__":
     crawler = DailyKlineCrawler()
     data = crawler.fetch_daily_data()
     if data:
-        print("Success!")
+        print(f"\n✅ 成功获取 {len(data.get('data', []))} 条K线数据")
     else:
-        print("Failed!")
+        print("\n❌ 获取失败")
