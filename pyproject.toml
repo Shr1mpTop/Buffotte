@@ -17,6 +17,7 @@ dependencies = [
     "pytz",
     "cryptography",
     "httpx",
+    "playwright",
 ]
 
 [build-system]

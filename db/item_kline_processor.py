@@ -221,6 +221,7 @@ class ItemKlineProcessor:
                 platform=platform,
                 type_day=type_day,
                 date_type=date_type,
+                hashname=market_hash_name,
             )
 
             if not raw_data:
@@ -408,6 +409,7 @@ class ItemKlineProcessor:
                 platform=platform,
                 type_day=type_day,
                 date_type=date_type,
+                hashname=market_hash_name,
             )
 
             if not raw_data:
