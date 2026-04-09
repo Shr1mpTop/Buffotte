@@ -67,7 +67,11 @@
         </button>
       </div>
       <div class="filter-group">
-        <select class="time-select" v-model="activeDays" @change="onFilterChange">
+        <select
+          class="time-select"
+          v-model="activeDays"
+          @change="onFilterChange"
+        >
           <option :value="null">全部时间</option>
           <option :value="1">最近 24h</option>
           <option :value="3">最近 3 天</option>
@@ -105,9 +109,9 @@
         :key="item.id"
       >
         <div class="card-top">
-          <span class="cat-badge" v-if="item.category">{{
-            categoryIcon(item.category)
-          }} {{ item.category }}</span>
+          <span class="cat-badge" v-if="item.category"
+            >{{ categoryIcon(item.category) }} {{ item.category }}</span
+          >
           <span class="cat-badge uncategorized" v-else>未分类</span>
         </div>
         <h3 class="news-title">
@@ -125,7 +129,10 @@
     <div v-if="loading" class="loading-indicator">
       <div class="loading-dots"><span></span><span></span><span></span></div>
     </div>
-    <div v-if="!loading && page > totalPages && news.length" class="no-more-news">
+    <div
+      v-if="!loading && page > totalPages && news.length"
+      class="no-more-news"
+    >
       - 数据流终止 -
     </div>
     <div v-if="!loading && !news.length && !firstLoad" class="empty-state">
@@ -134,7 +141,9 @@
     </div>
 
     <!-- 返回顶部 -->
-    <button @click="scrollToTop" class="rocket-button" v-show="showRocket">▲</button>
+    <button @click="scrollToTop" class="rocket-button" v-show="showRocket">
+      ▲
+    </button>
   </div>
 </template>
 
@@ -206,12 +215,18 @@ const formatTime = (timeStr) => {
 };
 
 const miniBarHeight = (count) => {
-  const max = Math.max(...(stats.value.daily_trend || []).map((d) => d.count), 1);
+  const max = Math.max(
+    ...(stats.value.daily_trend || []).map((d) => d.count),
+    1,
+  );
   return Math.max(4, (count / max) * 36);
 };
 
 const catBarWidth = (count) => {
-  const max = Math.max(...(stats.value.category_distribution || []).map((c) => c.count), 1);
+  const max = Math.max(
+    ...(stats.value.category_distribution || []).map((c) => c.count),
+    1,
+  );
   return (count / max) * 100;
 };
 
@@ -289,7 +304,11 @@ const handleScroll = () => {
   if (!container) return;
   const { scrollTop, scrollHeight, clientHeight } = container;
   showRocket.value = scrollTop > 200;
-  if (scrollTop + clientHeight >= scrollHeight - 300 && !loading.value && page.value <= totalPages.value) {
+  if (
+    scrollTop + clientHeight >= scrollHeight - 300 &&
+    !loading.value &&
+    page.value <= totalPages.value
+  ) {
     fetchNews();
   }
 };
@@ -363,7 +382,12 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--primary-green), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--primary-green),
+      transparent
+    );
     opacity: 0.3;
   }
 
@@ -434,7 +458,12 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--primary-green), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--primary-green),
+      transparent
+    );
     opacity: 0.6;
   }
 }
@@ -490,16 +519,28 @@ onUnmounted(() => {
     border-radius: 2px;
   }
 
-  :deep(h1), :deep(h2), :deep(h3), :deep(h4) {
+  :deep(h1),
+  :deep(h2),
+  :deep(h3),
+  :deep(h4) {
     color: var(--primary-green);
     font-size: 13px;
     margin-top: 10px;
     margin-bottom: 6px;
     text-shadow: 0 0 6px var(--glow-green);
   }
-  :deep(p) { margin-bottom: 6px; color: #6f9; }
-  :deep(ul), :deep(ol) { padding-left: 16px; margin-bottom: 6px; }
-  :deep(li) { margin-bottom: 3px; }
+  :deep(p) {
+    margin-bottom: 6px;
+    color: #6f9;
+  }
+  :deep(ul),
+  :deep(ol) {
+    padding-left: 16px;
+    margin-bottom: 6px;
+  }
+  :deep(li) {
+    margin-bottom: 3px;
+  }
   :deep(code) {
     background: rgba(0, 255, 127, 0.1);
     padding: 1px 4px;
@@ -511,17 +552,21 @@ onUnmounted(() => {
     color: var(--primary-green);
     text-decoration: none;
     border-bottom: 1px dotted var(--border-green);
-    &:hover { text-shadow: 0 0 6px var(--glow-green); }
+    &:hover {
+      text-shadow: 0 0 6px var(--glow-green);
+    }
   }
 }
 
 // ─── 折叠动画 ──────────────────────────────────────────────────
-.fold-enter-active, .fold-leave-active {
+.fold-enter-active,
+.fold-leave-active {
   transition: all 0.3s ease;
   max-height: 400px;
   overflow: hidden;
 }
-.fold-enter-from, .fold-leave-to {
+.fold-enter-from,
+.fold-leave-to {
   max-height: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -665,9 +710,16 @@ onUnmounted(() => {
   &::before {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--primary-green), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--primary-green),
+      transparent
+    );
     opacity: 0;
     transition: opacity 0.3s;
   }
@@ -675,20 +727,35 @@ onUnmounted(() => {
   &:hover {
     transform: translateY(-3px);
     border-color: var(--primary-green);
-    box-shadow: 0 0 18px rgba(0, 255, 127, 0.25), 0 6px 20px rgba(0, 0, 0, 0.5);
-    &::before { opacity: 1; }
+    box-shadow:
+      0 0 18px rgba(0, 255, 127, 0.25),
+      0 6px 20px rgba(0, 0, 0, 0.5);
+    &::before {
+      opacity: 1;
+    }
   }
 
   &.highlighted {
     border-color: var(--primary-green);
-    box-shadow: 0 0 12px rgba(0, 255, 127, 0.2), inset 0 0 15px rgba(0, 255, 127, 0.05);
+    box-shadow:
+      0 0 12px rgba(0, 255, 127, 0.2),
+      inset 0 0 15px rgba(0, 255, 127, 0.05);
     animation: glow-pulse 3s ease-in-out infinite;
   }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(0, 255, 127, 0.2), inset 0 0 15px rgba(0, 255, 127, 0.05); }
-  50% { box-shadow: 0 0 16px rgba(0, 255, 127, 0.3), inset 0 0 18px rgba(0, 255, 127, 0.08); }
+  0%,
+  100% {
+    box-shadow:
+      0 0 12px rgba(0, 255, 127, 0.2),
+      inset 0 0 15px rgba(0, 255, 127, 0.05);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(0, 255, 127, 0.3),
+      inset 0 0 18px rgba(0, 255, 127, 0.08);
+  }
 }
 
 .card-top {
@@ -783,14 +850,26 @@ onUnmounted(() => {
     border-radius: 50%;
     background: var(--primary-green);
     animation: dot-pulse 1.4s ease-in-out infinite;
-    &:nth-child(2) { animation-delay: 0.2s; }
-    &:nth-child(3) { animation-delay: 0.4s; }
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
   }
 }
 
 @keyframes dot-pulse {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1.1); }
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 
 .no-more-news {
@@ -806,8 +885,14 @@ onUnmounted(() => {
   text-align: center;
   padding: 60px 0;
   color: var(--secondary-green);
-  .empty-icon { font-size: 40px; opacity: 0.3; margin-bottom: 12px; }
-  p { font-size: 13px; }
+  .empty-icon {
+    font-size: 40px;
+    opacity: 0.3;
+    margin-bottom: 12px;
+  }
+  p {
+    font-size: 13px;
+  }
 }
 
 .rocket-button {
