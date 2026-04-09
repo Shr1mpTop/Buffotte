@@ -78,6 +78,17 @@
         </div>
         <div class="skin-price-row no-price" v-else>
           <span class="price-na">暂无价格</span>
+          <button
+            class="goto-items-btn"
+            @click.stop="
+              router.push({
+                path: '/items',
+                query: { search: item.market_hash_name },
+              })
+            "
+          >
+            查看价格 →
+          </button>
         </div>
 
         <div class="card-footer">
@@ -161,13 +172,25 @@
           </div>
           <div v-else class="no-price-detail">
             <p>暂无价格数据，等待 Investigator Agent 爬取...</p>
+            <button
+              v-if="selectedItem.entity?.market_hash_name"
+              class="action-btn goto-items"
+              @click="
+                router.push({
+                  path: '/items',
+                  query: { search: selectedItem.entity.market_hash_name },
+                })
+              "
+            >
+              📦 在饰品页查看价格
+            </button>
           </div>
 
           <!-- steamdt 外链 -->
           <div class="modal-actions">
             <a
               v-if="selectedItem.entity?.market_hash_name"
-              :href="`https://steamdt.com/cs2/${encodeURIComponent(selectedItem.entity.market_hash_name)}`"
+              :href="`https://steamdt.com/mkt?search=${encodeURIComponent(selectedItem.entity.market_hash_name)}`"
               target="_blank"
               class="action-btn"
             >
@@ -181,6 +204,18 @@
             >
               ↗ 在 BUFF 查看
             </a>
+            <button
+              v-if="selectedItem.entity?.market_hash_name"
+              class="action-btn goto-items"
+              @click="
+                router.push({
+                  path: '/items',
+                  query: { search: selectedItem.entity.market_hash_name },
+                })
+              "
+            >
+              📦 在饰品页查看价格
+            </button>
           </div>
         </div>
       </div>
@@ -190,8 +225,10 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import api from "@/services/api";
 
+const router = useRouter();
 const skinsContainer = ref(null);
 const items = ref([]);
 const loading = ref(false);
@@ -862,6 +899,35 @@ onMounted(() => {
       border-color: #6bcbff;
       box-shadow: 0 0 10px rgba(107, 203, 255, 0.2);
     }
+  }
+
+  &.goto-items {
+    color: #ffa500;
+    border-color: rgba(255, 165, 0, 0.35);
+    background: rgba(255, 165, 0, 0.05);
+    cursor: pointer;
+    &:hover {
+      background: rgba(255, 165, 0, 0.12);
+      border-color: #ffa500;
+      box-shadow: 0 0 10px rgba(255, 165, 0, 0.2);
+    }
+  }
+}
+
+.goto-items-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #ffa500;
+  background: rgba(255, 165, 0, 0.08);
+  border: 1px solid rgba(255, 165, 0, 0.35);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  &:hover {
+    background: rgba(255, 165, 0, 0.15);
+    border-color: #ffa500;
+    box-shadow: 0 0 6px rgba(255, 165, 0, 0.3);
   }
 }
 
