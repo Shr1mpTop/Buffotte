@@ -22,8 +22,8 @@
         <span class="text">资讯</span>
       </router-link>
       <router-link to="/skins" class="nav-item" active-class="active">
-        <span class="icon">◈</span>
-        <span class="text">皮肤</span>
+        <span class="icon">🔥</span>
+        <span class="text">热点</span>
       </router-link>
       <router-link to="/tracking" class="nav-item" active-class="active">
         <span class="icon">★</span>

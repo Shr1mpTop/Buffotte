@@ -58,6 +58,17 @@ class NewsProcessor:
         try:
             with self.conn.cursor() as cursor:
                 cursor.execute(create_table_sql)
+                # 向后兼容：如果表已存在但缺少 UNIQUE KEY，则添加
+                cursor.execute("SHOW INDEX FROM news WHERE Key_name = 'url'")
+                if not cursor.fetchone():
+                    # 先清理重复数据
+                    cursor.execute('''
+                        DELETE n1 FROM news n1
+                        INNER JOIN news n2
+                        ON n1.url = n2.url AND n1.id < n2.id
+                    ''')
+                    cursor.execute("ALTER TABLE news ADD UNIQUE KEY uk_url (url)")
+                    logger.info("已为 news.url 添加 UNIQUE 约束")
             self.conn.commit()
             logger.info("表 'news' 已确认存在。")
         except Exception as e:

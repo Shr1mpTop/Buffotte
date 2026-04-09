@@ -21,11 +21,44 @@ from db.skin_processor import (
     SkinSearchTaskProcessor,
     SkinDetailProcessor,
 )
+from db.item_kline_processor import ItemKlineProcessor
 
 AGENT_ID = "skin_investigator_v1"
 CRAWL_DELAY_SECONDS = 5   # 两次爬取之间的等待时间（避免触发反爬）
 DEFAULT_BATCH_SIZE = 10   # 每次批量处理的任务数
 DEFAULT_PLATFORM = "BUFF"
+
+# 用于从 cs2_items 查找 item_id
+_kline_processor = ItemKlineProcessor()
+
+
+def _lookup_item_id(market_hash_name: str) -> str:
+    """
+    从 cs2_items 表查找 item_id（c5_id）。
+    先精确匹配，如果没匹配到，用 LIKE 模糊匹配（市场名含品质后缀如 (Field-Tested)）。
+    """
+    item_id = _kline_processor.get_item_id_from_db(market_hash_name)
+    if item_id:
+        return item_id
+
+    # 模糊匹配：market_hash_name 可能缺少品质后缀
+    try:
+        conn = _kline_processor.get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT c5_id FROM cs2_items WHERE market_hash_name LIKE %s LIMIT 1",
+                (f"{market_hash_name}%",)
+            )
+            row = cursor.fetchone()
+            if row:
+                return str(row[0])
+    except Exception as e:
+        logger.warning(f"模糊查找 item_id 失败: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    return ""
 
 
 def _extract_price_from_kline(kline_data: dict) -> tuple[float | None, float | None, float | None, int | None]:
@@ -138,6 +171,11 @@ class SkinInvestigatorAgent:
 
                         logger.info(f"  [{i+1}/{len(tasks)}] 调查: {skin_name} ({market_hash_name})")
 
+                        # 从 cs2_items 查找 steamdt item_id
+                        item_id = _lookup_item_id(market_hash_name)
+                        if not item_id:
+                            logger.warning(f"    未找到 item_id，将尝试使用 hashname 爬取")
+
                         # 标记任务为运行中
                         task_proc.update_task_status(task_id, 'running', assigned_agent=AGENT_ID)
 
@@ -145,7 +183,7 @@ class SkinInvestigatorAgent:
                         kline_result = None
                         try:
                             kline_result = self.crawler.fetch_item_details(
-                                item_id="",           # steamdt 物品 ID（可选，通过 hashname 也能访问）
+                                item_id=item_id,
                                 platform=self.platform,
                                 type_day="2",         # 2=日K
                                 hashname=market_hash_name,

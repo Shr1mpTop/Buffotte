@@ -78,21 +78,21 @@
         </div>
         <div class="skin-price-row no-price" v-else>
           <span class="price-na">暂无价格</span>
+        </div>
+
+        <div class="card-footer">
+          <span class="last-updated">{{ formatTime(item.last_updated) }}</span>
           <button
             class="goto-items-btn"
             @click.stop="
               router.push({
                 path: '/items',
-                query: { search: item.market_hash_name },
+                query: { search: item.market_hash_name || item.skin_name },
               })
             "
           >
-            查看价格 →
+            🔎 饰品搜索
           </button>
-        </div>
-
-        <div class="card-footer">
-          <span class="last-updated">{{ formatTime(item.last_updated) }}</span>
         </div>
       </div>
     </div>
@@ -189,8 +189,11 @@
           <!-- steamdt 外链 -->
           <div class="modal-actions">
             <a
-              v-if="selectedItem.entity?.market_hash_name"
-              :href="`https://steamdt.com/mkt?search=${encodeURIComponent(selectedItem.entity.market_hash_name)}`"
+              v-if="
+                selectedItem.entity?.market_hash_name ||
+                selectedItem.entity?.skin_name
+              "
+              :href="`https://steamdt.com/mkt?search=${encodeURIComponent(selectedItem.entity.market_hash_name || selectedItem.entity.skin_name)}`"
               target="_blank"
               class="action-btn"
             >
@@ -677,12 +680,32 @@ onMounted(() => {
 .card-footer {
   padding-top: 8px;
   border-top: 1px solid var(--border-green);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .last-updated {
   font-size: 10px;
   color: var(--secondary-green);
   opacity: 0.5;
+}
+
+.goto-items-btn {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.4);
+  color: #ffa500;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: "Share Tech Mono", monospace;
+  transition: all 0.2s;
+  &:hover {
+    background: rgba(255, 165, 0, 0.2);
+    border-color: #ffa500;
+    box-shadow: 0 0 8px rgba(255, 165, 0, 0.3);
+  }
 }
 
 // ─── 弹窗 ─────────────────────────────────────────────────────

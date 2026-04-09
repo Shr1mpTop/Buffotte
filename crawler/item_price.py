@@ -51,9 +51,9 @@ class DailyKlineCrawler:
             logger.error("playwright 未安装，请运行: pip install playwright && playwright install chromium")
             return None
 
-        # 导航目标：有 hashname 就去物品详情页，否则去首页
+        # 导航目标：有 hashname 就去搜索页，否则去首页
         nav_url = (
-            f"https://steamdt.com/cs2/{quote(hashname)}"
+            f"https://steamdt.com/mkt?search={quote(hashname)}"
             if hashname
             else "https://steamdt.com"
         )

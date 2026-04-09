@@ -241,23 +241,22 @@ async def get_latest_summary():
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
             # 获取东八区今天的日期
             today_utc8 = datetime.now(pytz.timezone('Asia/Shanghai')).date()
+            # 优先按 summary_date 匹配今天，若无则取最近一条
             cursor.execute("""
                 SELECT id, summary FROM summary 
-                WHERE DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = %s
+                WHERE summary_date = %s
                 ORDER BY created_at DESC 
                 LIMIT 1
             """, (today_utc8,))
             result = cursor.fetchone()
+            if not result:
+                # fallback：取最新的一条（兼容旧数据没有 summary_date 的情况）
+                cursor.execute("SELECT id, summary FROM summary ORDER BY created_at DESC LIMIT 1")
+                result = cursor.fetchone()
             if result:
                 return {"summary": result['summary'], "summary_id": result['id']}
             else:
-                # 如果今天没有，就返回最新的一个
-                cursor.execute("SELECT id, summary FROM summary ORDER BY created_at DESC LIMIT 1")
-                result = cursor.fetchone()
-                if result:
-                    return {"summary": result['summary'], "summary_id": result['id']}
-                else:
-                    raise HTTPException(status_code=404, detail="未找到摘要")
+                raise HTTPException(status_code=404, detail="未找到摘要")
     except pymysql.err.OperationalError as e:
         raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
     except Exception as e:
@@ -268,15 +267,33 @@ async def get_latest_summary():
             conn.close()
 
 @app.get("/api/news")
-async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
+async def get_news(
+    page: int = 1,
+    size: int = 10,
+    summary_id: int = None,
+    category: str = None,
+    days: int = None,
+):
     conn = None
     try:
         conn = user_manager.get_db_connection()
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            # 构建 WHERE 子句
+            conditions = []
+            params = []
+            if category:
+                conditions.append("category = %s")
+                params.append(category)
+            if days:
+                conditions.append("publish_time >= DATE_SUB(NOW(), INTERVAL %s DAY)")
+                params.append(days)
+            where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
             offset = (page - 1) * size
             cursor.execute(
-                "SELECT id, title, url, source, publish_time, summary as preview FROM news ORDER BY publish_time DESC LIMIT %s OFFSET %s", 
-                (size, offset)
+                f"SELECT id, title, url, source, publish_time, summary as preview, category "
+                f"FROM news {where_clause} ORDER BY publish_time DESC LIMIT %s OFFSET %s",
+                (*params, size, offset)
             )
             news_list = cursor.fetchall()
             
@@ -294,7 +311,7 @@ async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
                 news['highlighted'] = news['id'] in highlighted_news_ids
             
             # 获取总数用于分页
-            cursor.execute("SELECT COUNT(*) as total FROM news")
+            cursor.execute(f"SELECT COUNT(*) as total FROM news {where_clause}", params)
             total = cursor.fetchone()['total']
             
             return {
@@ -312,6 +329,76 @@ async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
     finally:
         if conn and conn.open:
             conn.close()
+
+
+@app.get("/api/news/stats")
+async def get_news_stats():
+    """新闻数据看板统计：分类分布、来源 Top、时间线、总数等。"""
+    conn = None
+    try:
+        conn = user_manager.get_db_connection()
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            # 总数
+            cursor.execute("SELECT COUNT(*) as total FROM news")
+            total = cursor.fetchone()['total']
+
+            # 分类分布
+            cursor.execute(
+                "SELECT IFNULL(category, '未分类') as category, COUNT(*) as count "
+                "FROM news GROUP BY category ORDER BY count DESC"
+            )
+            category_dist = cursor.fetchall()
+
+            # 来源 Top 8
+            cursor.execute(
+                "SELECT source, COUNT(*) as count FROM news "
+                "WHERE source IS NOT NULL AND source != '' "
+                "GROUP BY source ORDER BY count DESC LIMIT 8"
+            )
+            source_top = cursor.fetchall()
+
+            # 最近 7 天每天的新闻量
+            cursor.execute(
+                "SELECT DATE(publish_time) as day, COUNT(*) as count "
+                "FROM news WHERE publish_time >= DATE_SUB(NOW(), INTERVAL 7 DAY) "
+                "AND publish_time <= NOW() "
+                "GROUP BY DATE(publish_time) ORDER BY day"
+            )
+            daily_trend = cursor.fetchall()
+
+            # 最近新闻时间
+            cursor.execute(
+                "SELECT MAX(publish_time) as latest, MIN(publish_time) as earliest "
+                "FROM news WHERE publish_time BETWEEN '2020-01-01' AND '2030-01-01'"
+            )
+            time_range = cursor.fetchone()
+
+            # 可用分类列表
+            cursor.execute(
+                "SELECT DISTINCT category FROM news WHERE category IS NOT NULL AND category != '' ORDER BY category"
+            )
+            categories = [row['category'] for row in cursor.fetchall()]
+
+            return {
+                "total": total,
+                "category_distribution": category_dist,
+                "source_top": source_top,
+                "daily_trend": daily_trend,
+                "time_range": {
+                    "latest": time_range['latest'].isoformat() if time_range['latest'] else None,
+                    "earliest": time_range['earliest'].isoformat() if time_range['earliest'] else None,
+                },
+                "categories": categories,
+            }
+    except pymysql.err.OperationalError as e:
+        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
+    except Exception as e:
+        logging.exception("获取新闻统计失败")
+        raise HTTPException(status_code=500, detail=f"获取新闻统计失败: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+
 
 # 代理到 buff-tracker API
 @app.api_route("/api/bufftracker/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
