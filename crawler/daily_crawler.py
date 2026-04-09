@@ -1,9 +1,12 @@
 import time
 import json
 import os
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -35,7 +38,7 @@ class DailyKlineCrawler:
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
-            print("❌ playwright 未安装，请运行: pip install playwright && playwright install chromium")
+            logger.error("playwright 未安装，请运行: pip install playwright && playwright install chromium")
             return None
 
         _exe = _CHROMIUM_HEADLESS if os.path.exists(_CHROMIUM_HEADLESS) else _CHROMIUM_FULL
@@ -109,10 +112,9 @@ class DailyKlineCrawler:
         if result:
             items = result.get("data", [])
             fields = len(items[0]) if items else 0
-            print(f"原始数据（{len(items)} 条，每条 {fields} 字段）：")
-            print(json.dumps(result, ensure_ascii=False))
+            logger.info(f"原始数据（{len(items)} 条，每条 {fields} 字段）")
         else:
-            print("处理失败: 无法从页面捕获 v1/kline 数据")
+            logger.error("处理失败: 无法从页面捕获 v1/kline 数据")
         return result
 
     def fetch_daily_data(self, timestamp_s: Optional[int] = None) -> Optional[dict]:
@@ -131,6 +133,6 @@ if __name__ == "__main__":
     crawler = DailyKlineCrawler()
     data = crawler.fetch_daily_data()
     if data:
-        print(f"\n✅ 成功获取 {len(data.get('data', []))} 条K线数据")
+        logger.info(f"成功获取 {len(data.get('data', []))} 条K线数据")
     else:
-        print("\n❌ 获取失败")
+        logger.error("获取失败")

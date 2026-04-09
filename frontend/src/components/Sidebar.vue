@@ -21,6 +21,10 @@
         <span class="icon">📰</span>
         <span class="text">资讯</span>
       </router-link>
+      <router-link to="/skins" class="nav-item" active-class="active">
+        <span class="icon">◈</span>
+        <span class="text">皮肤</span>
+      </router-link>
       <router-link to="/tracking" class="nav-item" active-class="active">
         <span class="icon">★</span>
         <span class="text">追踪</span>
@@ -36,19 +40,19 @@
 </template>
 
 <script>
-import { useRouter } from 'vue-router'
+import { useRouter } from "vue-router";
 
 export default {
-  name: 'Sidebar',
+  name: "Sidebar",
   setup() {
-    const router = useRouter()
+    const router = useRouter();
     const logout = () => {
-      localStorage.removeItem('user')
-      router.push('/login')
-    }
-    return { logout }
-  }
-}
+      localStorage.removeItem("user");
+      router.push("/login");
+    };
+    return { logout };
+  },
+};
 </script>
 
 <style scoped>
@@ -115,7 +119,7 @@ export default {
 }
 
 .nav-item::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 50%;
@@ -173,7 +177,7 @@ export default {
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s;
-  font-family: 'Source Code Pro', monospace;
+  font-family: "Source Code Pro", monospace;
 }
 
 .logout-btn:hover {

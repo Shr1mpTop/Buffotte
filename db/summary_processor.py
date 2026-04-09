@@ -1,7 +1,10 @@
 import json
 import os
+import logging
 import pymysql
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # 加载环境变量
 load_dotenv()
@@ -73,7 +76,7 @@ def process_summary_from_response():
                 break
     
     if not summary_text or not annotations:
-        print("未找到有效的摘要或标注。")
+        logger.warning("未找到有效的摘要或标注。")
         return
 
     conn = get_db_connection()
@@ -99,10 +102,10 @@ def process_summary_from_response():
                     )
             
             conn.commit()
-            print(f"成功插入摘要，ID: {summary_id}，并关联了 {len(news_ids)} 条新闻。")
+            logger.info(f"成功插入摘要，ID: {summary_id}，并关联了 {len(news_ids)} 条新闻。")
 
     except Exception as e:
-        print(f"处理摘要时发生错误: {e}")
+        logger.error(f"处理摘要时发生错误: {e}")
         conn.rollback()
     finally:
         if conn.open:

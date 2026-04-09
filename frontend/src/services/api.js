@@ -1,17 +1,17 @@
-import axios from 'axios'
+import axios from "axios";
 
-const client = axios.create({ baseURL: '/api', timeout: 6000 })
+const client = axios.create({ baseURL: "/api", timeout: 6000 });
 
 // 外部API客户端 - 用于调用buff-tracker服务
-const externalClient = axios.create({ 
-  baseURL: '/api/bufftracker',
-  timeout: 10000 
-})
+const externalClient = axios.create({
+  baseURL: "/api/bufftracker",
+  timeout: 10000,
+});
 
-export { client, externalClient }
+export { client, externalClient };
 
 function normalizeKlineRows(rows) {
-  if (!Array.isArray(rows)) return []
+  if (!Array.isArray(rows)) return [];
 
   return rows
     .map((row) => {
@@ -26,8 +26,8 @@ function normalizeKlineRows(rows) {
           buy_count: Number(row[4]),
           turnover: row[5] == null ? 0 : Number(row[5]),
           volume: row[6] == null ? 0 : Number(row[6]),
-          total_count: row[7] == null ? 0 : Number(row[7])
-        }
+          total_count: row[7] == null ? 0 : Number(row[7]),
+        };
       }
 
       // 兼容后端已格式化对象
@@ -39,92 +39,153 @@ function normalizeKlineRows(rows) {
         buy_count: Number(row.buy_count),
         turnover: row.turnover == null ? 0 : Number(row.turnover),
         volume: row.volume == null ? 0 : Number(row.volume),
-        total_count: row.total_count == null ? 0 : Number(row.total_count)
-      }
+        total_count: row.total_count == null ? 0 : Number(row.total_count),
+      };
     })
-    .filter((row) => Number.isFinite(row.timestamp))
+    .filter((row) => Number.isFinite(row.timestamp));
 }
 
 export default {
   async register(payload) {
     try {
-      const { data } = await client.post('/register', payload)
-      return { success: true, data }
+      const { data } = await client.post("/register", payload);
+      return { success: true, data };
     } catch (err) {
-      let errorData = err.response?.data || err.message || '网络或服务器错误'
+      let errorData = err.response?.data || err.message || "网络或服务器错误";
       // If the error is a connection refused (e.g., backend unreachable), show a friendly error
-      if (err.message && typeof err.message === 'string' && err.message.includes('ECONNREFUSED')) {
-        errorData = '无法连接到后端服务，请确认后端是否运行。'
+      if (
+        err.message &&
+        typeof err.message === "string" &&
+        err.message.includes("ECONNREFUSED")
+      ) {
+        errorData = "无法连接到后端服务，请确认后端是否运行。";
       }
-      return { success: false, error: errorData }
+      return { success: false, error: errorData };
     }
   },
   async login(payload) {
     try {
-      const { data } = await client.post('/login', payload)
-      return { success: true, data }
+      const { data } = await client.post("/login", payload);
+      return { success: true, data };
     } catch (err) {
-      let errorData = err.response?.data || err.message || '网络或服务器错误'
-      if (err.message && typeof err.message === 'string' && err.message.includes('ECONNREFUSED')) {
-        errorData = '无法连接到后端服务，请确认后端是否运行。'
+      let errorData = err.response?.data || err.message || "网络或服务器错误";
+      if (
+        err.message &&
+        typeof err.message === "string" &&
+        err.message.includes("ECONNREFUSED")
+      ) {
+        errorData = "无法连接到后端服务，请确认后端是否运行。";
       }
-      return { success: false, error: errorData }
+      return { success: false, error: errorData };
     }
   },
-  
+
   // 饰品搜索
   async searchItems(name, num = 10) {
     try {
-      const { data } = await externalClient.get('/search', {
-        params: { name, num }
-      })
-      return { success: true, ...data }
+      const { data } = await externalClient.get("/search", {
+        params: { name, num },
+      });
+      return { success: true, ...data };
     } catch (err) {
-      console.error('搜索饰品失败:', err)
-      return { success: false, error: err.response?.data || err.message }
+      console.error("搜索饰品失败:", err);
+      return { success: false, error: err.response?.data || err.message };
     }
   },
-  
+
   // 获取饰品价格（多平台实时价格）
   async getItemPrice(marketHashName) {
     try {
-      const { data } = await externalClient.get(`/price/${encodeURIComponent(marketHashName)}`)
-      return { success: true, ...data }
+      const { data } = await externalClient.get(
+        `/price/${encodeURIComponent(marketHashName)}`,
+      );
+      return { success: true, ...data };
     } catch (err) {
-      console.error('获取价格失败:', err)
-      return { success: false, error: err.response?.data || err.message }
+      console.error("获取价格失败:", err);
+      return { success: false, error: err.response?.data || err.message };
     }
   },
 
   // 获取饰品历史价格数据（用于K线图）
   async getItemPriceHistory(itemId) {
     try {
-      const { data } = await client.get(`/item-price/${itemId}`)
-      return { success: true, data: data.data || [] }
+      const { data } = await client.get(`/item-price/${itemId}`);
+      return { success: true, data: data.data || [] };
     } catch (err) {
-      console.error('获取历史价格失败:', err)
-      return { success: false, error: err.response?.data || err.message }
+      console.error("获取历史价格失败:", err);
+      return { success: false, error: err.response?.data || err.message };
     }
   },
 
   // 获取饰品历史 K 线数据
   async getItemKlineData(marketHashName, options = {}) {
     try {
-      const { platform = 'BUFF', type_day = '1', date_type = 3 } = options
-      const encodedName = encodeURIComponent(marketHashName)
-      const { data } = await externalClient.get(`/item/kline-data/${encodedName}`, {
-        params: { platform, type_day, date_type }
-      })
+      const { platform = "BUFF", type_day = "1", date_type = 3 } = options;
+      const encodedName = encodeURIComponent(marketHashName);
+      const { data } = await externalClient.get(
+        `/item/kline-data/${encodedName}`,
+        {
+          params: { platform, type_day, date_type },
+        },
+      );
       // 后端返回格式: {success: true, data: [...]}
-      return { success: true, data: normalizeKlineRows(data.data || []) }
+      return { success: true, data: normalizeKlineRows(data.data || []) };
     } catch (err) {
-      console.error(`获取饰品 ${marketHashName} 的 K线数据失败:`, err)
+      console.error(`获取饰品 ${marketHashName} 的 K线数据失败:`, err);
       // 返回包含状态码的错误信息
       const error = {
         message: err.response?.data?.detail || err.message,
-        status: err.response?.status
-      }
-      return { success: false, error }
+        status: err.response?.status,
+      };
+      return { success: false, error };
     }
-  }
-}
+  },
+
+  // ─── Skin 智能追踪 API ───────────────────────────────────────────
+
+  // 获取热门饰品列表
+  async getTrendingSkins(limit = 20) {
+    try {
+      const { data } = await client.get("/skin/trending", {
+        params: { limit },
+      });
+      return { success: true, ...data };
+    } catch (err) {
+      console.error("获取热门饰品失败:", err);
+      return {
+        success: false,
+        error: err.response?.data?.detail || err.message,
+      };
+    }
+  },
+
+  // 搜索饰品
+  async searchSkins(q, limit = 20) {
+    try {
+      const { data } = await client.get("/skin/search", {
+        params: { q, limit },
+      });
+      return { success: true, ...data };
+    } catch (err) {
+      console.error("搜索饰品失败:", err);
+      return {
+        success: false,
+        error: err.response?.data?.detail || err.message,
+      };
+    }
+  },
+
+  // 获取单个饰品详情
+  async getSkinDetail(skinId) {
+    try {
+      const { data } = await client.get(`/skin/${skinId}/detail`);
+      return { success: true, ...data };
+    } catch (err) {
+      console.error("获取饰品详情失败:", err);
+      return {
+        success: false,
+        error: err.response?.data?.detail || err.message,
+      };
+    }
+  },
+};

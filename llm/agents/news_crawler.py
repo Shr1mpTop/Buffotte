@@ -1,6 +1,9 @@
 import os
+import logging
 from openai import OpenAI
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 def run_news_crawler_workflow():
     """
@@ -13,7 +16,7 @@ def run_news_crawler_workflow():
     model_name = models_str.split(',')[0].strip() # 默认使用列表中的第一个模型
 
     if not api_key or not model_name:
-        print("错误: 请确保 .env 文件中已配置 ARK_API_KEY 和有效的 DOUBAO_MODEL。")
+        logger.error("错误: 请确保 .env 文件中已配置 ARK_API_KEY 和有效的 DOUBAO_MODEL。")
         return
 
     # 2. 读取 Prompt
@@ -23,7 +26,7 @@ def run_news_crawler_workflow():
         with open(prompt_path, 'r', encoding='utf-8') as f:
             system_prompt = f.read()
     except FileNotFoundError:
-        print(f"错误: Prompt 文件未在 '{prompt_path}' 找到。")
+        logger.error(f"错误: Prompt 文件未在 '{prompt_path}' 找到。")
         return
 
     # 3. 初始化客户端
@@ -33,15 +36,14 @@ def run_news_crawler_workflow():
             api_key=api_key,
         )
     except Exception as e:
-        print(f"初始化 OpenAI 客户端时出错: {e}")
+        logger.error(f"初始化 OpenAI 客户端时出错: {e}")
         return
 
     # 4. 调用模型
     # 我们将 Prompt.md 的内容作为 system message，并将具体任务作为 user message
     user_task = "请帮我搜索 CS2 饰品相关的最新信息。"
     
-    print(f"--- 正在使用模型 '{model_name}' 执行任务 ---")
-    print(f"--- 用户任务: {user_task} ---")
+    logger.info(f"正在使用模型 '{model_name}' 执行任务")
 
     try:
         response = client.chat.completions.create(
@@ -60,15 +62,12 @@ def run_news_crawler_workflow():
 
         if response.choices:
             content = response.choices[0].message.content
-            print("\n--- 模型回复 ---")
-            print(content)
+            logger.info(f"模型回复: {content[:200]}...")
         else:
-            print("\n!!! 未能从响应中提取到有效的回复内容。")
-            print("--- 完整响应 ---")
-            print(response.model_dump_json(indent=2))
+            logger.warning("未能从响应中提取到有效的回复内容")
 
     except Exception as e:
-        print(f"\n!!! 请求失败: {e}")
+        logger.error(f"请求失败: {e}")
 
 if __name__ == "__main__":
     run_news_crawler_workflow()

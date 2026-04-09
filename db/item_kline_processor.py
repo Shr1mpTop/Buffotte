@@ -1,3 +1,4 @@
+import logging
 import pymysql
 from dotenv import load_dotenv
 import os
@@ -5,8 +6,10 @@ import time
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import pytz
-from fastapi import HTTPException # 新增导入
+from fastapi import HTTPException
 import asyncio
+
+logger = logging.getLogger(__name__)
 
 # 加载环境变量
 load_dotenv()
@@ -43,7 +46,7 @@ class ItemKlineProcessor:
                     return str(result[0])
                 return None
         except Exception as e:
-            print(f"从数据库查询 item_id 失败: {e}")
+            logger.error(f"从数据库查询 item_id 失败: {e}")
             return None
         finally:
             if conn:
@@ -56,12 +59,12 @@ class ItemKlineProcessor:
         新API数据格式: [timestamp, open_price, high_price, low_price, close_price, volume, turnover]
         """
         if not raw_data or not raw_data.get("success"):
-            print("❌ API返回数据无效")
+            logger.error("API返回数据无效")
             return []
 
         data_points = raw_data.get("data", [])
         if not data_points:
-            print("❌ 无数据点")
+            logger.error("无数据点")
             return []
 
         parsed_data = []
@@ -69,7 +72,7 @@ class ItemKlineProcessor:
             try:
                 # 验证数据点长度
                 if len(point) < 7:
-                    print(f"⚠️ 数据点格式不完整: {point}")
+                    logger.warning(f"数据点格式不完整: {point}")
                     continue
 
                 # 解析数据点 - 新格式: [timestamp, open, high, low, close, volume, turnover]
@@ -96,10 +99,10 @@ class ItemKlineProcessor:
                 parsed_data.append(parsed_point)
 
             except (ValueError, TypeError, IndexError) as e:
-                print(f"⚠️ 解析数据点失败: {point}, 错误: {e}")
+                logger.warning(f"解析数据点失败: {point}, 错误: {e}")
                 continue
 
-        print(f"✅ 成功解析 {len(parsed_data)} 个数据点")
+        logger.info(f"成功解析 {len(parsed_data)} 个数据点")
         return parsed_data
 
     def get_existing_records(self, conn, market_hash_name: str) -> set:
@@ -131,18 +134,18 @@ class ItemKlineProcessor:
                         (market_hash_name, max_ts[0])
                     )
                     conn.commit()
-                    print(f"已删除饰品 {market_hash_name} 的最新行，timestamp: {max_ts[0]}")
+                    logger.info(f"已删除饰品 {market_hash_name} 的最新行，timestamp: {max_ts[0]}")
                 else:
-                    print(f"饰品 {market_hash_name} 数据库为空，无需删除")
+                    logger.info(f"饰品 {market_hash_name} 数据库为空，无需删除")
         except Exception as e:
-            print(f"删除饰品 {market_hash_name} 最新行失败: {e}")
+            logger.error(f"删除饰品 {market_hash_name} 最新行失败: {e}")
 
     def insert_item_kline_data(self, conn, data_list: List[Dict]):
         """
         插入饰品K线数据，避免重复插入。
         """
         if not data_list:
-            print("ℹ️ 无数据需要插入")
+            logger.info("无数据需要插入")
             return
 
         # 按饰品分组处理
@@ -156,17 +159,17 @@ class ItemKlineProcessor:
         total_inserted = 0
 
         for market_hash_name, items in grouped_data.items():
-            print(f"📊 处理饰品: {market_hash_name}")
+            logger.info(f"处理饰品: {market_hash_name}")
 
             # 获取已存在的记录
             existing_timestamps = self.get_existing_records(conn, market_hash_name)
             new_data = [item for item in items if item['timestamp'] not in existing_timestamps]
 
             if not new_data:
-                print(f"  ℹ️ 无新数据插入 ({len(items)} 条记录已存在)")
+                logger.info(f"无新数据插入 ({len(items)} 条记录已存在)")
                 continue
 
-            print(f"  📥 准备插入 {len(new_data)} 条新记录")
+            logger.info(f"准备插入 {len(new_data)} 条新记录")
 
             # 批量插入新数据
             with conn.cursor() as cursor:
@@ -184,13 +187,13 @@ class ItemKlineProcessor:
                 try:
                     cursor.executemany(sql, values)
                     conn.commit()
-                    print(f"  ✅ 成功插入 {len(new_data)} 条记录")
+                    logger.info(f"成功插入 {len(new_data)} 条记录")
                     total_inserted += len(new_data)
                 except Exception as e:
-                    print(f"  ❌ 插入失败: {e}")
+                    logger.error(f"插入失败: {e}")
                     conn.rollback()
 
-        print(f"🎯 总共插入 {total_inserted} 条新记录")
+        logger.info(f"总共插入 {total_inserted} 条新记录")
 
     def process_and_store_item_kline(
         self,
@@ -204,7 +207,7 @@ class ItemKlineProcessor:
         主处理函数：获取饰品数据并存储到数据库。
         成功时返回解析后的数据列表，失败时返回空列表。
         """
-        print(f"🚀 开始处理饰品K线数据: {market_hash_name} (ID: {item_id})")
+        logger.info(f"开始处理饰品K线数据: {market_hash_name} (ID: {item_id})")
 
         try:
             # 导入爬虫 (修复导入路径)
@@ -214,7 +217,7 @@ class ItemKlineProcessor:
             from crawler.item_price import DailyKlineCrawler
 
             # 创建爬虫实例并获取数据
-            print("📡 正在获取API数据...")
+            logger.info("正在获取API数据...")
             crawler = DailyKlineCrawler()
             raw_data = crawler.fetch_item_details(
                 item_id,
@@ -225,15 +228,15 @@ class ItemKlineProcessor:
             )
 
             if not raw_data:
-                print("❌ 获取API数据失败")
+                logger.error("获取API数据失败")
                 return []
 
             # 解析数据
-            print("🔍 正在解析数据...")
+            logger.info("正在解析数据...")
             parsed_data = self.parse_item_kline_data(raw_data, market_hash_name, item_id)
 
             if not parsed_data:
-                print("❌ 无有效数据可处理")
+                logger.error("无有效数据可处理")
                 return []
 
             # 连接数据库并处理
@@ -248,16 +251,16 @@ class ItemKlineProcessor:
                 # 插入数据
                 self.insert_item_kline_data(conn, parsed_data)
 
-                print("🎉 饰品K线数据处理完成！")
+                logger.info("饰品K线数据处理完成！")
                 return parsed_data
 
             finally:
                 conn.close()
 
         except Exception as e:
-            print(f"❌ 处理失败: {e}")
+            logger.error(f"处理失败: {e}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             return []
 
     def create_item_kline_day_table(self):
@@ -287,9 +290,9 @@ class ItemKlineProcessor:
             conn = self.get_db_connection()
             with conn.cursor() as cursor:
                 cursor.execute(create_table_sql)
-                print("表 'item_kline_day' 创建成功！")
+                logger.info("表 'item_kline_day' 创建成功！")
         except Exception as e:
-            print(f"创建表失败: {e}")
+            logger.error(f"创建表失败: {e}")
             raise
         finally:
             if conn:
@@ -300,7 +303,7 @@ class ItemKlineProcessor:
     def batch_insert_item_kline_data(self, data_list):
         """批量插入饰品K线数据"""
         if not data_list:
-            print("没有数据需要插入")
+            logger.info("没有数据需要插入")
             return False
 
         insert_sql = """
@@ -326,10 +329,10 @@ class ItemKlineProcessor:
             with conn.cursor() as cursor:
                 cursor.executemany(insert_sql, data_list)
                 conn.commit()
-                print(f"✅ 批量插入成功，共处理 {len(data_list)} 条数据")
+                logger.info(f"批量插入成功，共处理 {len(data_list)} 条数据")
                 return True
         except Exception as e:
-            print(f"❌ 批量插入失败: {e}")
+            logger.error(f"批量插入失败: {e}")
             if conn:
                 conn.rollback()
             return False
@@ -366,7 +369,7 @@ class ItemKlineProcessor:
                 results = cursor.fetchall()
                 return results
         except Exception as e:
-            print(f"查询数据失败: {e}")
+            logger.error(f"查询数据失败: {e}")
             return []
         finally:
             if conn:
@@ -382,7 +385,7 @@ class ItemKlineProcessor:
         """
         获取饰品K线数据用于图表展示，不保存到数据库。
         """
-        print(f"🚀 准备为图表获取饰品K线数据: {market_hash_name}")
+        logger.info(f"准备为图表获取饰品K线数据: {market_hash_name}")
 
         try:
             # 导入爬虫
@@ -398,11 +401,11 @@ class ItemKlineProcessor:
             # 从数据库获取 item_id
             item_id = self.get_item_id_from_db(market_hash_name)
             if not item_id:
-                print(f"❌ 数据库中未找到饰品 {market_hash_name} 的 c5_id")
+                logger.error(f"数据库中未找到饰品 {market_hash_name} 的 c5_id")
                 raise HTTPException(status_code=404, detail=f"数据库中未找到饰品 '{market_hash_name}' 的ID,请确认饰品名称是否正确")
             
             # 创建爬虫实例并获取数据
-            print("📡 正在获取API数据...")
+            logger.info("正在获取API数据...")
             crawler = DailyKlineCrawler()
             raw_data = crawler.fetch_item_details(
                 item_id,
@@ -413,24 +416,24 @@ class ItemKlineProcessor:
             )
 
             if not raw_data:
-                print("❌ 获取API数据失败")
+                logger.error("获取API数据失败")
                 return []
 
             # 解析数据
-            print("🔍 正在解析数据...")
+            logger.info("正在解析数据...")
             parsed_data = self.parse_item_kline_data(raw_data, market_hash_name, item_id)
 
             if not parsed_data:
-                print("❌ 无有效数据可处理")
+                logger.error("无有效数据可处理")
                 return []
 
-            print(f"🎉 成功为图表获取并解析 {len(parsed_data)} 条饰品K线数据！")
+            logger.info(f"成功为图表获取并解析 {len(parsed_data)} 条饰品K线数据！")
             return parsed_data
 
         except Exception as e:
-            print(f"❌ 为图表获取饰品K线数据失败: {e}")
+            logger.error(f"为图表获取饰品K线数据失败: {e}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             raise
 
     def is_item_tracked(self, market_hash_name: str) -> bool:
@@ -446,10 +449,10 @@ class ItemKlineProcessor:
                     (market_hash_name,)
                 )
                 result = cursor.fetchone()
-                print(f"DEBUG: is_item_tracked for '{market_hash_name}': {result is not None}")
+                logger.debug(f"is_item_tracked for '{market_hash_name}': {result is not None}")
                 return result is not None
         except Exception as e:
-            print(f"查询饰品追踪状态失败: {e}")
+            logger.error(f"查询饰品追踪状态失败: {e}")
             return False  # 发生错误时，默认为不追踪
         finally:
             if conn:
@@ -466,10 +469,10 @@ class ItemKlineProcessor:
         根据饰品是否被追踪，决定是获取数据用于图表展示还是存入数据库。
         这个方法是处理前端请求的主要入口点。
         """
-        print(f"收到K线数据请求: {market_hash_name}")
+        logger.info(f"收到K线数据请求: {market_hash_name}")
 
         if self.is_item_tracked(market_hash_name):
-            print(f"✅ 饰品 '{market_hash_name}' 在追踪列表中，将获取并存储数据。")
+            logger.info(f"饰品 '{market_hash_name}' 在追踪列表中，将获取并存储数据。")
 
             item_id = self.get_item_id_from_db(market_hash_name)
             if not item_id:
@@ -489,7 +492,7 @@ class ItemKlineProcessor:
             )
             return result_data
         else:
-            print(f"ℹ️ 饰品 '{market_hash_name}' 不在追踪列表中，仅获取数据用于图表展示。")
+            logger.info(f"饰品 '{market_hash_name}' 不在追踪列表中，仅获取数据用于图表展示。")
             return await self.get_item_kline_data_for_chart(
                 market_hash_name,
                 platform=platform,
@@ -502,7 +505,7 @@ def main():
     """主函数：演示完整的数据处理流程"""
     processor = ItemKlineProcessor()
 
-    print("🎯 开始饰品K线数据处理流程...")
+    logger.info("开始饰品K线数据处理流程...")
 
     # 示例饰品数据 (可以从搜索API获取)
     test_items = [
@@ -529,30 +532,24 @@ def main():
                 success_count += 1
 
         except Exception as e:
-            print(f"❌ 处理饰品失败: {item['market_hash_name']}, 错误: {e}")
+            logger.error(f"处理饰品失败: {item['market_hash_name']}, 错误: {e}")
 
     print(f"\n{'='*60}")
-    print(f"📊 处理完成! 成功: {success_count}/{len(test_items)} 个饰品")
+    logger.info(f"处理完成! 成功: {success_count}/{len(test_items)} 个饰品")
 
     # 查询示例数据
     if success_count > 0:
-        print("\n🔍 查询最新插入的数据...")
+        logger.info("查询最新插入的数据...")
         try:
             results = processor.get_item_kline_data("AK-47 | Redline (Field-Tested)", limit=3)
             if results:
-                print(f"✅ 查询到 {len(results)} 条记录:")
+                logger.info(f"查询到 {len(results)} 条记录:")
                 for row in results:
-                    print(f"  🏷️ 饰品: {row[0]}")
-                    print(f"  ⏰ 时间戳: {row[1]}")
-                    print(f"  💰 价格: {row[3]}")
-                    print(f"  📦 在售: {row[4]}")
-                    print(f"  🛒 求购: {row[5]}")
-                    print(f"  📊 成交量: {row[8]}")
-                    print("  " + "-"*40)
+                    logger.info(f"  饰品: {row[0]}, 时间戳: {row[1]}, 价格: {row[3]}, 在售: {row[4]}, 求购: {row[5]}, 成交量: {row[8]}")
             else:
-                print("ℹ️ 无查询结果")
+                logger.info("无查询结果")
         except Exception as e:
-            print(f"❌ 查询失败: {e}")
+            logger.error(f"查询失败: {e}")
 
     return success_count > 0
 

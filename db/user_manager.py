@@ -1,8 +1,11 @@
 import os
+import logging
 import pymysql
 from dotenv import load_dotenv
 import bcrypt
 import hashlib
+
+logger = logging.getLogger(__name__)
 
 # 加载环境变量
 load_dotenv()
@@ -45,9 +48,9 @@ class UserManager:
                 """
                 cursor.execute(create_table_sql)
                 conn.commit()
-            print(" -> 'user' table checked/created successfully (initial schema).")
+            logger.info("'user' table checked/created successfully (initial schema).")
         except Exception as e:
-            print(f" -> ERROR during user table creation: {e}")
+            logger.error(f"ERROR during user table creation: {e}")
             raise # 重新抛出异常
         finally:
             if conn:
@@ -88,16 +91,16 @@ class UserManager:
                 """
                 cursor.execute(sql, (email, username, hashed_password, 1))
                 conn.commit()
-            print(f"用户 {username} 注册成功")
+            logger.info(f"用户 {username} 注册成功")
             return True
         except pymysql.IntegrityError as e:
             if e.args[0] == 1062:  # 重复键错误
-                print(f"邮箱 {email} 已存在")
+                logger.warning(f"邮箱 {email} 已存在")
             else:
-                print(f"注册失败: {e}")
+                logger.error(f"注册失败: {e}")
             return False
         except Exception as e:
-            print(f"注册失败: {e}")
+            logger.error(f"注册失败: {e}")
             return False
         finally:
             if conn:
@@ -119,7 +122,7 @@ class UserManager:
                 else:
                     return False
         except Exception as e:
-            print(f"验证密码失败: {e}")
+            logger.error(f"验证密码失败: {e}")
             return False
         finally:
             if conn:
@@ -150,7 +153,7 @@ class UserManager:
                 result = cursor.fetchone()
                 return result
         except Exception as e:
-            print(f"获取用户详细信息失败: {e}")
+            logger.error(f"获取用户详细信息失败: {e}")
             return None
         finally:
             if conn:
@@ -171,7 +174,7 @@ class UserManager:
                 else:
                     return None
         except Exception as e:
-            print(f"获取用户创建时间失败: {e}")
+            logger.error(f"获取用户创建时间失败: {e}")
             return None
         finally:
             if conn:
@@ -179,6 +182,6 @@ class UserManager:
 
 # --- 数据库初始化和迁移脚本 ---
 if __name__ == '__main__':
-    print("Starting database schema setup and migration...")
+    logger.info("Starting database schema setup and migration...")
     manager = UserManager()
 

@@ -1,5 +1,8 @@
+import logging
 from .user_manager import UserManager
 import pymysql
+
+logger = logging.getLogger(__name__)
 
 class UserActions:
     def __init__(self):
@@ -20,9 +23,9 @@ class UserActions:
                     )
                 """)
             conn.commit()
-            print("Table 'track' created successfully or already exists.")
+            logger.info("Table 'track' created successfully or already exists.")
         except Exception as e:
-            print(f"An error occurred while creating the 'track' table: {e}")
+            logger.error(f"An error occurred while creating the 'track' table: {e}")
         finally:
             if conn:
                 conn.close()

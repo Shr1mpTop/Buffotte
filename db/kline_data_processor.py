@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from typing import List, Tuple, Optional
 import pymysql
@@ -6,6 +7,8 @@ from dotenv import load_dotenv
 import os
 from datetime import datetime
 import pytz
+
+logger = logging.getLogger(__name__)
 
 # 加载环境变量
 load_dotenv()
@@ -58,11 +61,11 @@ class KlineDataProcessor:
                 if max_ts and max_ts[0]:
                     cursor.execute("DELETE FROM kline_data_day WHERE timestamp = %s", (max_ts[0],))
                     conn.commit()
-                    print(f"已删除最新行，timestamp: {max_ts[0]}")
+                    logger.info(f"已删除最新行，timestamp: {max_ts[0]}")
                 else:
-                    print("数据库为空，无需删除")
+                    logger.info("数据库为空，无需删除")
         except Exception as e:
-            print(f"删除最新行失败: {e}")
+            logger.error(f"删除最新行失败: {e}")
     def parse_kline_data(self, raw_json: dict) -> Tuple[List[dict], dict]:
         """
         解析日K数据 JSON。
@@ -128,7 +131,7 @@ class KlineDataProcessor:
         new_data = [item for item in data_list if item['timestamp'] not in existing_timestamps]
 
         if not new_data:
-            print("无新历史数据插入")
+            logger.info("无新历史数据插入")
             return
 
         with conn.cursor() as cursor:
@@ -143,7 +146,7 @@ class KlineDataProcessor:
             ) for d in new_data]
             cursor.executemany(sql, values)
             conn.commit()
-            print(f"插入 {len(new_data)} 条新历史数据")
+            logger.info(f"插入 {len(new_data)} 条新历史数据")
 
     def insert_real_time_data(self, conn, data: dict):
         """
@@ -163,7 +166,7 @@ class KlineDataProcessor:
                 data['open'], data['high'], data['low'], data['close'], data['volume'], data['turnover']
             ))
             conn.commit()
-            print("插入实时数据")
+            logger.info("插入实时数据")
 
     def process_and_store(self, raw_json: dict):
         """
@@ -184,9 +187,9 @@ class KlineDataProcessor:
             self.insert_real_time_data(conn, real_time_data)
 
             conn.close()
-            print("数据处理完成")
+            logger.info("数据处理完成")
         except Exception as e:
-            print(f"处理失败: {e}")
+            logger.error(f"处理失败: {e}")
 
 if __name__ == "__main__":
     processor = KlineDataProcessor()

@@ -1,9 +1,12 @@
 """
 已经可以归档了，完成了历史使命
 """
+import logging
 import requests
 import time
 from .kline_data_processor import KlineDataProcessor
+
+logger = logging.getLogger(__name__)
 
 def fetch_json_data(url: str):
     """
@@ -14,7 +17,7 @@ def fetch_json_data(url: str):
         response.raise_for_status()  # 如果请求失败，则抛出 HTTPError
         return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"获取数据失败 (URL: {url}): {e}")
+        logger.error(f"获取数据失败 (URL: {url}): {e}")
         return None
 
 def main():
@@ -39,11 +42,11 @@ def main():
 
     processor = KlineDataProcessor()
     
-    print("开始批量导入历史 K 线数据...")
+    logger.info("开始批量导入历史 K 线数据...")
 
     for i, url in enumerate(urls):
-        print(f"--- 处理第 {i + 1}/{len(urls)} 个数据文件 ---")
-        print(f"URL: {url}")
+        logger.info(f"--- 处理第 {i + 1}/{len(urls)} 个数据文件 ---")
+        logger.info(f"URL: {url}")
         
         raw_data = fetch_json_data(url)
         
@@ -53,7 +56,7 @@ def main():
         # 增加一个小的延迟，避免对 API 造成过大压力
         time.sleep(1)
 
-    print("--- 所有历史数据导入完成！ ---")
+    logger.info("--- 所有历史数据导入完成！ ---")
 
 if __name__ == "__main__":
     main()

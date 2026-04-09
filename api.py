@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 import logging
 import traceback
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db.user_manager import UserManager
@@ -19,11 +20,8 @@ logging.basicConfig(level=logging.INFO)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    # Log method/path and headers
-    logging.info(f"Request {request.method} {request.url} from {request.client}")
-    logging.info(f"Headers: {dict(request.headers)}")
     response = await call_next(request)
-    logging.info(f"Response status: {response.status_code} for {request.method} {request.url}")
+    logging.info(f"{request.method} {request.url.path} → {response.status_code}")
     return response
 
 
@@ -79,9 +77,6 @@ async def register(request: RegisterRequest):
 
 @app.post("/api/login")
 async def login(request: LoginRequest, http_request: Request):
-    # Debugging: log incoming request headers to diagnose issues from browser requests
-    logging.info(f"Login request headers: {dict(http_request.headers)}")
-    logging.info(f"Login request payload: {request.dict()}")
     try:
         verified = user_manager.verify_password(request.email, request.password)
     except pymysql.err.OperationalError as e:
@@ -276,18 +271,14 @@ async def get_latest_summary():
 async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
     conn = None
     try:
-        logging.info(f"Attempting to get DB connection for news. Page: {page}, Size: {size}, Summary ID: {summary_id}")
         conn = user_manager.get_db_connection()
-        logging.info("DB connection for news successful.")
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
             offset = (page - 1) * size
-            logging.info(f"Executing news query with offset: {offset}, limit: {size}")
             cursor.execute(
                 "SELECT id, title, url, source, publish_time, summary as preview FROM news ORDER BY publish_time DESC LIMIT %s OFFSET %s", 
                 (size, offset)
             )
             news_list = cursor.fetchall()
-            logging.info(f"Fetched {len(news_list)} news items.")
             
             # 如果提供了summary_id，查询关联的新闻ID
             highlighted_news_ids = set()
@@ -297,7 +288,6 @@ async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
                     (summary_id,)
                 )
                 highlighted_news_ids = {row['news_id'] for row in cursor.fetchall()}
-                logging.info(f"Highlighted news IDs for summary {summary_id}: {highlighted_news_ids}")
             
             # 标记新闻是否被洞察提及
             for news in news_list:
@@ -306,7 +296,6 @@ async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
             # 获取总数用于分页
             cursor.execute("SELECT COUNT(*) as total FROM news")
             total = cursor.fetchone()['total']
-            logging.info(f"Total news items: {total}")
             
             return {
                 "items": news_list,
@@ -323,7 +312,6 @@ async def get_news(page: int = 1, size: int = 10, summary_id: int = None):
     finally:
         if conn and conn.open:
             conn.close()
-            logging.info("DB connection for news closed.")
 
 # 代理到 buff-tracker API
 @app.api_route("/api/bufftracker/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
@@ -333,8 +321,12 @@ async def proxy_bufftracker(request: Request, path: str):
     """
     import httpx
 
+    # 本地开发：BUFFTRACKER_URL=http://localhost:8001
+    # Docker部署：BUFFTRACKER_URL=http://host.docker.internal:8001（默认）
+    bufftracker_base = os.getenv("BUFFTRACKER_URL", "http://host.docker.internal:8001")
+
     # 构建目标 URL
-    target_url = f"http://host.docker.internal:8001/api/{path}"
+    target_url = f"{bufftracker_base}/api/{path}"
 
     # 添加查询参数
     if request.url.query:
@@ -532,6 +524,73 @@ async def remove_track(request: TrackRequest):
         return result
     else:
         raise HTTPException(status_code=400, detail=result["message"])
+
+@app.get("/api/skin/trending")
+async def get_trending_skins(limit: int = 20):
+    """获取热门饰品列表（按提及次数 + 最新更新排序）"""
+    try:
+        from db.skin_processor import SkinEntityProcessor, SkinDetailProcessor
+        with SkinEntityProcessor() as proc:
+            skins = proc.get_trending_skins(limit=limit)
+        # datetime 序列化
+        for s in skins:
+            for k, v in s.items():
+                if isinstance(v, (datetime, date)):
+                    s[k] = v.isoformat()
+        return {"items": skins, "total": len(skins)}
+    except Exception as e:
+        logging.exception("获取热门饰品失败")
+        raise HTTPException(status_code=500, detail=f"获取热门饰品失败: {e}")
+
+
+@app.get("/api/skin/search")
+async def search_skins(q: str, limit: int = 20):
+    """模糊搜索饰品（中文名或英文名）"""
+    if not q or len(q.strip()) < 1:
+        raise HTTPException(status_code=400, detail="搜索关键词不能为空")
+    try:
+        from db.skin_processor import SkinEntityProcessor
+        with SkinEntityProcessor() as proc:
+            skins = proc.search_skins(q.strip(), limit=limit)
+        for s in skins:
+            for k, v in s.items():
+                if isinstance(v, (datetime, date)):
+                    s[k] = v.isoformat()
+        return {"items": skins, "total": len(skins)}
+    except Exception as e:
+        logging.exception("搜索饰品失败")
+        raise HTTPException(status_code=500, detail=f"搜索饰品失败: {e}")
+
+
+@app.get("/api/skin/{skin_id}/detail")
+async def get_skin_detail(skin_id: int):
+    """获取单个饰品的详细信息（实体 + 所有平台价格详情）"""
+    try:
+        from db.skin_processor import SkinEntityProcessor, SkinDetailProcessor
+        with SkinEntityProcessor() as entity_proc:
+            entity = entity_proc.get_skin_entity_by_id(skin_id)
+            if not entity:
+                raise HTTPException(status_code=404, detail="饰品不存在")
+            for k, v in entity.items():
+                if isinstance(v, (datetime, date)):
+                    entity[k] = v.isoformat()
+
+        with SkinDetailProcessor() as detail_proc:
+            details = detail_proc.get_skin_detail(skin_id) or []
+            if isinstance(details, dict):
+                details = [details]
+            for d in details:
+                for k, v in d.items():
+                    if isinstance(v, (datetime, date)):
+                        d[k] = v.isoformat()
+
+        return {"entity": entity, "details": details}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(f"获取饰品 {skin_id} 详情失败")
+        raise HTTPException(status_code=500, detail=f"获取饰品详情失败: {e}")
+
 
 if __name__ == "__main__":
     import uvicorn

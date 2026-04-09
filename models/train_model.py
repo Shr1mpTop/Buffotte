@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
@@ -7,6 +8,8 @@ import sys
 import subprocess
 import pymysql
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # 定义评估函数：皮尔逊相关系数
 def pearson_correlation(y_true, y_pred):
@@ -32,7 +35,7 @@ def get_db_connection():
         }
         return pymysql.connect(**config)
     except Exception as e:
-        print(f"数据库连接失败: {e}")
+        logger.error(f"数据库连接失败: {e}")
         return None
 
 def save_predictions_to_db(predictions_df):
@@ -41,10 +44,10 @@ def save_predictions_to_db(predictions_df):
     """
     conn = get_db_connection()
     if not conn:
-        print("!!! 无法连接到数据库，跳过保存预测结果。")
+        logger.error("!!! 无法连接到数据库，跳过保存预测结果。")
         return
 
-    print("\n--- 开始将预测结果保存到数据库 ---")
+    logger.info("--- 开始将预测结果保存到数据库 ---")
     try:
         with conn.cursor() as cursor:
             # 1. 创建预测表（如果不存在）
@@ -61,7 +64,7 @@ def save_predictions_to_db(predictions_df):
             )
             """
             cursor.execute(create_table_sql)
-            print("预测表 'kline_data_prediction' 已确认存在。")
+            logger.info("预测表 'kline_data_prediction' 已确认存在。")
 
             # 确保 date 唯一，避免重复行累积
             cursor.execute(
@@ -75,7 +78,7 @@ def save_predictions_to_db(predictions_df):
             has_unique_index = cursor.fetchone()[0] > 0
             if not has_unique_index:
                 cursor.execute("ALTER TABLE kline_data_prediction ADD UNIQUE KEY idx_date_unique (date)")
-                print("已为 kline_data_prediction 添加唯一索引 idx_date_unique。")
+                logger.info("已为 kline_data_prediction 添加唯一索引 idx_date_unique。")
 
             # 3. 插入或更新新的预测数据
             insert_sql = """
@@ -100,22 +103,22 @@ def save_predictions_to_db(predictions_df):
 
             cursor.executemany(insert_sql, data_to_insert)
             conn.commit()
-            print(f"成功将 {len(data_to_insert)} 条预测数据插入或更新到数据库。")
+            logger.info(f"成功将 {len(data_to_insert)} 条预测数据插入或更新到数据库。")
 
     except Exception as e:
-        print(f"!!! 保存预测数据到数据库时发生错误: {e}")
+        logger.error(f"!!! 保存预测数据到数据库时发生错误: {e}")
         conn.rollback()
     finally:
         if conn.open:
             conn.close()
-            print("数据库连接已关闭。")
+            logger.info("数据库连接已关闭。")
 
 def run_script(module_path, cwd):
     """
     将指定的 Python 脚本作为模块执行。
     """
     try:
-        print(f"--- 开始执行模块: {module_path} ---")
+        logger.info(f"--- 开始执行模块: {module_path} ---")
         # 使用 -m 将脚本作为模块运行，并设置工作目录为项目根目录
         result = subprocess.run(
             [sys.executable, "-m", module_path],
@@ -124,11 +127,11 @@ def run_script(module_path, cwd):
             text=True,
             cwd=cwd
         )
-        print(result.stdout)
-        print(f"--- 模块 {module_path} 执行成功 ---")
+        logger.info(result.stdout)
+        logger.info(f"--- 模块 {module_path} 执行成功 ---")
     except subprocess.CalledProcessError as e:
-        print(f"!!! 执行 {module_path} 时发生错误 !!!")
-        print(e.stderr)
+        logger.error(f"!!! 执行 {module_path} 时发生错误 !!!")
+        logger.error(e.stderr)
         raise
 
 def train_and_predict():
@@ -136,7 +139,7 @@ def train_and_predict():
     完整的模型训练、评估和预测流程。
     """
     # --- 步骤 0: 更新数据 ---
-    print("步骤 0: 更新数据...")
+    logger.info("步骤 0: 更新数据...")
 
     # 获取项目根目录的绝对路径
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -150,7 +153,7 @@ def train_and_predict():
     run_script(create_dataset_module, project_root)
     
     # --- 步骤 1: 加载与清洗数据 ---
-    print("步骤 1: 加载与清洗数据...")
+    logger.info("步骤 1: 加载与清洗数据...")
     
     # 构建训练集文件的路径
     try:
@@ -158,14 +161,14 @@ def train_and_predict():
         csv_path = os.path.join(current_dir, 'train.csv')
         data = pd.read_csv(csv_path)
     except FileNotFoundError:
-        print(f"错误: 'train.csv' 文件未在 '{current_dir}' 目录下找到。")
+        logger.error(f"错误: 'train.csv' 文件未在 '{current_dir}' 目录下找到。")
         return
 
     # 筛选掉价格或交易量为 0 的无效数据
     columns_to_check = ['open_price', 'high_price', 'low_price', 'close_price', 'volume']
     initial_rows = len(data)
     data = data[(data[columns_to_check] > 0).all(axis=1)]
-    print(f"数据清洗完成：移除了 {initial_rows - len(data)} 行包含 0 值的数据。")
+    logger.info(f"数据清洗完成：移除了 {initial_rows - len(data)} 行包含 0 值的数据。")
 
     # 将 timestamp 转换为日期时间格式，并设为索引
     # 时间戳默认为 UTC，我们将其转换为 UTC+8 (Asia/Shanghai)
@@ -174,7 +177,7 @@ def train_and_predict():
     data.sort_index(inplace=True)
 
     # --- 步骤 2: 特征工程 (在除去最后一行的数据上进行) ---
-    print("步骤 2: 特征工程...")
+    logger.info("步骤 2: 特征工程...")
 
     # 分离出最后一行用于后续的迭代预测
     data_for_prediction = data.iloc[-1:].copy()
@@ -202,7 +205,7 @@ def train_and_predict():
     data_for_training.dropna(inplace=True)
     
     # --- 步骤 3: 划分数据集 ---
-    print("步骤 3: 划分数据集...")
+    logger.info("步骤 3: 划分数据集...")
     
     features = [col for col in data_for_training.columns if col not in ['timestamp', 'target']]
     X = data_for_training[features]
@@ -213,10 +216,10 @@ def train_and_predict():
     X_train, X_val = X[:train_size], X[train_size:]
     y_train, y_val = y[:train_size], y[train_size:]
 
-    print(f"训练集大小: {len(X_train)} | 验证集大小: {len(X_val)}")
+    logger.info(f"训练集大小: {len(X_train)} | 验证集大小: {len(X_val)}")
 
     # --- 步骤 4: 模型训练与评估 ---
-    print("步骤 4: 模型训练与评估...")
+    logger.info("步骤 4: 模型训练与评估...")
     
     lgb_params = {
         'objective': 'regression_l1',
@@ -240,24 +243,24 @@ def train_and_predict():
     # 在验证集上评估
     y_pred_val = model.predict(X_val)
     score = pearson_correlation(y_val, y_pred_val)
-    print(f"验证集上的皮尔逊相关系数 (ρ): {score:.4f}")
+    logger.info(f"验证集上的皮尔逊相关系数 (ρ): {score:.4f}")
 
     # --- 步骤 5: 模型微调与未来预测 ---
-    print("步骤 5: 模型微调与未来预测...")
+    logger.info("步骤 5: 模型微调与未来预测...")
 
     # 在预测前打印最后一个历史数据点的日期以进行调试
     last_historical_date = data.index[-1]
-    print(f"DEBUG: 最后一个历史数据点的日期是: {last_historical_date}")
+    logger.info(f"最后一个历史数据点的日期是: {last_historical_date}")
 
     # 'model' 已在训练集(前80%数据)上训练完成
     # 现在，我们使用验证集(最近20%的数据)对其进行微调，使其适应近期市场模式
-    print(f"使用最近 {len(X_val)} 条数据进行模型微调...")
+    logger.info(f"使用最近 {len(X_val)} 条数据进行模型微调...")
     model.fit(X_val, y_val,
               init_model=model,  # 从现有模型继续训练
               eval_set=[(X_val, y_val)], # 使用微-调数据自身进行监控
               callbacks=[lgb.early_stopping(10, verbose=False)]) # 为微调设置一个较短的早停
     
-    print("模型微调完成。")
+    logger.info("模型微调完成。")
 
     # --- 为预测准备初始特征 ---
     # 我们需要为 data_for_prediction 计算与训练时相同的特征
@@ -349,7 +352,7 @@ def train_and_predict():
     
     prediction_path = os.path.join(current_dir, 'next_month_prediction.csv')
     predictions_df.to_csv(prediction_path, index=False)
-    print(f"未来 30 天的详细预测结果已保存到: {prediction_path}")
+    logger.info(f"未来 30 天的详细预测结果已保存到: {prediction_path}")
 
     # 新增步骤：将预测保存到数据库
     save_predictions_to_db(predictions_df)

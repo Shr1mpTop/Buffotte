@@ -1,27 +1,38 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import { fileURLToPath, URL } from "node:url";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   plugins: [vue()],
   server: {
     port: 5173,
     proxy: {
-      '/api': {
+      "/api": {
         // Use IPv4 loopback to avoid IPv6 (::1) connection issues on some systems
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true
-      },
-      '/bufftracker-api': {
-        target: 'http://bufftracker.hezhili.online:8010',
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/bufftracker-api/, '/api')
-      }
-    }
+      },
+      "/bufftracker-api": {
+        target: "http://bufftracker.hezhili.online:8010",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/bufftracker-api/, "/api"),
+      },
+    },
   },
   preview: {
-    host: '0.0.0.0',
+    host: "0.0.0.0",
     port: 4173,
-    allowedHosts: ['buffotte.hezhili.online', 'home.hezhili.online', 'localhost', '127.0.0.1']
-  }
-})
+    allowedHosts: [
+      "buffotte.hezhili.online",
+      "home.hezhili.online",
+      "localhost",
+      "127.0.0.1",
+    ],
+  },
+});

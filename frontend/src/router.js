@@ -1,28 +1,30 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import Login from './views/Login.vue'
-import Register from './views/Register.vue'
-import MainLayout from './layouts/MainLayout.vue'
-import Home from './views/Home.vue'
-import Kline from './views/Kline.vue'
-import NewsView from './views/NewsView.vue'
-import Items from './views/Items.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import Login from "./views/Login.vue";
+import Register from "./views/Register.vue";
+import MainLayout from "./layouts/MainLayout.vue";
+import Home from "./views/Home.vue";
+import Kline from "./views/Kline.vue";
+import NewsView from "./views/NewsView.vue";
+import Items from "./views/Items.vue";
+import SkinsView from "./views/SkinsView.vue";
 
 const routes = [
-  { path: '/login', component: Login },
-  { path: '/register', component: Register },
-  { 
-    path: '/', 
+  { path: "/login", component: Login },
+  { path: "/register", component: Register },
+  {
+    path: "/",
     component: MainLayout,
-    redirect: '/login',
+    redirect: "/login",
     children: [
-      { path: 'dashboard', component: Home, alias: '/home' },
-      { path: 'kline', component: Kline },
-      { path: 'items', component: Items },
-      { path: 'news', component: NewsView },
-      { path: 'tracking', component: () => import('./views/Tracking.vue') }
-    ]
-  }
-]
+      { path: "dashboard", component: Home, alias: "/home" },
+      { path: "kline", component: Kline },
+      { path: "items", component: Items },
+      { path: "news", component: NewsView },
+      { path: "skins", component: SkinsView },
+      { path: "tracking", component: () => import("./views/Tracking.vue") },
+    ],
+  },
+];
 
-const router = createRouter({ history: createWebHistory(), routes })
-export default router
+const router = createRouter({ history: createWebHistory(), routes });
+export default router;
