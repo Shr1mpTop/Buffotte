@@ -28,3 +28,18 @@ if [ $? -ne 0 ]; then
     echo "❌ 总结数据生成失败，退出脚本"
     exit 1
 fi
+
+# 生成AI大盘分析
+docker exec \
+    -e HOST="$HOST" \
+    -e PORT="$PORT" \
+    -e DB_USER="$DB_USER" \
+    -e DB_PASSWORD="$DB_PASSWORD" \
+    -e DATABASE="$DATABASE" \
+    -e CHARSET="$CHARSET" \
+    -e ARK_API_KEY="$ARK_API_KEY" \
+    -e DOUBAO_MODEL="$DOUBAO_MODEL" \
+    buffotte-backend-1 python -m db.market_analysis_processor
+if [ $? -ne 0 ]; then
+    echo "❌ AI大盘分析生成失败"
+fi

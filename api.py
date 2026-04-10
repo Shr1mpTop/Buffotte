@@ -208,6 +208,64 @@ async def refresh_kline_data():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"数据刷新失败: {e}")
 
+
+@app.get("/api/kline/latest")
+async def get_kline_latest():
+    """
+    轻量级接口：仅返回 kline_data_day 最新一条记录。
+    用于前端秒级轮询，避免每次传全量数据。
+    """
+    conn = None
+    try:
+        conn = kline_processor.get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT timestamp, open_price, high_price, low_price, close_price, volume, turnover
+                FROM kline_data_day
+                ORDER BY timestamp DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            if not row:
+                return {"success": True, "data": None}
+            return {
+                "success": True,
+                "data": {
+                    "timestamp": row[0],
+                    "open": float(row[1]),
+                    "high": float(row[2]),
+                    "low": float(row[3]),
+                    "close": float(row[4]),
+                    "volume": row[5],
+                    "turnover": float(row[6])
+                }
+            }
+    except Exception as e:
+        logging.exception("获取最新K线数据失败")
+        raise HTTPException(status_code=500, detail=f"获取最新数据失败: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+
+
+@app.get("/api/kline/market-analysis")
+async def get_market_analysis():
+    """获取最新的 LLM 大盘分析。"""
+    try:
+        from db.market_analysis_processor import MarketAnalysisProcessor
+        processor = MarketAnalysisProcessor()
+        result = processor.get_latest_analysis()
+        if result:
+            return {
+                "success": True,
+                "analysis": result['analysis'],
+                "date": result['analysis_date'].isoformat() if result['analysis_date'] else None
+            }
+        return {"success": True, "analysis": "", "date": None}
+    except Exception as e:
+        logging.exception("获取市场分析失败")
+        raise HTTPException(status_code=500, detail=f"获取市场分析失败: {e}")
+
 @app.get("/api/user/profile")
 async def get_user_profile(email: str):
     try:
