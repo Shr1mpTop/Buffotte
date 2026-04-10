@@ -178,6 +178,30 @@ gantt
 
 ```
 
+### 自动化脚本清单
+
+| 脚本 | 作用 | 当前计划时间 | 说明 |
+| --- | --- | --- | --- |
+| `daily_automation.sh` | 每日新闻抓取、新闻处理、摘要生成 | 每天 07:00 | 每日主数据入口 |
+| `skin_automation.sh` | 热点饰品流水线：Scout → Parser → Investigator → 新闻分类 | 每天 08:00 | 在每日新闻处理完成后执行 |
+| `kline_daily_refresh.sh` | 刷新所有已追踪饰品的 K 线缓存 | 每天 08:30 | 已安排为每日自动任务，输出到 `logs/kline_daily_refresh.log` |
+| `hourly_automation.sh` | 更新日 K 实时数据 | 每小时 56 分 | 脚本内会跳过 07:00，避免与每日任务冲突 |
+| `predict.sh` | 价格预测任务 | 每 6 小时 | 当前为 00:00 / 06:00 / 12:00 / 18:00 |
+
+### 服务器当前 Cron 配置
+
+服务器当前通过 `crontab` 执行以下自动化任务：
+
+```bash
+0 7 * * * /root/Buffotte/daily_automation.sh
+56 * * * * /root/Buffotte/hourly_automation.sh
+0 */6 * * * /root/Buffotte/predict.sh
+0 8 * * * /root/Buffotte/skin_automation.sh >> /root/Buffotte/logs/skin_automation.log 2>&1
+30 8 * * * /root/Buffotte/kline_daily_refresh.sh >> /root/Buffotte/logs/kline_daily_refresh.log 2>&1
+```
+
+`kline_daily_refresh.sh` 被安排在每天 `08:30` 执行，位于 `daily_automation.sh` 与 `skin_automation.sh` 之后，用于补齐追踪饰品的 K 线缓存，同时避开 07:00 的每日主流程。
+
 ### 用户操作流程
 
 ```mermaid
