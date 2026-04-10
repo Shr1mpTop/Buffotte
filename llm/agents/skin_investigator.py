@@ -1,21 +1,26 @@
 """
 skin_investigator.py — Phase 4: Investigator Agent
 
-从 skin_search_tasks 中获取待处理任务，使用 crawler/item_price.py 爬取
-steamdt.com 的 K 线数据，并将结果持久化到 skin_details 表。
+从 skin_search_tasks 中获取待处理任务，通过 buff-tracker 服务获取
+K 线数据，并将结果持久化到 skin_details 表。
 """
 
 import time
 import sys
 import os
 import logging
+from urllib.parse import quote
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
 # 添加项目根目录到 sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from crawler.item_price import DailyKlineCrawler
+from dotenv import load_dotenv
+load_dotenv()
+
 from db.skin_processor import (
     SkinEntityProcessor,
     SkinSearchTaskProcessor,
@@ -24,84 +29,144 @@ from db.skin_processor import (
 from db.item_kline_processor import ItemKlineProcessor
 
 AGENT_ID = "skin_investigator_v1"
-CRAWL_DELAY_SECONDS = 5   # 两次爬取之间的等待时间（避免触发反爬）
+CRAWL_DELAY_SECONDS = 2   # buff-tracker 间隔不需要太长
 DEFAULT_BATCH_SIZE = 10   # 每次批量处理的任务数
 DEFAULT_PLATFORM = "BUFF"
 
-# 用于从 cs2_items 查找 item_id
+# buff-tracker 服务地址
+BUFFTRACKER_URL = os.getenv("BUFFTRACKER_URL", "http://host.docker.internal:8001")
+
+# 用于从 cs2_items 查找完整的 market_hash_name（含品质后缀）
 _kline_processor = ItemKlineProcessor()
 
 
-def _lookup_item_id(market_hash_name: str) -> str:
-    """
-    从 cs2_items 表查找 item_id（c5_id）。
-    先精确匹配，如果没匹配到，用 LIKE 模糊匹配（市场名含品质后缀如 (Field-Tested)）。
-    """
-    item_id = _kline_processor.get_item_id_from_db(market_hash_name)
-    if item_id:
-        return item_id
+def _normalize_hash_name(name: str) -> str:
+    """修正常见的 market_hash_name 格式问题。"""
+    if not name:
+        return name
+    # 去除 LLM 解析残留的前缀杂文
+    for prefix in ("and 30 days show ", "N skins like "):
+        if name.startswith(prefix):
+            name = name[len(prefix):]
+    # 补全缺失的管道符：'M4A4 Neon Rider' → 'M4A4 | Neon Rider'
+    weapon_prefixes = [
+        "AK-47", "M4A4", "M4A1-S", "AWP", "USP-S", "Glock-18", "Desert Eagle",
+        "P250", "CZ75-Auto", "Five-SeveN", "Tec-9", "MP9", "MP7", "MP5-SD",
+        "UMP-45", "P90", "PP-Bizon", "MAC-10", "MAG-7", "Nova", "XM1014",
+        "Sawed-Off", "Negev", "M249", "FAMAS", "Galil AR", "SG 553", "AUG",
+        "SSG 08", "SCAR-20", "G3SG1", "P2000", "R8 Revolver", "Dual Berettas",
+    ]
+    for wp in weapon_prefixes:
+        if name.startswith(wp + " ") and " | " not in name:
+            name = wp + " | " + name[len(wp) + 1:]
+            break
+    return name.strip()
 
-    # 模糊匹配：market_hash_name 可能缺少品质后缀
+
+def _lookup_full_hash_name(market_hash_name: str) -> str:
+    """
+    从 cs2_items 表查找完整的 market_hash_name（含品质后缀如 Field-Tested）。
+    buff-tracker 需要完整名称来获取 kline 数据。
+    三级匹配：精确 → 前缀 LIKE → 包含 LIKE（处理 ★ 前缀的刀具/手套）。
+    """
+    conn = None
     try:
         conn = _kline_processor.get_db_connection()
         with conn.cursor() as cursor:
+            # 精确匹配
             cursor.execute(
-                "SELECT c5_id FROM cs2_items WHERE market_hash_name LIKE %s LIMIT 1",
+                "SELECT market_hash_name FROM cs2_items WHERE market_hash_name = %s LIMIT 1",
+                (market_hash_name,)
+            )
+            row = cursor.fetchone()
+            if row:
+                return str(row[0])
+
+            # 前缀匹配：hash + 品质后缀 (Field-Tested) 等
+            cursor.execute(
+                "SELECT market_hash_name FROM cs2_items WHERE market_hash_name LIKE %s LIMIT 1",
                 (f"{market_hash_name}%",)
             )
             row = cursor.fetchone()
             if row:
                 return str(row[0])
+
+            # 包含匹配：处理 ★ 前缀的刀具/手套/Souvenir 等
+            cursor.execute(
+                "SELECT market_hash_name FROM cs2_items WHERE market_hash_name LIKE %s LIMIT 1",
+                (f"%{market_hash_name}%",)
+            )
+            row = cursor.fetchone()
+            if row:
+                return str(row[0])
     except Exception as e:
-        logger.warning(f"模糊查找 item_id 失败: {e}")
+        logger.warning(f"查找完整名称失败: {e}")
     finally:
-        if conn:
+        if conn and conn.open:
             conn.close()
 
     return ""
 
 
+def _fetch_kline_from_bufftracker(
+    market_hash_name: str,
+    platform: str = "BUFF",
+    type_day: str = "2",
+) -> dict | None:
+    """
+    通过 buff-tracker 服务获取 K 线数据。
+    buff-tracker 内部使用 Playwright+Chrome 绕过 steamdt WAF。
+    返回格式: {success: True, data: [[ts, price, sell, buy_price, buy_count, turnover, volume, total], ...]}
+    """
+    url = f"{BUFFTRACKER_URL}/api/item/kline-data/{quote(market_hash_name)}"
+    params = {"platform": platform, "type_day": type_day, "date_type": "3"}
+    try:
+        resp = httpx.get(url, params=params, timeout=30.0)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("success") and data.get("data"):
+            return data
+        logger.warning(f"buff-tracker 返回无数据: {data.get('errorMsg', data.get('detail', ''))}")
+        return None
+    except Exception as e:
+        logger.error(f"buff-tracker 请求失败: {e}")
+        return None
+
+
 def _extract_price_from_kline(kline_data: dict) -> tuple[float | None, float | None, float | None, int | None]:
     """
-    从 kline 响应数据里提取最新价格、24h变化率、7d变化率、成交量。
+    从 buff-tracker kline 响应里提取最新价格、24h变化率、7d变化率、成交量。
+    buff-tracker data 格式: [[timestamp, price, sell_count, buy_price, buy_count, turnover, volume, total_count], ...]
     返回 (current_price, price_change_24h, price_change_7d, volume)
     """
     try:
-        data = kline_data.get("data", {})
-        if not data:
+        rows = kline_data.get("data", [])
+        if not rows or not isinstance(rows, list):
             return None, None, None, None
 
-        # steamdt kline 数据结构：data.klines 是列表，每项 [时间戳, 开, 高, 低, 收, 量]
-        klines = data.get("klines") or data.get("list") or []
-        if not klines:
-            # 尝试备用字段
-            price = data.get("price") or data.get("currentPrice")
-            return (float(price) if price else None), None, None, None
-
-        # 取最新一条
-        latest = klines[-1]
-        if isinstance(latest, (list, tuple)) and len(latest) >= 5:
-            current_price = float(latest[4])   # 收盘价
-            volume = int(latest[5]) if len(latest) > 5 else None
-        elif isinstance(latest, dict):
-            current_price = float(latest.get('close') or latest.get('c') or 0)
-            volume = latest.get('volume') or latest.get('v')
-        else:
+        latest = rows[-1]
+        if not isinstance(latest, (list, tuple)) or len(latest) < 2:
             return None, None, None, None
 
-        # 计算 24h 变化率（用最近两条）
+        current_price = float(latest[1]) if latest[1] is not None else None
+        volume = int(latest[6]) if len(latest) > 6 and latest[6] is not None else None
+
+        if current_price is None:
+            return None, None, None, None
+
+        # 24h 变化率
         price_change_24h = None
-        if len(klines) >= 2:
-            prev = klines[-2]
-            prev_price = float(prev[4]) if isinstance(prev, (list, tuple)) else float(prev.get('close') or prev.get('c') or 0)
+        if len(rows) >= 2:
+            prev = rows[-2]
+            prev_price = float(prev[1]) if prev[1] is not None else 0
             if prev_price > 0:
                 price_change_24h = (current_price - prev_price) / prev_price
 
-        # 计算 7d 变化率（用最近8条的第一条）
+        # 7d 变化率
         price_change_7d = None
-        if len(klines) >= 8:
-            week_ago = klines[-8]
-            week_price = float(week_ago[4]) if isinstance(week_ago, (list, tuple)) else float(week_ago.get('close') or week_ago.get('c') or 0)
+        if len(rows) >= 8:
+            week_ago = rows[-8]
+            week_price = float(week_ago[1]) if week_ago[1] is not None else 0
             if week_price > 0:
                 price_change_7d = (current_price - week_price) / week_price
 
@@ -120,7 +185,6 @@ class SkinInvestigatorAgent:
     def __init__(self, batch_size: int = DEFAULT_BATCH_SIZE, platform: str = DEFAULT_PLATFORM):
         self.batch_size = batch_size
         self.platform = platform
-        self.crawler = DailyKlineCrawler()
 
     def run_pending_tasks(self) -> dict:
         """
@@ -162,6 +226,10 @@ class SkinInvestigatorAgent:
                         skin_name = entity.get('skin_name', '未知')
                         market_hash_name = entity.get('market_hash_name')
 
+                        # 修正 hash name 格式问题
+                        if market_hash_name:
+                            market_hash_name = _normalize_hash_name(market_hash_name)
+
                         if not market_hash_name:
                             # 无 market_hash_name 则无法爬取 steamdt
                             logger.warning(f"  任务 #{task_id} [{skin_name}]: 缺少 market_hash_name，跳过")
@@ -171,25 +239,28 @@ class SkinInvestigatorAgent:
 
                         logger.info(f"  [{i+1}/{len(tasks)}] 调查: {skin_name} ({market_hash_name})")
 
-                        # 从 cs2_items 查找 steamdt item_id
-                        item_id = _lookup_item_id(market_hash_name)
-                        if not item_id:
-                            logger.warning(f"    未找到 item_id，将尝试使用 hashname 爬取")
+                        # 查找带品质后缀的完整名称（buff-tracker 需要完整名称）
+                        full_name = _lookup_full_hash_name(market_hash_name)
+                        if full_name:
+                            logger.info(f"    完整名称: {full_name}")
+                        else:
+                            # 找不到完整名称，尝试用原始名称
+                            full_name = market_hash_name
+                            logger.warning(f"    未匹配到完整名称，使用原始: {full_name}")
 
                         # 标记任务为运行中
                         task_proc.update_task_status(task_id, 'running', assigned_agent=AGENT_ID)
 
-                        # 爬取 K 线数据（steamdt）
+                        # 通过 buff-tracker 获取 K 线数据
                         kline_result = None
                         try:
-                            kline_result = self.crawler.fetch_item_details(
-                                item_id=item_id,
+                            kline_result = _fetch_kline_from_bufftracker(
+                                market_hash_name=full_name,
                                 platform=self.platform,
-                                type_day="2",         # 2=日K
-                                hashname=market_hash_name,
+                                type_day="2",
                             )
                         except Exception as e:
-                            logger.error(f"    爬取失败: {e}")
+                            logger.error(f"    获取失败: {e}")
                             task_proc.update_task_status(task_id, 'failed', error_message=str(e))
                             stats["failed"] += 1
                             if i < len(tasks) - 1:
@@ -197,8 +268,8 @@ class SkinInvestigatorAgent:
                             continue
 
                         if not kline_result:
-                            logger.warning(f"    爬取结果为空")
-                            task_proc.update_task_status(task_id, 'failed', error_message="empty kline result")
+                            logger.warning(f"    buff-tracker 返回为空")
+                            task_proc.update_task_status(task_id, 'failed', error_message="empty kline from bufftracker")
                             stats["failed"] += 1
                             if i < len(tasks) - 1:
                                 time.sleep(CRAWL_DELAY_SECONDS)
