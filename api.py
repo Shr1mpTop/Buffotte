@@ -833,6 +833,81 @@ async def get_skin_detail(skin_id: int):
         raise HTTPException(status_code=500, detail=f"获取饰品详情失败: {e}")
 
 
+@app.get("/api/system/stats")
+async def get_system_stats():
+    """读取宿主机真实系统状态（CPU、内存、负载、运行时间）。"""
+    try:
+        proc_path = "/host_proc"
+        # fallback：如果没挂载 host_proc 则用容器自身的 /proc
+        import os as _os
+        if not _os.path.exists(f"{proc_path}/stat"):
+            proc_path = "/proc"
+
+        stats = {}
+
+        # --- CPU 使用率 ---
+        def read_cpu_times(p):
+            with open(f"{p}/stat") as f:
+                line = f.readline()
+            fields = line.split()[1:]  # skip 'cpu'
+            values = [int(x) for x in fields[:8]]
+            idle = values[3] + values[4]  # idle + iowait
+            total = sum(values)
+            return total, idle
+
+        t1_total, t1_idle = read_cpu_times(proc_path)
+        import asyncio
+        await asyncio.sleep(0.1)
+        t2_total, t2_idle = read_cpu_times(proc_path)
+
+        diff_total = t2_total - t1_total
+        diff_idle = t2_idle - t1_idle
+        cpu_pct = (1 - diff_idle / diff_total) * 100 if diff_total > 0 else 0
+        stats["cpu_percent"] = round(cpu_pct, 1)
+
+        # --- 内存 ---
+        mem_info = {}
+        with open(f"{proc_path}/meminfo") as f:
+            for line in f:
+                parts = line.split()
+                key = parts[0].rstrip(":")
+                val = int(parts[1])  # kB
+                mem_info[key] = val
+
+        mem_total = mem_info.get("MemTotal", 0)
+        mem_available = mem_info.get("MemAvailable", 0)
+        mem_used = mem_total - mem_available
+        mem_pct = (mem_used / mem_total * 100) if mem_total > 0 else 0
+
+        stats["mem_total_gb"] = round(mem_total / 1024 / 1024, 1)
+        stats["mem_used_gb"] = round(mem_used / 1024 / 1024, 1)
+        stats["mem_percent"] = round(mem_pct, 1)
+
+        # --- 负载 ---
+        with open(f"{proc_path}/loadavg") as f:
+            load_parts = f.read().split()
+        stats["load_1m"] = float(load_parts[0])
+        stats["load_5m"] = float(load_parts[1])
+        stats["load_15m"] = float(load_parts[2])
+
+        # --- 运行时间 ---
+        with open(f"{proc_path}/uptime") as f:
+            uptime_sec = float(f.read().split()[0])
+        days = int(uptime_sec // 86400)
+        hours = int((uptime_sec % 86400) // 3600)
+        minutes = int((uptime_sec % 3600) // 60)
+        if days > 0:
+            stats["uptime"] = f"{days}d {hours}h"
+        else:
+            stats["uptime"] = f"{hours}h {minutes}m"
+        stats["uptime_seconds"] = int(uptime_sec)
+
+        return {"success": True, "data": stats}
+    except Exception as e:
+        logging.exception("获取系统状态失败")
+        raise HTTPException(status_code=500, detail=f"获取系统状态失败: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

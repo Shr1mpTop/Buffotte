@@ -26,27 +26,27 @@
       <div class="st-cell">
         <span class="st-lbl">CPU</span>
         <div class="st-bar">
-          <div ref="cpuBar" class="st-fill" style="width: 0"></div>
+          <div ref="cpuBar" class="st-fill" :style="{ width: sysStats.cpu + '%' }"></div>
         </div>
-        <span class="st-val">82%</span>
+        <span class="st-val">{{ sysStats.cpu }}%</span>
       </div>
       <div class="st-cell">
         <span class="st-lbl">MEM</span>
         <div class="st-bar">
-          <div ref="memBar" class="st-fill" style="width: 0"></div>
+          <div ref="memBar" class="st-fill" :style="{ width: sysStats.mem + '%' }"></div>
         </div>
-        <span class="st-val">58%</span>
+        <span class="st-val">{{ sysStats.mem }}%</span>
       </div>
       <div class="st-cell">
-        <span class="st-lbl">NET</span>
+        <span class="st-lbl">LOAD</span>
         <div class="st-bar accent">
-          <div ref="netBar" class="st-fill accent" style="width: 0"></div>
+          <div ref="netBar" class="st-fill accent" :style="{ width: Math.min(sysStats.load1 / 4 * 100, 100) + '%' }"></div>
         </div>
-        <span class="st-val" style="color: #00ff41">SECURE</span>
+        <span class="st-val" style="color: #00ff41">{{ sysStats.load1 }}</span>
       </div>
       <div class="st-cell uptime">
         <span class="st-lbl">UPTIME</span>
-        <span class="st-val mono">{{ sessionTime }}</span>
+        <span class="st-val mono">{{ sysStats.uptime }}</span>
       </div>
     </div>
 
@@ -173,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from "vue";
 import gsap from "gsap";
 import BootAnimation from "../components/BootAnimation.vue";
 import { client } from "../services/api";
@@ -205,6 +205,8 @@ const sessionTime = ref("00:00:00");
 const showBoot = ref(false);
 const userDetails = ref(null);
 const loadingDetails = ref(false);
+const sysStats = reactive({ cpu: 0, mem: 0, load1: '0.00', uptime: '--' });
+let _sysTimer = null;
 
 const CIRC = 2 * Math.PI * 32;
 const ACTIONS = [
@@ -454,6 +456,22 @@ onMounted(async () => {
   _timer = setInterval(_tick, 1000);
   if (!showBoot.value) startAll();
 
+  // System stats polling
+  const fetchSysStats = async () => {
+    try {
+      const r = await client.get('/system/stats', { timeout: 3000 });
+      if (r.data?.success) {
+        const d = r.data.data;
+        sysStats.cpu = d.cpu_percent;
+        sysStats.mem = d.mem_percent;
+        sysStats.load1 = d.load_1m;
+        sysStats.uptime = d.uptime;
+      }
+    } catch { /* silent */ }
+  };
+  fetchSysStats();
+  _sysTimer = setInterval(fetchSysStats, 3000);
+
   if (user.value?.email) {
     loadingDetails.value = true;
     try {
@@ -469,6 +487,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (_timer) clearInterval(_timer);
+  if (_sysTimer) clearInterval(_sysTimer);
   if (_matrixCleanup) _matrixCleanup();
   if (_ctx) _ctx.revert();
 });

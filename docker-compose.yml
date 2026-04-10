@@ -11,6 +11,8 @@ services:
       - ./.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - /proc:/host_proc:ro
     networks:
       - default
       - buff-tracker_net

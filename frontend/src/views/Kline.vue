@@ -31,7 +31,9 @@
 
     <!-- K线主图 -->
     <div ref="klinePanel" class="kline-panel">
-      <div class="kline-controls">
+      <div class="kline-header">
+        <span class="kh-title">CS2 大盘指数</span>
+        <div class="kline-controls">
         <div class="switch-container">
           <label>预测</label>
           <label class="switch">
@@ -45,6 +47,7 @@
             <input type="checkbox" v-model="showConfidence" @change="updateChart" :disabled="!showPrediction">
             <span class="slider round"></span>
           </label>
+        </div>
         </div>
       </div>
       <div ref="chart" class="chart"></div>
@@ -284,14 +287,14 @@ function updateChart() {
 
   myChart.value.setOption({
     backgroundColor: 'transparent',
-    title: { text: 'CS2 大盘指数', left: 'center', textStyle: { color: '#00ff41', fontSize: 18, fontFamily: 'Share Tech Mono, monospace' } },
+    title: { text: '', show: false },
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, backgroundColor: 'rgba(0,0,0,0.9)', borderColor: '#00ff41', textStyle: { color: '#00ff41' } },
     legend: {
       data: ['Daily K', 'MA5', 'MA10', 'Prediction', 'Confidence Interval'],
-      top: '6%', textStyle: { color: '#aaa', fontSize: 11 }, inactiveColor: '#444',
+      top: '4%', textStyle: { color: '#aaa', fontSize: 11 }, inactiveColor: '#444',
       selected: { 'Prediction': showPrediction.value, 'Confidence Interval': showPrediction.value && showConfidence.value }
     },
-    grid: { left: '8%', right: '8%', bottom: '18%', top: '14%' },
+    grid: { left: '8%', right: '8%', bottom: '18%', top: '12%' },
     xAxis: {
       type: 'category', data: combinedCategoryData, scale: true, boundaryGap: false,
       axisLine: { lineStyle: { color: '#333' } }, splitLine: { show: false },
@@ -535,7 +538,9 @@ watch([showPrediction, showConfidence], () => {
   background: rgba(0,0,0,0.5); border: 1px solid rgba(0,255,65,0.2); border-radius: 8px;
   padding: 16px; margin-bottom: 16px;
 }
-.kline-controls { display: flex; gap: 20px; margin-bottom: 12px; align-items: center; }
+.kline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.kh-title { color: #00ff41; font-size: 18px; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+.kline-controls { display: flex; gap: 20px; align-items: center; }
 .switch-container { display: flex; align-items: center; gap: 8px; color: rgba(0,255,65,0.7); font-size: 13px; }
 .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
 .switch input { opacity: 0; width: 0; height: 0; }
