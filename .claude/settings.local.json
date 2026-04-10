@@ -5,7 +5,9 @@
       "Bash(docker exec:*)",
       "Bash(docker-compose up:*)",
       "Bash(docker network:*)",
-      "Bash(curl -s -w \"\\\\nHTTP_CODE:%{http_code}\\\\nTIME:%{time_total}s\" \"http://localhost:8002/api/bufftracker/search?name=AWP&num=3\")"
+      "Bash(curl -s -w \"\\\\nHTTP_CODE:%{http_code}\\\\nTIME:%{time_total}s\" \"http://localhost:8002/api/bufftracker/search?name=AWP&num=3\")",
+      "Bash(curl -s -X POST \"http://localhost:8002/api/item/kline-refresh/AWP%20%7C%20Acheron%20\\(Factory%20New\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'source={d[\\\\\"source\\\\\"]}, records={len\\(d[\\\\\"data\\\\\"]\\)}'\\)\")"
     ]
   }
 }

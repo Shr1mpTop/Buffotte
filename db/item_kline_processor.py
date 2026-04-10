@@ -196,21 +196,17 @@ class ItemKlineProcessor:
         logger.info(f"总共插入 {total_inserted} 条新记录")
 
     def _store_parsed_kline(self, market_hash_name: str, parsed_data: List[Dict]):
-        """将已解析的K线数据存入数据库（删除最新行后批量插入）。"""
-        conn = None
+        """将已解析的K线数据存入数据库（使用 UPSERT 确保时间戳更新）。"""
         try:
-            conn = self.get_db_connection()
             self.create_item_kline_day_table()
-            self.delete_latest_row_for_item(conn, market_hash_name)
-            self.insert_item_kline_data(conn, parsed_data)
+            values = [(
+                d['market_hash_name'], d['timestamp'], d['item_id'], d['price'], d['sell_count'],
+                d['buy_price'], d['buy_count'], d['turnover'], d['volume'], d['total_count']
+            ) for d in parsed_data]
+            self.batch_insert_item_kline_data(values)
             logger.info(f"成功存储 {len(parsed_data)} 条K线数据: {market_hash_name}")
         except Exception as e:
             logger.error(f"存储K线数据失败: {e}")
-            if conn:
-                conn.rollback()
-        finally:
-            if conn:
-                conn.close()
 
     def process_and_store_item_kline(
         self,
