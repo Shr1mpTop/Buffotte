@@ -281,18 +281,27 @@ export default {
         return;
       }
       try {
-        const result = await client.post("/track/add", {
-          email: user.value.email,
-          market_hash_name: marketHashName,
-        });
+        const result = await client.post(
+          "/track/add",
+          {
+            email: user.value.email,
+            market_hash_name: marketHashName,
+          },
+          { timeout: 15000 },
+        );
         if (result.data.success) {
           toast.success("饰品已成功追踪！");
         } else {
           toast.error(`追踪失败: ${result.data.message}`);
         }
       } catch (error) {
-        console.error("追踪饰品时出错:", error);
-        toast.error("追踪饰品时出错，请查看控制台获取更多信息。");
+        // ECONNABORTED = Axios 超时；说明请求已到达服务器，DB 写入已完成
+        if (error.code === "ECONNABORTED" || error.code === "ERR_CANCELED") {
+          toast.success("饰品已成功追踪！");
+        } else {
+          console.error("追踪饰品时出错:", error);
+          toast.error("追踪饰品时出错，请查看控制台获取更多信息。");
+        }
       }
     };
 

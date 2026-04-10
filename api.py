@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+import asyncio
 import logging
 import traceback
 import os
@@ -581,17 +582,22 @@ async def get_item_kline_data(
         logging.exception(f"获取饰品 {market_hash_name} 的 K线数据失败")
         raise HTTPException(status_code=500, detail=f"获取饰品 K线数据失败: {e}")
 
+async def _bg_fetch_kline(name: str):
+    try:
+        await item_kline_processor.handle_item_kline_request(name)
+        logging.info(f"成功为新追踪的饰品 {name} 获取并存储了K线数据。")
+    except Exception as e:
+        logging.error(f"为新追踪的饰品 {name} 获取K线数据失败: {e}")
+
 @app.post("/api/track/add")
 async def add_track(request: TrackRequest):
-    result = user_actions.add_track_item(request.email, request.market_hash_name)
+    # 用 run_in_executor 在线程池中执行同步 pymysql 调用，避免阻塞事件循环
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None, user_actions.add_track_item, request.email, request.market_hash_name
+    )
     if result["success"]:
-        # 追踪成功后，立即调用 handle_item_kline_request 获取并存储数据
-        try:
-            await item_kline_processor.handle_item_kline_request(request.market_hash_name)
-            logging.info(f"成功为新追踪的饰品 {request.market_hash_name} 获取并存储了K线数据。")
-        except Exception as e:
-            # 即使这里失败，也不应该影响追踪成功的主流程，所以只记录日志
-            logging.error(f"为新追踪的饰品 {request.market_hash_name} 获取K线数据失败: {e}")
+        asyncio.create_task(_bg_fetch_kline(request.market_hash_name))
         return result
     else:
         raise HTTPException(status_code=400, detail=result["message"])
