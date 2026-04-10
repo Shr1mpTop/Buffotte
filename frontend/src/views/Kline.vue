@@ -130,7 +130,7 @@ const isLive = ref(true);
 const currentTime = ref('');
 const marketAnalysis = ref('');
 const analysisDate = ref(null);
-let allData = {};
+const allData = ref({ historical: [], prediction: [] });
 let matrixAnimId = null;
 let pollTimer = null;
 
@@ -165,7 +165,7 @@ const statsCards = computed(() => {
 });
 
 const dataMetrics = computed(() => {
-  const hist = allData.historical;
+  const hist = allData.value.historical;
   if (!hist || hist.length < 2) return null;
   const closes = hist.map(h => h.close);
   const volumes = hist.map(h => h.volume);
@@ -176,7 +176,7 @@ const dataMetrics = computed(() => {
   const high = Math.max(...closes);
   const low = Math.min(...closes);
 
-  const pred = allData.prediction;
+  const pred = allData.value.prediction;
   let predInfo = '--';
   let predClass = '';
   if (pred && pred.length > 0) {
@@ -244,9 +244,9 @@ function processPredictionData(predictionRaw) {
 }
 
 function updateChart() {
-  if (!myChart.value || !allData.historical) return;
-  const { categoryData, values } = splitData(allData.historical);
-  const { predictionLine, confidenceArea } = processPredictionData(allData.prediction || []);
+  if (!myChart.value || !allData.value.historical) return;
+  const { categoryData, values } = splitData(allData.value.historical);
+  const { predictionLine, confidenceArea } = processPredictionData(allData.value.prediction || []);
 
   const combinedCategoryData = [...categoryData];
   predictionLine.forEach(p => {
@@ -312,7 +312,7 @@ function updateChart() {
   });
 
   // Update mini chart
-  updateMiniChart(allData.historical);
+  updateMiniChart(allData.value.historical);
 }
 
 function updateMiniChart(hist) {
@@ -426,13 +426,13 @@ onMounted(async () => {
     client.get('/kline/market-analysis')
   ]);
 
-  allData = chartRes.data;
+  allData.value = chartRes.data;
   if (myChart.value) { myChart.value.hideLoading(); }
   updateChart();
 
   // Set latest/prev from historical
-  if (allData.historical && allData.historical.length >= 2) {
-    const hist = allData.historical;
+  if (allData.value.historical && allData.value.historical.length >= 2) {
+    const hist = allData.value.historical;
     latestData.value = hist[hist.length - 1];
     prevData.value = hist[hist.length - 2];
   }
