@@ -4,11 +4,11 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0+-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Python](https://img.shields.io/badge/python-3.9+-yellow.svg)
+![Python](https://img.shields.io/badge/python-3.10+-yellow.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-red.svg)
-![Vue.js](https://img.shields.io/badge/Vue.js-3.0+-green.svg)
+![Vue.js](https://img.shields.io/badge/Vue.js-3.5+-green.svg)
 
 **在线体验：[https://buffotte.hezhili.online/login](https://buffotte.hezhili.online/login)**
 
@@ -16,20 +16,24 @@
 
 ## 核心功能
 
-| 数据分析      | 实时追踪     | 预测模型     | 用户系统 |
-| ------------- | ------------ | ------------ | -------- |
-| 实时 K 线数据 | 价格监控     | 机器学习预测 | 用户认证 |
-| 价格趋势分析  | 个人收藏管理 | 趋势分析     | 数据同步 |
-| 市场洞察      | 收益统计     | 风险评估     | 权限管理 |
+| 数据分析      | 实时追踪       | 预测模型     | 智能分析     |
+| ------------- | -------------- | ------------ | ------------ |
+| 实时 K 线数据 | K 线数据缓存   | 机器学习预测 | AI 大盘分析  |
+| 价格趋势分析  | 个人收藏管理   | 趋势分析     | 豆包 LLM 驱动 |
+| 市场数据看板  | 秒级动态更新   | 风险评估     | 新闻聚合摘要 |
+| 系统实时监控  | 每日自动刷新   | 30 日预测    | 多维度洞察   |
 
 ## 项目架构优势
 
-### 全新架构 2.0
+### 全新架构 2.1
 
-- **代码重构** - 基于 0.10 版本经验，完全重新设计架构
+- **K 线数据缓存** - 追踪饰品 K 线数据自动缓存至数据库，两阶段加载（秒级缓存 + 异步刷新）
+- **AI 大盘分析** - 豆包大语言模型每日生成市场分析，通俗简洁的行情解读与预判
+- **实时数据看板** - 市场页面核心指标卡片、趋势迷你图、数据分析看板，3 秒轮询动态更新
+- **系统实时监控** - 首页展示服务器 CPU / 内存 / 负载 / 运行时间，读取宿主机真实数据
 - **模块化设计** - 清晰的代码结构，易于维护和扩展
-- **容器化部署** - Docker 一键启动，环境隔离
-- **高性能** - FastAPI + Vue3，响应速度提升 300%
+- **容器化部署** - Docker Compose 一键启动，跨容器网络通信
+- **科技感 UI** - Matrix Rain 背景、扫描线效果、GSAP 动画、终端风格界面
 
 ### 数据流架构
 
@@ -93,6 +97,7 @@ flowchart TD
     D --> D2[🎯 item_kline_processor.py]
     D --> D3[👤 user_manager.py]
     D --> D4[📰 news_processor.py]
+    D --> D5[🤖 market_analysis_processor.py]
 
     E --> E1[📁 src/]
     E1 --> E11[🧩 components/]
@@ -143,6 +148,11 @@ gantt
     📰 新闻获取     :07:00, 60m
     ⚙️ 数据处理     :07:02, 58m
     📊 摘要生成     :07:05, 55m
+    🤖 AI大盘分析   :07:08, 5m
+
+    section 🎯 追踪任务
+    🔥 热点饰品     :08:00, 60m
+    💾 K线缓存刷新  :08:30, 30m
 
     section 🔮 预测任务
     🔮 预测走势     :00:00, 60m
@@ -151,30 +161,7 @@ gantt
     🔮 预测走势     :18:00, 60m
 
     section ⏰ 每小时任务
-    📈 K线更新      :00:55, 55m
-    📈 K线更新      :01:55, 55m
-    📈 K线更新      :02:55, 55m
-    📈 K线更新      :03:55, 55m
-    📈 K线更新      :04:55, 55m
-    📈 K线更新      :05:55, 55m
-    📈 K线更新      :06:55, 55m
-    📈 K线更新      :07:55, 55m
-    📈 K线更新      :08:55, 55m
-    📈 K线更新      :09:55, 55m
-    📈 K线更新      :10:55, 55m
-    📈 K线更新      :11:55, 55m
-    📈 K线更新      :12:55, 55m
-    📈 K线更新      :13:55, 55m
-    📈 K线更新      :14:55, 55m
-    📈 K线更新      :15:55, 55m
-    📈 K线更新      :16:55, 55m
-    📈 K线更新      :17:55, 55m
-    📈 K线更新      :18:55, 55m
-    📈 K线更新      :19:55, 55m
-    📈 K线更新      :20:55, 55m
-    📈 K线更新      :21:55, 55m
-    📈 K线更新      :22:55, 55m
-    📈 K线更新      :23:55, 55m
+    📈 K线实时更新  :crit, 00:55, 55m
 
 ```
 
@@ -182,9 +169,9 @@ gantt
 
 | 脚本 | 作用 | 当前计划时间 | 说明 |
 | --- | --- | --- | --- |
-| `daily_automation.sh` | 每日新闻抓取、新闻处理、摘要生成 | 每天 07:00 | 每日主数据入口 |
+| `daily_automation.sh` | 每日新闻抓取、新闻处理、摘要生成、AI 大盘分析 | 每天 07:00 | 每日主数据入口，末尾调用豆包 LLM |
 | `skin_automation.sh` | 热点饰品流水线：Scout → Parser → Investigator → 新闻分类 | 每天 08:00 | 在每日新闻处理完成后执行 |
-| `kline_daily_refresh.sh` | 刷新所有已追踪饰品的 K 线缓存 | 每天 08:30 | 已安排为每日自动任务，输出到 `logs/kline_daily_refresh.log` |
+| `kline_daily_refresh.sh` | 刷新所有已追踪饰品的 K 线缓存 | 每天 08:30 | 通过 buff-tracker API 批量获取并存入 DB |
 | `hourly_automation.sh` | 更新日 K 实时数据 | 每小时 56 分 | 脚本内会跳过 07:00，避免与每日任务冲突 |
 | `predict.sh` | 价格预测任务 | 每 6 小时 | 当前为 00:00 / 06:00 / 12:00 / 18:00 |
 
@@ -268,9 +255,8 @@ sequenceDiagram
 }}%%
 erDiagram
     👤 USER {
-        string id PK "🔑 唯一标识"
+        string email PK "📧 邮箱地址"
         string username "👤 用户名"
-        string email UK "📧 邮箱地址"
         string password_hash "🔒 密码哈希"
         datetime created_at "📅 创建时间"
     }
@@ -286,33 +272,50 @@ erDiagram
         decimal turnover "💸 成交额"
     }
 
+    🎯 TRACK {
+        int id PK "🆔 追踪ID"
+        string email FK "📧 用户邮箱"
+        string market_hash_name "🏷️ 饰品市场名"
+    }
+
+    📈 ITEM_KLINE_DAY {
+        string market_hash_name PK "🏷️ 饰品市场名"
+        bigint timestamp PK "⏰ 时间戳"
+        decimal price "💵 当前价"
+        int volume "📦 成交量"
+        decimal turnover "💸 成交额"
+    }
+
     📰 NEWS {
         int id PK "🆔 新闻ID"
         string title "📰 标题"
-        text content "📝 内容"
+        string url UK "🔗 链接"
         string source "🌐 来源"
-        datetime published_at "📅 发布时间"
-        datetime created_at "⏰ 创建时间"
+        string category "📂 分类"
+        datetime publish_time "📅 发布时间"
     }
 
     🎮 CS2_ITEMS {
         string c5_id PK "🎯 饰品ID"
         string market_hash_name "🏷️ 市场名称"
         string name "📛 饰品名称"
-        decimal current_price "💰 当前价格"
-        datetime updated_at "📅 更新时间"
     }
 
-    🔮 PREDICTIONS {
-        int id PK "🆔 预测ID"
-        string item_id FK "🎯 饰品ID"
-        decimal predicted_price "📈 预测价格"
-        decimal confidence "🎯 置信度"
-        string prediction_date "📅 预测日期"
-        datetime created_at "⏰ 创建时间"
+    🔮 KLINE_DATA_PREDICTION {
+        date date PK "📅 预测日期"
+        decimal predicted_close_price "📈 预测收盘价"
+        decimal rolling_std_7 "📊 7日标准差"
     }
 
-    👤 ||--o{ 🔮 : "📊 追踪预测"
+    🤖 MARKET_ANALYSIS {
+        int id PK "🆔 分析ID"
+        text analysis "📝 AI分析内容"
+        date analysis_date UK "📅 分析日期"
+    }
+
+    👤 ||--o{ 🎯 : "📌 追踪饰品"
+    🎯 }o--|| 🎮 : "🏷️ 对应饰品"
+    🎮 ||--o{ 📈 : "📊 K线缓存"
     🎮 ||--o{ 🔮 : "🔮 价格预测"
 ```
 
@@ -364,10 +367,13 @@ flowchart TD
 
 ### 智能分析能力
 
-- **多维度数据** - 价格、成交量、新闻情绪分析
-- **机器学习预测** - LightGBM 模型预测价格趋势
-- **AI 新闻聚合** - 自动抓取和分析 CS2 相关资讯
-- **自动化更新** - 7×24 小时数据同步
+- **AI 大盘分析** - 豆包 LLM 每日生成市场行情解读，分今日行情 / 趋势对比 / 短期预判三段
+- **K 线数据缓存** - 追踪饰品 K 线自动入库，两阶段加载（数据库秒读 + 异步 API 刷新）
+- **实时数据看板** - 核心指标卡片、7 日趋势迷你图、数据分析面板、3 秒轮询动态更新
+- **机器学习预测** - LightGBM 模型预测 30 日价格趋势，含 95% 置信区间
+- **AI 新闻聚合** - 自动抓取和分析 CS2 相关资讯，AI 生成每日摘要
+- **系统实时监控** - 读取宿主机 `/proc` 获取真实 CPU / 内存 / 负载 / 运行时间
+- **自动化更新** - 5 层定时任务覆盖数据采集、模型训练、缓存刷新
 
 ## 技术栈
 
@@ -378,17 +384,20 @@ flowchart TD
 FastAPI          # 高性能异步框架
 PyMySQL          # 数据库连接
 LightGBM         # 机器学习模型
-OpenAI SDK       # AI 智能体
+httpx            # 异步 HTTP 客户端
+Playwright       # 浏览器自动化（WAF 绕过）
 ```
 
 ### 前端技术
 
 ```javascript
 // 现代化前端
-Vue 3.0+         // 渐进式框架
-Vite             // 构建工具
+Vue 3.5+         // 渐进式框架
+Vite 7           // 构建工具
 Axios            // HTTP 客户端
-Chart.js         // 数据可视化
+ECharts 6        // 数据可视化（K线图、趋势图）
+GSAP             // 入场动画
+marked + DOMPurify  // Markdown 渲染
 ```
 
 ### 部署架构
@@ -555,36 +564,50 @@ vim .env
 
 ```bash
 # 每日任务 (7:00 AM)
-新闻获取 → 数据处理 → 摘要生成
+新闻获取 → 数据处理 → 摘要生成 → AI 大盘分析
 
-# 每小时任务 (除7点)
-K线更新 → 数据同步 → 实时展示
+# 热点饰品 (8:00 AM)
+Scout → Parser → Investigator → 新闻分类
+
+# K 线缓存刷新 (8:30 AM)
+遍历所有追踪饰品 → buff-tracker API 获取 → 存入数据库
+
+# 每小时任务 (除 7 点)
+K 线更新 → 数据同步 → 实时展示
+
+# 预测任务 (每 6 小时)
+数据采集 → 特征工程 → LightGBM 训练 → 30 日预测
 ```
 
 ### 数据流向
 
 ```
-外部API → 爬虫模块 → 数据库 → 处理器 → AI分析 → API → 前端
+外部 API → 爬虫模块 → 数据库 → 处理器 → AI 分析 → API → 前端
+                                      ↗ 豆包 LLM (大盘分析)
+                                      ↗ LightGBM (价格预测)
 ```
 
 ## 功能模块
 
-| 模块     | 功能               | 技术          |
-| -------- | ------------------ | ------------- |
-| 用户系统 | 注册/登录/个人中心 | JWT + bcrypt  |
-| K 线分析 | 实时价格/历史数据  | SteamDT API   |
-| 新闻聚合 | AI 抓取/智能摘要   | OpenAI + 爬虫 |
-| 价格预测 | 机器学习/趋势分析  | LightGBM      |
-| 饰品追踪 | 个人收藏/价格监控  | 实时数据同步  |
+| 模块     | 功能                          | 技术                |
+| -------- | ----------------------------- | ------------------- |
+| 用户系统 | 注册/登录/个人中心            | bcrypt + JWT        |
+| K 线分析 | 实时价格/历史数据/数据看板    | ECharts + SteamDT   |
+| 新闻聚合 | AI 抓取/智能摘要              | 豆包 LLM + 爬虫     |
+| 价格预测 | 机器学习/趋势分析/置信区间    | LightGBM            |
+| 饰品追踪 | K 线缓存/秒级加载/异步刷新    | MySQL + buff-tracker |
+| 大盘分析 | AI 行情解读/趋势对比/短期预判 | 豆包 LLM            |
+| 系统监控 | CPU/内存/负载/运行时间        | /proc 实时读取      |
 
 ## 项目特色
 
-- **现代化 UI** - 响应式设计，支持多端访问
-- **高性能** - 异步处理，秒级响应
-- **智能化** - AI 驱动的数据分析和预测
+- **科技感 UI** - Matrix Rain 背景、扫描线效果、GSAP 动画、终端风格界面
+- **高性能** - K 线数据缓存 + 两阶段加载，追踪饰品秒级渲染
+- **AI 驱动** - 豆包 LLM 每日生成大盘分析，LightGBM 预测价格趋势
+- **实时性** - 大盘指数 3 秒轮询动态更新，系统监控实时显示
+- **全自动化** - 5 层定时任务覆盖数据采集、K 线缓存、模型训练、AI 分析
+- **可视化** - 核心指标卡片、趋势迷你图、K 线蜡烛图、数据分析看板
 - **安全性** - 完善的用户认证和数据保护
-- **可视化** - 丰富的图表和数据展示
-- **实时性** - 数据自动更新，市场动态一手掌握
 
 ## 🤝 贡献指南
 
