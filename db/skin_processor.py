@@ -53,7 +53,8 @@ class SkinEntityProcessor:
             first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '首次发现时间',
             last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
             mention_count INT DEFAULT 1 COMMENT '被提及次数',
-            UNIQUE KEY uk_skin_name (skin_name)
+            UNIQUE KEY uk_skin_name (skin_name),
+            UNIQUE KEY uk_market_hash_name (market_hash_name)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
         try:
@@ -312,7 +313,7 @@ class SkinDetailProcessor:
             kline_data_json JSON DEFAULT NULL COMMENT 'K线数据JSON',
             extra_data_json JSON DEFAULT NULL COMMENT '额外数据（平台特有字段）',
             last_crawled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '最后爬取时间',
-            INDEX idx_skin_entity_platform (skin_entity_id, platform),
+            UNIQUE KEY uk_skin_entity_platform (skin_entity_id, platform),
             FOREIGN KEY (skin_entity_id) REFERENCES skin_entities(id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
