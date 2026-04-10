@@ -263,6 +263,17 @@ class SkinEntityProcessor:
             logger.error(f"查询 skin_entity 失败: {e}")
             return None
 
+    def update_market_hash_name(self, entity_id: int, market_hash_name: str):
+        """更新实体的 market_hash_name（搜索保底成功后回写正确名称）。"""
+        sql = "UPDATE skin_entities SET market_hash_name = %s WHERE id = %s"
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(sql, (market_hash_name, entity_id))
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"更新 market_hash_name 失败: {e}")
+            self.conn.rollback()
+
     def search_skins(self, keyword: str, limit: int = 20) -> list:
         """模糊搜索饰品实体（按中文名或英文名）。"""
         sql = """
@@ -545,8 +556,8 @@ class SkinDetailProcessor:
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON DUPLICATE KEY UPDATE
             current_price = VALUES(current_price),
-                        FROM skin_details AS incoming_details
-                        WHERE incoming_details.skin_entity_id = %s
+            price_change_24h = VALUES(price_change_24h),
+            price_change_7d = VALUES(price_change_7d),
             volume = VALUES(volume),
             supply_count = VALUES(supply_count),
             kline_data_json = VALUES(kline_data_json),

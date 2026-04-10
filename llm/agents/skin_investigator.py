@@ -108,6 +108,29 @@ def _lookup_full_hash_name(market_hash_name: str) -> str:
     return ""
 
 
+def _search_hash_name_via_bufftracker(chinese_name: str) -> str:
+    """
+    通过 buff-tracker 的 /api/search 接口，用中文名搜索获取 market_hash_name。
+    作为 cs2_items 本地查找失败时的保底机制。
+    返回第一个匹配结果的 market_hash_name，失败返回空字符串。
+    """
+    url = f"{BUFFTRACKER_URL}/api/search"
+    try:
+        resp = httpx.get(url, params={"name": chinese_name}, timeout=15.0)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("success") and data.get("data"):
+            first = data["data"][0]
+            hash_name = first.get("market_hash_name", "")
+            logger.info(f"    搜索保底: '{chinese_name}' → '{hash_name}'")
+            return hash_name
+        logger.warning(f"    搜索保底无结果: '{chinese_name}'")
+        return ""
+    except Exception as e:
+        logger.error(f"    搜索保底请求失败: {e}")
+        return ""
+
+
 def _fetch_kline_from_bufftracker(
     market_hash_name: str,
     platform: str = "BUFF",
@@ -261,11 +284,25 @@ class SkinInvestigatorAgent:
                             )
                         except Exception as e:
                             logger.error(f"    获取失败: {e}")
-                            task_proc.update_task_status(task_id, 'failed', error_message=str(e))
-                            stats["failed"] += 1
-                            if i < len(tasks) - 1:
+
+                        # 保底机制：kline 获取失败时，用中文名通过 search API 查找 hash name 后重试
+                        if not kline_result and skin_name:
+                            logger.info(f"    触发搜索保底，使用中文名: {skin_name}")
+                            fallback_name = _search_hash_name_via_bufftracker(skin_name)
+                            if fallback_name and fallback_name != full_name:
                                 time.sleep(CRAWL_DELAY_SECONDS)
-                            continue
+                                try:
+                                    kline_result = _fetch_kline_from_bufftracker(
+                                        market_hash_name=fallback_name,
+                                        platform=self.platform,
+                                        type_day="2",
+                                    )
+                                    if kline_result:
+                                        # 保底成功，回写正确的 market_hash_name 到实体
+                                        entity_proc.update_market_hash_name(entity_id, fallback_name)
+                                        logger.info(f"    保底成功，已更新 hash_name: {fallback_name}")
+                                except Exception as e:
+                                    logger.error(f"    保底获取失败: {e}")
 
                         if not kline_result:
                             logger.warning(f"    buff-tracker 返回为空")
