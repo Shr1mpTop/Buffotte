@@ -178,34 +178,6 @@
         </div>
       </div>
 
-      <!-- 数据图表板块 (存世量、买卖差额等) -->
-      <div class="data-panel">
-        <div
-          v-if="klineData.length > 0"
-          ref="dataChart"
-          class="data-chart-container"
-        ></div>
-        <div v-if="loadingKlineData" class="loading">
-          <div class="loading-spinner"></div>
-          <span>正在加载数据...</span>
-        </div>
-        <div v-else-if="klineError" class="error-state">
-          <div class="error-icon">⚠️</div>
-          <div class="error-text">{{ klineError }}</div>
-        </div>
-        <div
-          v-else-if="!loadingKlineData && !klineData.length && selectedItem"
-          class="empty-state"
-        >
-          <div class="empty-icon">📉</div>
-          <div class="empty-text">暂无数据</div>
-        </div>
-        <div v-else-if="!selectedItem" class="placeholder-state">
-          <div class="placeholder-icon">📊</div>
-          <div class="placeholder-text">选择饰品查看数据图表</div>
-        </div>
-      </div>
-
       <!-- 追踪按钮 -->
       <div class="tracking-panel">
         <button

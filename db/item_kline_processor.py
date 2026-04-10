@@ -195,6 +195,23 @@ class ItemKlineProcessor:
 
         logger.info(f"总共插入 {total_inserted} 条新记录")
 
+    def _store_parsed_kline(self, market_hash_name: str, parsed_data: List[Dict]):
+        """将已解析的K线数据存入数据库（删除最新行后批量插入）。"""
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            self.create_item_kline_day_table()
+            self.delete_latest_row_for_item(conn, market_hash_name)
+            self.insert_item_kline_data(conn, parsed_data)
+            logger.info(f"成功存储 {len(parsed_data)} 条K线数据: {market_hash_name}")
+        except Exception as e:
+            logger.error(f"存储K线数据失败: {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                conn.close()
+
     def process_and_store_item_kline(
         self,
         market_hash_name: str,
@@ -458,6 +475,139 @@ class ItemKlineProcessor:
             if conn:
                 conn.close()
 
+    def get_cached_kline_data(self, market_hash_name: str, limit: int = 365) -> Tuple[List[Dict], Optional[str]]:
+        """
+        从 item_kline_day 表读取缓存的K线数据。
+        返回 (data_list, last_updated_str)，ASC 排序以适配前端图表。
+        """
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute(
+                    """SELECT timestamp, item_id, price, sell_count,
+                              buy_price, buy_count, turnover, volume, total_count
+                       FROM item_kline_day
+                       WHERE market_hash_name = %s
+                       ORDER BY timestamp ASC
+                       LIMIT %s""",
+                    (market_hash_name, limit)
+                )
+                rows = cursor.fetchall()
+
+                # 获取最后更新时间
+                cursor.execute(
+                    "SELECT MAX(updated_at) AS last_updated FROM item_kline_day WHERE market_hash_name = %s",
+                    (market_hash_name,)
+                )
+                last_updated_row = cursor.fetchone()
+                last_updated = None
+                if last_updated_row:
+                    val = list(last_updated_row.values())[0]
+                    if val:
+                        last_updated = val.isoformat() if hasattr(val, 'isoformat') else str(val)
+
+                return rows, last_updated
+        except Exception as e:
+            logger.error(f"读取缓存K线数据失败: {e}")
+            return [], None
+        finally:
+            if conn:
+                conn.close()
+
+    def is_cache_fresh(self, market_hash_name: str, max_age_hours: int = 1) -> bool:
+        """检查缓存是否在指定时间内更新过，避免频繁抓取。"""
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT MAX(updated_at) FROM item_kline_day WHERE market_hash_name = %s",
+                    (market_hash_name,)
+                )
+                result = cursor.fetchone()
+                if result and result[0]:
+                    from datetime import datetime as dt
+                    age = dt.now() - result[0]
+                    return age.total_seconds() < max_age_hours * 3600
+                return False
+        except Exception as e:
+            logger.error(f"检查缓存新鲜度失败: {e}")
+            return False
+        finally:
+            if conn:
+                conn.close()
+
+    def get_all_tracked_items(self) -> List[Dict]:
+        """查询所有追踪中的饰品 (DISTINCT market_hash_name + c5_id)。"""
+        conn = None
+        try:
+            conn = self.get_db_connection()
+            with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute(
+                    """SELECT DISTINCT t.market_hash_name, c.c5_id as item_id
+                       FROM track t
+                       LEFT JOIN cs2_items c
+                           ON t.market_hash_name COLLATE utf8mb4_unicode_ci = c.market_hash_name
+                       WHERE c.c5_id IS NOT NULL"""
+                )
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error(f"获取所有追踪饰品失败: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
+
+    def refresh_kline_for_all_tracked(self):
+        """通过 buff-tracker API 批量刷新所有追踪饰品的K线数据。"""
+        import httpx
+        from urllib.parse import quote
+
+        items = self.get_all_tracked_items()
+        if not items:
+            logger.info("没有追踪中的饰品，跳过刷新。")
+            return
+
+        bufftracker_url = os.getenv("BUFFTRACKER_URL", "http://host.docker.internal:8001")
+        success_count = 0
+        fail_count = 0
+        total = len(items)
+
+        for idx, item in enumerate(items, 1):
+            name = item['market_hash_name']
+            item_id = str(item['item_id'])
+            logger.info(f"[{idx}/{total}] 刷新: {name}")
+            try:
+                encoded_name = quote(name, safe='')
+                response = httpx.get(
+                    f"{bufftracker_url}/api/item/kline-data/{encoded_name}",
+                    params={"platform": "BUFF", "type_day": "1", "date_type": 3},
+                    timeout=30.0,
+                )
+                data = response.json()
+
+                if not data.get("success") or not data.get("data"):
+                    fail_count += 1
+                    logger.warning(f"饰品 {name} 返回无效数据")
+                    continue
+
+                parsed = self.parse_item_kline_data(data, name, item_id)
+                if parsed:
+                    self._store_parsed_kline(name, parsed)
+                    success_count += 1
+                else:
+                    fail_count += 1
+                    logger.warning(f"饰品 {name} 解析数据为空")
+            except Exception as e:
+                fail_count += 1
+                logger.error(f"饰品 {name} 刷新失败: {e}")
+            # 延迟避免触发限制
+            if idx < total:
+                time.sleep(2)
+
+        logger.info(f"批量刷新完成: 成功 {success_count}, 失败 {fail_count}, 总计 {total}")
+
     async def handle_item_kline_request(
         self,
         market_hash_name: str,
@@ -555,4 +705,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    processor = ItemKlineProcessor()
+    if "--refresh-tracked" in sys.argv:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+        processor.refresh_kline_for_all_tracked()
+    else:
+        main()

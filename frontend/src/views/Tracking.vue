@@ -74,6 +74,10 @@
 
        <div class="kline-panel">
         <div v-if="klineData.length > 0" ref="klineChart" class="kline-chart-container"></div>
+        <div v-if="isRefreshingKline && klineData.length > 0" class="refresh-indicator">
+          <div class="refresh-dot"></div>
+          <span>数据刷新中...</span>
+        </div>
         <div v-if="loadingKlineData" class="loading-state">
           <div class="loading-spinner"></div>
           <span>正在获取K线...</span>
@@ -139,6 +143,7 @@ const klineChart = ref(null);
 const myKlineChart = shallowRef(null);
 const dataChart = ref(null);
 const myDataChart = shallowRef(null);
+const isRefreshingKline = ref(false);
 
 // Methods
 async function fetchTrackedItems() {
@@ -176,14 +181,16 @@ const selectItem = async (item) => {
   loadingKlineData.value = true;
   klineData.value = [];
   klineError.value = null;
+  isRefreshingKline.value = false;
   highestSellPrice.value = null;
   lowestBiddingPrice.value = null;
 
+  // --- 价格获取（不变） ---
   try {
     const priceResult = await api.getItemPrice(item.market_hash_name);
     if (priceResult.success) {
       priceData.value = { data: priceResult.data, updateTime: priceResult.data[0]?.updateTime || Date.now() / 1000 };
-      
+
       let maxSell = 0;
       let minBidding = Infinity;
       priceResult.data.forEach(p => {
@@ -198,14 +205,53 @@ const selectItem = async (item) => {
     }
   } catch (e) { console.error(e); } finally { loadingPrice.value = false; }
 
+  // --- 阶段1: 从数据库读取缓存K线数据（即时） ---
   try {
-    const klineResult = await api.getItemKlineData(item.market_hash_name);
-    if (klineResult.success && klineResult.data.length > 0) {
-      klineData.value = klineResult.data;
+    const cachedResult = await api.getCachedItemKlineData(item.market_hash_name);
+    if (cachedResult.success && cachedResult.data.length > 0) {
+      klineData.value = cachedResult.data;
+      loadingKlineData.value = false;
+
+      // 阶段2: 后台异步刷新最新数据
+      isRefreshingKline.value = true;
+      api.refreshItemKlineData(item.market_hash_name).then((freshResult) => {
+        // 仅在用户仍在查看该饰品时更新图表
+        if (selectedItem.value?.market_hash_name !== item.market_hash_name) return;
+        if (freshResult.success && freshResult.data.length > 0) {
+          klineData.value = freshResult.data;
+        }
+      }).catch((e) => {
+        console.error('后台K线刷新失败:', e);
+      }).finally(() => {
+        if (selectedItem.value?.market_hash_name === item.market_hash_name) {
+          isRefreshingKline.value = false;
+        }
+      });
     } else {
-      klineError.value = klineResult.success ? '暂无K线数据' : (klineResult.error?.message || '获取K线数据失败');
+      // 无缓存数据 — 降级走原始慢速路径
+      try {
+        const klineResult = await api.getItemKlineData(item.market_hash_name);
+        if (klineResult.success && klineResult.data.length > 0) {
+          klineData.value = klineResult.data;
+        } else {
+          klineError.value = klineResult.success ? '暂无K线数据' : (klineResult.error?.message || '获取K线数据失败');
+        }
+      } catch (e) { console.error(e); klineError.value = '获取K线数据失败';
+      } finally { loadingKlineData.value = false; }
     }
-  } catch (e) { console.error(e); klineError.value = '获取K线数据失败'; } finally { loadingKlineData.value = false; }
+  } catch (e) {
+    // 缓存读取失败 — 降级走原始慢速路径
+    console.error(e);
+    try {
+      const klineResult = await api.getItemKlineData(item.market_hash_name);
+      if (klineResult.success && klineResult.data.length > 0) {
+        klineData.value = klineResult.data;
+      } else {
+        klineError.value = klineResult.success ? '暂无K线数据' : (klineResult.error?.message || '获取K线数据失败');
+      }
+    } catch (e2) { console.error(e2); klineError.value = '获取K线数据失败';
+    } finally { loadingKlineData.value = false; }
+  }
 };
 
 const formatTime = (timestamp) => timestamp ? new Date(timestamp * 1000).toLocaleString('zh-CN') : '';
@@ -320,4 +366,7 @@ onMounted(fetchTrackedItems);
 .kline-chart-container, .data-chart-container { width: 100%; height: 100%; min-height: 280px; }
 .nav-link { margin-top: 20px; color: #00ff41; text-decoration: none; border: 1px solid #00ff41; padding: 10px 20px; border-radius: 4px; transition: all 0.2s; }
 .nav-link:hover { background: rgba(0, 255, 65, 0.1); }
+.refresh-indicator { display: flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 12px; color: rgba(0, 255, 65, 0.6); font-family: 'Courier New', monospace; }
+.refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff41; animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 </style>

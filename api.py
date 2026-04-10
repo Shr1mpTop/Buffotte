@@ -582,12 +582,102 @@ async def get_item_kline_data(
         logging.exception(f"获取饰品 {market_hash_name} 的 K线数据失败")
         raise HTTPException(status_code=500, detail=f"获取饰品 K线数据失败: {e}")
 
-async def _bg_fetch_kline(name: str):
+
+@app.get("/api/item/kline-cached/{market_hash_name}")
+async def get_cached_item_kline(market_hash_name: str):
+    """
+    快速读取缓存的K线数据，从 item_kline_day 表直接查询。
+    用于追踪饰品的首屏加载，毫秒级响应。
+    """
     try:
-        await item_kline_processor.handle_item_kline_request(name)
-        logging.info(f"成功为新追踪的饰品 {name} 获取并存储了K线数据。")
+        loop = asyncio.get_event_loop()
+        cached_data, last_updated = await loop.run_in_executor(
+            None,
+            item_kline_processor.get_cached_kline_data,
+            market_hash_name
+        )
+        return {"success": True, "data": cached_data, "source": "cache", "last_updated": last_updated}
     except Exception as e:
-        logging.error(f"为新追踪的饰品 {name} 获取K线数据失败: {e}")
+        logging.exception(f"读取缓存K线数据失败: {market_hash_name}")
+        raise HTTPException(status_code=500, detail=f"读取缓存数据失败: {e}")
+
+
+@app.post("/api/item/kline-refresh/{market_hash_name}")
+async def refresh_item_kline(market_hash_name: str):
+    """
+    通过 buff-tracker API 获取最新K线数据并存入数据库。
+    先检查缓存新鲜度，1小时内不重复抓取。
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        # 检查缓存是否新鲜
+        is_fresh = await loop.run_in_executor(
+            None, item_kline_processor.is_cache_fresh, market_hash_name
+        )
+        if is_fresh:
+            cached_data, last_updated = await loop.run_in_executor(
+                None, item_kline_processor.get_cached_kline_data, market_hash_name
+            )
+            return {"success": True, "data": cached_data, "source": "cache", "last_updated": last_updated}
+
+        # 通过 buff-tracker API 获取并存入数据库
+        result = await _fetch_and_store_kline_via_bufftracker(market_hash_name)
+        if result:
+            return {"success": True, "data": result, "source": "api"}
+        else:
+            raise HTTPException(status_code=502, detail="获取K线数据失败，外部服务不可用")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logging.exception(f"刷新K线数据失败: {market_hash_name}")
+        raise HTTPException(status_code=500, detail=f"刷新K线数据失败: {e}")
+
+async def _fetch_and_store_kline_via_bufftracker(name: str):
+    """
+    通过 buff-tracker API 获取K线数据并存入数据库。
+    本地 Playwright 爬虫在容器内 WAF 挑战容易失败，改用 buff-tracker API 更可靠。
+    """
+    try:
+        import httpx
+        item_id = item_kline_processor.get_item_id_from_db(name)
+        if not item_id:
+            logging.error(f"未找到饰品 {name} 的 item_id，跳过K线数据获取。")
+            return []
+
+        bufftracker_url = os.getenv("BUFFTRACKER_URL", "http://host.docker.internal:8001")
+        from urllib.parse import quote
+        encoded_name = quote(name, safe='')
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            response = await http_client.get(
+                f"{bufftracker_url}/api/item/kline-data/{encoded_name}",
+                params={"platform": "BUFF", "type_day": "1", "date_type": 3}
+            )
+            data = response.json()
+
+        if not data.get("success") or not data.get("data"):
+            logging.error(f"buff-tracker 返回无效数据: {name}")
+            return []
+
+        raw_rows = data["data"]
+        parsed = item_kline_processor.parse_item_kline_data(
+            {"success": True, "data": raw_rows}, name, item_id
+        )
+        if not parsed:
+            logging.warning(f"解析K线数据为空: {name}")
+            return []
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, item_kline_processor._store_parsed_kline, name, parsed)
+        logging.info(f"成功为饰品 {name} 获取并存储了 {len(parsed)} 条K线数据。")
+        return parsed
+    except Exception as e:
+        logging.error(f"获取K线数据失败 ({name}): {e}")
+        return []
+
+
+async def _bg_fetch_kline(name: str):
+    """追踪饰品后的后台任务：获取并存储K线数据。"""
+    await _fetch_and_store_kline_via_bufftracker(name)
 
 @app.post("/api/track/add")
 async def add_track(request: TrackRequest):

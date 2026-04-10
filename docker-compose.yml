@@ -11,6 +11,9 @@ services:
       - ./.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - buff-tracker_net
 
   frontend:
     image: buffotte-frontend
@@ -24,3 +27,8 @@ services:
       - backend
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+networks:
+  buff-tracker_net:
+    external: true
+    name: buff-tracker_default

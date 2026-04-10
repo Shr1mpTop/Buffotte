@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import py_compile; py_compile.compile\\('api.py', doraise=True\\)\")",
+      "Bash(docker exec:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker network:*)",
+      "Bash(curl -s -w \"\\\\nHTTP_CODE:%{http_code}\\\\nTIME:%{time_total}s\" \"http://localhost:8002/api/bufftracker/search?name=AWP&num=3\")"
+    ]
+  }
+}

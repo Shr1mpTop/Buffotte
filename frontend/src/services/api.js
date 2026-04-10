@@ -141,6 +141,46 @@ export default {
     }
   },
 
+  // 从数据库读取缓存的K线数据（毫秒级响应）
+  async getCachedItemKlineData(marketHashName) {
+    try {
+      const encodedName = encodeURIComponent(marketHashName);
+      const { data } = await client.get(
+        `/item/kline-cached/${encodedName}`
+      );
+      return {
+        success: true,
+        data: normalizeKlineRows(data.data || []),
+        source: data.source,
+        last_updated: data.last_updated,
+      };
+    } catch (err) {
+      console.error(`读取缓存K线数据失败 ${marketHashName}:`, err);
+      return { success: false, error: { message: err.response?.data?.detail || err.message } };
+    }
+  },
+
+  // 刷新K线数据：从外部API获取最新数据并存入数据库
+  async refreshItemKlineData(marketHashName) {
+    try {
+      const encodedName = encodeURIComponent(marketHashName);
+      const { data } = await client.post(
+        `/item/kline-refresh/${encodedName}`,
+        null,
+        { timeout: 45000 }
+      );
+      return {
+        success: true,
+        data: normalizeKlineRows(data.data || []),
+        source: data.source,
+        last_updated: data.last_updated,
+      };
+    } catch (err) {
+      console.error(`刷新K线数据失败 ${marketHashName}:`, err);
+      return { success: false, error: { message: err.response?.data?.detail || err.message } };
+    }
+  },
+
   // ─── Skin 智能追踪 API ───────────────────────────────────────────
 
   // 获取热门饰品列表
