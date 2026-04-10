@@ -61,8 +61,156 @@ class SkinEntityProcessor:
             with self.conn.cursor() as cursor:
                 cursor.execute(sql)
             self.conn.commit()
+            self.ensure_market_hash_unique_constraint()
         except Exception as e:
             logger.error(f"创建 skin_entities 表失败: {e}")
+
+    def _table_exists(self, table_name: str) -> bool:
+        """检查指定数据表是否存在。"""
+        sql = """
+        SELECT COUNT(*)
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = %s
+        """
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(sql, (table_name,))
+                row = cursor.fetchone()
+                return bool(row and row[0])
+        except Exception as e:
+            logger.error(f"检查数据表 {table_name} 是否存在失败: {e}")
+            return False
+
+    def ensure_market_hash_unique_constraint(self):
+        """为历史表补齐 market_hash_name 唯一约束，并合并重复实体。"""
+        check_sql = """
+        SELECT COUNT(*)
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'skin_entities'
+          AND index_name = 'uk_market_hash_name'
+          AND non_unique = 0
+        """
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(check_sql)
+                row = cursor.fetchone()
+                has_unique_index = bool(row and row[0])
+
+            if not has_unique_index:
+                self.merge_duplicate_market_hash_entities()
+                with self.conn.cursor() as cursor:
+                    cursor.execute(
+                        "ALTER TABLE skin_entities ADD UNIQUE KEY uk_market_hash_name (market_hash_name)"
+                    )
+                self.conn.commit()
+        except Exception as e:
+            logger.error(f"补齐 skin_entities 唯一约束失败: {e}")
+            self.conn.rollback()
+
+    def merge_duplicate_market_hash_entities(self):
+        """合并拥有相同 market_hash_name 的重复饰品实体。"""
+        sql = """
+        SELECT market_hash_name
+        FROM skin_entities
+        WHERE market_hash_name IS NOT NULL
+        GROUP BY market_hash_name
+        HAVING COUNT(*) > 1
+        """
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute(sql)
+                groups = cursor.fetchall()
+
+            for group in groups:
+                self._merge_entities_by_market_hash(group["market_hash_name"])
+        except Exception as e:
+            logger.error(f"合并重复 skin_entities 失败: {e}")
+            self.conn.rollback()
+            raise
+
+    def _merge_entities_by_market_hash(self, market_hash_name: str):
+        """合并同一 market_hash_name 下的重复实体及其关联记录。"""
+        select_sql = """
+        SELECT *
+        FROM skin_entities
+        WHERE market_hash_name = %s
+        ORDER BY mention_count DESC, last_updated DESC, id ASC
+        """
+        try:
+            with self.conn.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute(select_sql, (market_hash_name,))
+                entities = cursor.fetchall()
+
+            if len(entities) <= 1:
+                return
+
+            canonical = entities[0]
+            duplicate_ids = [entity["id"] for entity in entities[1:]]
+            total_mentions = sum(int(entity.get("mention_count") or 0) for entity in entities)
+            has_news_association_table = self._table_exists("news_skin_association")
+            has_task_table = self._table_exists("skin_search_tasks")
+            has_detail_table = self._table_exists("skin_details")
+
+            with self.conn.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE skin_entities SET mention_count = %s WHERE id = %s",
+                    (total_mentions, canonical["id"])
+                )
+
+                for duplicate_id in duplicate_ids:
+                    if has_news_association_table:
+                        cursor.execute(
+                            """
+                            INSERT IGNORE INTO news_skin_association (news_id, skin_entity_id)
+                            SELECT news_id, %s
+                            FROM news_skin_association
+                            WHERE skin_entity_id = %s
+                            """,
+                            (canonical["id"], duplicate_id)
+                        )
+                    if has_task_table:
+                        cursor.execute(
+                            "UPDATE skin_search_tasks SET skin_entity_id = %s WHERE skin_entity_id = %s",
+                            (canonical["id"], duplicate_id)
+                        )
+                    if has_detail_table:
+                        cursor.execute(
+                            """
+                            INSERT INTO skin_details (
+                                skin_entity_id, platform, current_price, price_change_24h, price_change_7d,
+                                volume, supply_count, kline_data_json, extra_data_json, last_crawled_at
+                            )
+                               SELECT %s, source_details.platform, source_details.current_price,
+                                   source_details.price_change_24h, source_details.price_change_7d,
+                                   source_details.volume, source_details.supply_count,
+                                   source_details.kline_data_json, source_details.extra_data_json,
+                                   source_details.last_crawled_at
+                               FROM skin_details AS source_details
+                               WHERE source_details.skin_entity_id = %s
+                                ON DUPLICATE KEY UPDATE
+                                    current_price = IF(VALUES(last_crawled_at) >= skin_details.last_crawled_at, VALUES(current_price), skin_details.current_price),
+                                    price_change_24h = IF(VALUES(last_crawled_at) >= skin_details.last_crawled_at, VALUES(price_change_24h), skin_details.price_change_24h),
+                                    price_change_7d = IF(VALUES(last_crawled_at) >= skin_details.last_crawled_at, VALUES(price_change_7d), skin_details.price_change_7d),
+                                    volume = IF(VALUES(last_crawled_at) >= skin_details.last_crawled_at, VALUES(volume), skin_details.volume),
+                                    supply_count = IF(VALUES(last_crawled_at) >= skin_details.last_crawled_at, VALUES(supply_count), skin_details.supply_count),
+                                    kline_data_json = IF(VALUES(last_crawled_at) >= skin_details.last_crawled_at, VALUES(kline_data_json), skin_details.kline_data_json),
+                                    extra_data_json = IF(VALUES(last_crawled_at) >= skin_details.last_crawled_at, VALUES(extra_data_json), skin_details.extra_data_json),
+                                    last_crawled_at = GREATEST(skin_details.last_crawled_at, VALUES(last_crawled_at))
+                            """,
+                            (canonical["id"], duplicate_id)
+                        )
+                        cursor.execute("DELETE FROM skin_details WHERE skin_entity_id = %s", (duplicate_id,))
+                    if has_news_association_table:
+                        cursor.execute("DELETE FROM news_skin_association WHERE skin_entity_id = %s", (duplicate_id,))
+                    cursor.execute("DELETE FROM skin_entities WHERE id = %s", (duplicate_id,))
+
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"合并 market_hash_name={market_hash_name} 的实体失败: {e}")
+            self.conn.rollback()
+            raise
 
     def upsert_skin_entity(self, skin_name: str, market_hash_name: str = None,
                            weapon_type: str = None, rarity: str = None) -> int | None:
@@ -137,7 +285,13 @@ class SkinEntityProcessor:
         sql = """
         SELECT se.*, sd.current_price, sd.price_change_24h, sd.price_change_7d
         FROM skin_entities se
-        LEFT JOIN skin_details sd ON se.id = sd.skin_entity_id
+        LEFT JOIN skin_details sd ON sd.id = (
+            SELECT sd2.id
+            FROM skin_details sd2
+            WHERE sd2.skin_entity_id = se.id
+            ORDER BY sd2.last_crawled_at DESC, sd2.id DESC
+            LIMIT 1
+        )
         ORDER BY se.mention_count DESC, se.last_updated DESC
         LIMIT %s
         """
@@ -321,8 +475,59 @@ class SkinDetailProcessor:
             with self.conn.cursor() as cursor:
                 cursor.execute(sql)
             self.conn.commit()
+            self.ensure_unique_constraint()
         except Exception as e:
             logger.error(f"创建 skin_details 表失败: {e}")
+
+    def ensure_unique_constraint(self):
+        """为历史表补齐唯一约束，并清理重复明细。"""
+        check_sql = """
+        SELECT COUNT(*)
+        FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = 'skin_details'
+          AND index_name = 'uk_skin_entity_platform'
+          AND non_unique = 0
+        """
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(check_sql)
+                row = cursor.fetchone()
+                has_unique_index = bool(row and row[0])
+
+            if has_unique_index:
+                return
+
+            self.remove_duplicate_rows()
+            with self.conn.cursor() as cursor:
+                cursor.execute(
+                    "ALTER TABLE skin_details ADD UNIQUE KEY uk_skin_entity_platform (skin_entity_id, platform)"
+                )
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"补齐 skin_details 唯一约束失败: {e}")
+            self.conn.rollback()
+
+    def remove_duplicate_rows(self):
+        """删除历史重复的 skin_details，仅保留每个饰品平台最新一条。"""
+        delete_sql = """
+        DELETE sd1 FROM skin_details sd1
+        JOIN skin_details sd2
+          ON sd1.skin_entity_id = sd2.skin_entity_id
+         AND sd1.platform = sd2.platform
+         AND (
+              sd1.last_crawled_at < sd2.last_crawled_at
+              OR (sd1.last_crawled_at = sd2.last_crawled_at AND sd1.id < sd2.id)
+         )
+        """
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(delete_sql)
+            self.conn.commit()
+        except Exception as e:
+            logger.error(f"清理重复 skin_details 失败: {e}")
+            self.conn.rollback()
+            raise
 
     def upsert_skin_detail(self, skin_entity_id: int, platform: str,
                            current_price: float = None, price_change_24h: float = None,
@@ -340,8 +545,8 @@ class SkinDetailProcessor:
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON DUPLICATE KEY UPDATE
             current_price = VALUES(current_price),
-            price_change_24h = VALUES(price_change_24h),
-            price_change_7d = VALUES(price_change_7d),
+                        FROM skin_details AS incoming_details
+                        WHERE incoming_details.skin_entity_id = %s
             volume = VALUES(volume),
             supply_count = VALUES(supply_count),
             kline_data_json = VALUES(kline_data_json),
