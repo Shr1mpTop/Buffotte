@@ -43,6 +43,7 @@ app.add_middleware(
 )
 
 user_manager = UserManager()
+user_manager.create_user_table()
 kline_processor = KlineDataProcessor()
 item_kline_processor = ItemKlineProcessor()
 item_crawler = DailyKlineCrawler()
@@ -99,17 +100,18 @@ async def login(request: LoginRequest, http_request: Request):
             raise HTTPException(status_code=500, detail=str(e))
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT username, created_at FROM user WHERE email = %s", (request.email,))
+                cursor.execute("SELECT id, username, created_at FROM user WHERE email = %s", (request.email,))
                 result = cursor.fetchone()
                 if result:
-                    username = result[0]
-                    created_at = result[1]
+                    user_id = result[0]
+                    username = result[1]
+                    created_at = result[2]
                     # 将 datetime 对象转换为 ISO 格式字符串
                     created_at_str = created_at.isoformat() if created_at else None
                     return {
                         "success": True,
                         "message": "登录成功",
-                        "user": {"email": request.email, "username": username, "created_at": created_at_str}
+                        "user": {"id": user_id, "email": request.email, "username": username, "created_at": created_at_str}
                     }
                 else:
                     raise HTTPException(status_code=404, detail="用户不存在")

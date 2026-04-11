@@ -30,28 +30,56 @@ class UserManager:
 
     def create_user_table(self):
         """
-        创建 user 表（如果不存在）。
+        创建 user 表（如果不存在），并确保 id / created_at / level 列存在。
         """
         conn = None
         try:
             conn = self.get_db_connection()
             with conn.cursor() as cursor:
-                # 注意：这里我们只创建没有level字段的原始user表
-                # level字段的添加和外键约束通过alter_user_table_add_level处理
                 create_table_sql = """
                 CREATE TABLE IF NOT EXISTS user (
-                    email VARCHAR(255) PRIMARY KEY,
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    email VARCHAR(255) NOT NULL UNIQUE,
                     username VARCHAR(255) NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    level INT DEFAULT 1
                 )
                 """
                 cursor.execute(create_table_sql)
                 conn.commit()
-            logger.info("'user' table checked/created successfully (initial schema).")
+
+                # 兼容旧表：逐列检测并补充缺失列
+                cursor.execute(
+                    "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                    "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'user'",
+                    (self.config['database'],)
+                )
+                existing = {row[0] for row in cursor.fetchall()}
+
+                if 'id' not in existing:
+                    cursor.execute(
+                        "ALTER TABLE user ADD COLUMN id INT AUTO_INCREMENT PRIMARY KEY FIRST"
+                    )
+                    logger.info("user 表已添加 id 列")
+
+                if 'created_at' not in existing:
+                    cursor.execute(
+                        "ALTER TABLE user ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                    )
+                    logger.info("user 表已添加 created_at 列")
+
+                if 'level' not in existing:
+                    cursor.execute(
+                        "ALTER TABLE user ADD COLUMN level INT DEFAULT 1"
+                    )
+                    logger.info("user 表已添加 level 列")
+
+                conn.commit()
+            logger.info("'user' table checked/created successfully.")
         except Exception as e:
             logger.error(f"ERROR during user table creation: {e}")
-            raise # 重新抛出异常
+            raise
         finally:
             if conn:
                 conn.close()
@@ -86,8 +114,8 @@ class UserManager:
                 
                 # 注册时默认level为1 (Novice)
                 sql = """
-                INSERT INTO user (email, username, password_hash, level)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO user (email, username, password_hash, level, created_at)
+                VALUES (%s, %s, %s, %s, NOW())
                 """
                 cursor.execute(sql, (email, username, hashed_password, 1))
                 conn.commit()
