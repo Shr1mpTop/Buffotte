@@ -497,10 +497,8 @@ onUnmounted(() => {
 .hq {
   position: relative;
   width: 100%;
-  max-width: 1200px;
-  margin: 36px auto 0;
-  padding: 0 24px 80px;
   z-index: 1;
+  padding: 20px;
 }
 
 /* Matrix canvas */

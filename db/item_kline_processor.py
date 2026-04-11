@@ -56,7 +56,8 @@ class ItemKlineProcessor:
         """
         解析API返回的饰品K线数据。
 
-        新API数据格式: [timestamp, open_price, high_price, low_price, close_price, volume, turnover]
+        bufftracker API 数据格式 (8元素):
+        [timestamp, price, sell_count, buy_price, buy_count, turnover, volume, total_count]
         """
         if not raw_data or not raw_data.get("success"):
             logger.error("API返回数据无效")
@@ -75,26 +76,26 @@ class ItemKlineProcessor:
                     logger.warning(f"数据点格式不完整: {point}")
                     continue
 
-                # 解析数据点 - 新格式: [timestamp, open, high, low, close, volume, turnover]
                 timestamp = int(point[0])
-                open_price = float(point[1])
-                high_price = float(point[2])
-                low_price = float(point[3])
-                close_price = float(point[4])
-                volume = int(point[5]) if point[5] is not None else 0
-                turnover = float(point[6]) if point[6] is not None else 0.0
+                price = float(point[1])
+                sell_count = int(point[2]) if point[2] is not None else 0
+                buy_price = float(point[3])
+                buy_count = int(point[4]) if point[4] is not None else 0
+                turnover = float(point[5]) if point[5] is not None else 0.0
+                volume = int(point[6]) if point[6] is not None else 0
+                total_count = str(int(point[7])) if len(point) > 7 and point[7] is not None else '0'
 
                 parsed_point = {
                     'market_hash_name': market_hash_name,
                     'timestamp': timestamp,
                     'item_id': item_id,
-                    'price': close_price,  # 使用收盘价作为当前价
-                    'sell_count': 0,  # 暂时设为0
-                    'buy_price': close_price,  # 使用收盘价
-                    'buy_count': 0,  # 暂时设为0
+                    'price': price,
+                    'sell_count': sell_count,
+                    'buy_price': buy_price,
+                    'buy_count': buy_count,
                     'turnover': turnover,
                     'volume': volume,
-                    'total_count': '0'  # 暂时设为空
+                    'total_count': total_count,
                 }
                 parsed_data.append(parsed_point)
 

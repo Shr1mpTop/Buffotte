@@ -1,1295 +1,1247 @@
 <template>
-  <div class="items-page">
-    <div class="items-grid-container">
-      <!-- 搜索器 -->
-      <div class="search-panel">
-        <div class="items-header">
-          <h1 class="title">$ ./item-search.sh</h1>
-          <div class="search-box">
-            <input
-              v-model="searchQuery"
-              @input="handleSearch"
-              type="text"
-              placeholder="搜索饰品名称 (支持中英文)..."
-              class="search-input"
-            />
-            <div v-if="searching" class="search-status">搜索中...</div>
+  <div ref="rootEl" class="items-page">
+    <!-- Matrix rain canvas -->
+    <canvas ref="matrixCanvas" class="matrix-bg" aria-hidden="true"></canvas>
+    <!-- Scanlines overlay -->
+    <div class="scanlines" aria-hidden="true"></div>
+
+    <!-- HEADER -->
+    <header ref="headerEl" class="hdr">
+      <div class="hdr-prompt">
+        <span class="p-usr">root</span><span class="p-at">@</span
+        ><span class="p-host">buffotte</span><span class="p-sep">:~#&nbsp;</span
+        ><span ref="typedEl" class="p-cmd"></span><span class="p-cur">█</span>
+      </div>
+      <div class="hdr-meta">
+        <span class="hm-dot"></span>
+        ITEM SCANNER &nbsp;·&nbsp; CS2 SKIN INTELLIGENCE
+      </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div class="main-grid">
+      <!-- LEFT: Search Panel -->
+      <div ref="searchPanelEl" class="panel-card search-panel">
+        <div class="pc-hd">
+          <span class="pc-dot"></span>饰品搜索
+          <span v-if="searchResults.length" class="result-count">{{
+            searchResults.length
+          }}</span>
+        </div>
+        <div class="search-box">
+          <input
+            v-model="searchQuery"
+            @input="handleSearch"
+            type="text"
+            placeholder="输入饰品名称 (支持中英文)..."
+            class="search-input"
+          />
+          <div v-if="searching" class="search-loading">
+            <span class="spin-dot"></span>
           </div>
         </div>
 
-        <!-- 搜索结果列表 -->
-        <div v-if="searchResults.length > 0" class="search-results">
-          <div class="results-header">
-            <span>找到 {{ searchResults.length }} 个结果</span>
+        <!-- Search Results -->
+        <div v-if="searchResults.length > 0" class="results-list">
+          <div
+            v-for="(item, idx) in searchResults"
+            :key="item.id"
+            class="result-item"
+            :class="{ selected: selectedItem?.id === item.id }"
+            @click="selectItem(item)"
+            :ref="(el) => { if (el) resultItemRefs[idx] = el }"
+          >
+            <div class="ri-name">{{ item.name }}</div>
+            <div class="ri-hash">{{ item.market_hash_name }}</div>
           </div>
-          <div class="results-list">
-            <div
-              v-for="item in searchResults"
-              :key="item.id"
-              class="result-item"
-              :class="{ selected: selectedItem?.id === item.id }"
-              @click="selectItem(item)"
-            >
-              <div class="item-name">{{ item.name }}</div>
-              <div class="item-hash">{{ item.market_hash_name }}</div>
+        </div>
+
+        <!-- Empty States -->
+        <div
+          v-if="!searchResults.length && !searching && searchQuery"
+          class="panel-empty"
+        >
+          <div class="empty-line">// 未找到匹配的饰品</div>
+        </div>
+        <div v-if="!searchQuery && !selectedItem" class="panel-empty">
+          <div class="empty-line">> 输入饰品名称开始搜索</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Content Area -->
+      <div class="content-area">
+        <!-- Item Info Bar -->
+        <div
+          ref="infoBarEl"
+          class="panel-card info-bar"
+          v-if="selectedItem && priceData"
+        >
+          <div class="info-left">
+            <div class="info-name">{{ selectedItem.name }}</div>
+            <div class="info-time">
+              更新: {{ formatTime(priceData.updateTime) }}
+            </div>
+          </div>
+          <button
+            class="track-btn"
+            @click="trackItem(selectedItem.market_hash_name)"
+          >
+            <span class="tb-icon">+</span> 追踪此饰品
+          </button>
+        </div>
+
+        <!-- Price Strip -->
+        <div
+          ref="priceStripEl"
+          class="price-strip"
+          v-if="selectedItem && priceData"
+        >
+          <div
+            class="price-card"
+            v-for="(platform, index) in displayPlatforms"
+            :key="index"
+            :class="{ empty: platform.platform === '-' }"
+          >
+            <div class="pf-name">{{ platform.platform }}</div>
+            <div class="pf-body" v-if="platform.platform !== '-'">
+              <div class="pf-row">
+                <span class="pf-label">卖</span>
+                <span
+                  class="pf-val"
+                  :class="{
+                    highlight:
+                      platform.sellPrice === highestSellPrice &&
+                      highestSellPrice !== null,
+                  }"
+                  >¥{{ platform.sellPrice }}</span
+                >
+                <span class="pf-cnt">({{ platform.sellCount }})</span>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label">购</span>
+                <span
+                  class="pf-val"
+                  :class="{
+                    'highlight-yellow':
+                      platform.biddingPrice === lowestBiddingPrice &&
+                      lowestBiddingPrice !== null,
+                  }"
+                  >¥{{ platform.biddingPrice }}</span
+                >
+                <span class="pf-cnt">({{ platform.biddingCount }})</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 空状态 -->
+        <!-- Loading State for Price -->
         <div
-          v-if="!searchResults.length && !searching && searchQuery"
-          class="empty-state"
+          v-if="loadingPrice"
+          class="panel-card panel-loading"
         >
-          <div class="empty-icon">🔍</div>
-          <div class="empty-text">未找到匹配的饰品</div>
-        </div>
-
-        <div v-if="!searchQuery && !selectedItem" class="placeholder-state">
-          <div class="placeholder-icon">💎</div>
-          <div class="placeholder-text">输入饰品名称开始搜索</div>
-        </div>
-      </div>
-
-      <!-- 实时价格看板 -->
-      <div class="price-panel">
-        <div v-if="selectedItem && priceData" class="price-details">
-          <div class="details-header">
-            <h2>{{ selectedItem.name }}</h2>
-            <span class="update-time"
-              >更新时间: {{ formatTime(priceData.updateTime) }}</span
-            >
-          </div>
-
-          <div class="price-grid">
-            <template
-              v-for="(platform, index) in Array(10)
-                .fill(null)
-                .map(
-                  (_, i) =>
-                    priceData.data[i] || {
-                      platform: '-',
-                      sellPrice: '-',
-                      sellCount: '-',
-                      biddingPrice: '-',
-                      biddingCount: '-',
-                    },
-                )"
-              :key="index"
-            >
-              <div
-                class="price-card"
-                :class="{ 'empty-card': platform.platform === '-' }"
-              >
-                <div class="platform-name">{{ platform.platform }}</div>
-                <div class="price-info">
-                  <div class="price-line">
-                    <span class="label">卖出价:</span>
-                    <span
-                      class="value price"
-                      :class="{
-                        'highest-sell':
-                          platform.sellPrice === highestSellPrice &&
-                          highestSellPrice !== null,
-                      }"
-                      >¥{{ platform.sellPrice }}</span
-                    >
-                    <span class="count">({{ platform.sellCount }})</span>
-                  </div>
-                  <div class="price-line">
-                    <span class="label">求购价:</span>
-                    <span
-                      class="value price"
-                      :class="{
-                        'lowest-bidding':
-                          platform.biddingPrice === lowestBiddingPrice &&
-                          lowestBiddingPrice !== null,
-                      }"
-                      >¥{{ platform.biddingPrice }}</span
-                    >
-                    <span class="count">({{ platform.biddingCount }})</span>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- 加载状态 -->
-        <div v-if="loadingPrice" class="loading">
-          <div class="loading-spinner"></div>
+          <div class="ld-spinner"></div>
           <span>正在获取价格数据...</span>
         </div>
-      </div>
 
-      <!-- K线看板 -->
-      <div class="kline-panel">
-        <div
-          v-if="klineData.length > 0"
-          ref="klineChart"
-          class="kline-chart-container"
-        ></div>
-        <div v-if="loadingKlineData" class="loading">
-          <div class="loading-spinner"></div>
-          <span>正在获取K线数据...</span>
+        <!-- K-line Chart -->
+        <div ref="klinePanelEl" class="panel-card chart-panel">
+          <div class="pc-hd">
+            <span class="pc-dot"></span>K线走势
+          </div>
+          <div
+            v-if="klineData.length > 0"
+            ref="klineChart"
+            class="chart-container"
+          ></div>
+          <div v-if="loadingKlineData" class="panel-loading-inline">
+            <div class="ld-spinner sm"></div>
+            <span>正在获取K线数据...</span>
+          </div>
+          <div v-else-if="klineError" class="panel-empty">
+            <div class="empty-line error">{{ klineError }}</div>
+          </div>
+          <div
+            v-else-if="!loadingKlineData && !klineData.length && selectedItem"
+            class="panel-empty"
+          >
+            <div class="empty-line">暂无K线数据</div>
+          </div>
+          <div v-else-if="!selectedItem" class="panel-empty">
+            <div class="empty-line">> 选择饰品查看K线走势</div>
+          </div>
         </div>
-        <div v-else-if="klineError" class="error-state">
-          <div class="error-icon">⚠️</div>
-          <div class="error-text">{{ klineError }}</div>
-        </div>
-        <div
-          v-else-if="!loadingKlineData && !klineData.length && selectedItem"
-          class="empty-state"
-        >
-          <div class="empty-icon">📈</div>
-          <div class="empty-text">暂无K线数据</div>
-        </div>
-        <div v-else-if="!selectedItem" class="placeholder-state">
-          <div class="placeholder-icon">📊</div>
-          <div class="placeholder-text">选择饰品查看K线图</div>
-        </div>
-      </div>
 
-      <!-- 数据图表板块 (存世量、买卖差额等) -->
-      <div class="data-panel">
-        <div
-          v-if="klineData.length > 0"
-          ref="dataChart"
-          class="data-chart-container"
-        ></div>
-        <div v-if="loadingKlineData" class="loading">
-          <div class="loading-spinner"></div>
-          <span>正在加载数据...</span>
+        <!-- Data Charts -->
+        <div ref="dataPanelEl" class="panel-card chart-panel">
+          <div class="pc-hd">
+            <span class="pc-dot"></span>成交量分析
+          </div>
+          <div
+            v-if="klineData.length > 0"
+            ref="dataChart"
+            class="chart-container"
+          ></div>
+          <div v-if="loadingKlineData" class="panel-loading-inline">
+            <div class="ld-spinner sm"></div>
+            <span>正在加载数据...</span>
+          </div>
+          <div v-else-if="klineError" class="panel-empty">
+            <div class="empty-line error">{{ klineError }}</div>
+          </div>
+          <div
+            v-else-if="!loadingKlineData && !klineData.length && selectedItem"
+            class="panel-empty"
+          >
+            <div class="empty-line">暂无数据</div>
+          </div>
+          <div v-else-if="!selectedItem" class="panel-empty">
+            <div class="empty-line">> 选择饰品查看数据图表</div>
+          </div>
         </div>
-        <div v-else-if="klineError" class="error-state">
-          <div class="error-icon">⚠️</div>
-          <div class="error-text">{{ klineError }}</div>
-        </div>
-        <div
-          v-else-if="!loadingKlineData && !klineData.length && selectedItem"
-          class="empty-state"
-        >
-          <div class="empty-icon">📉</div>
-          <div class="empty-text">暂无数据</div>
-        </div>
-        <div v-else-if="!selectedItem" class="placeholder-state">
-          <div class="placeholder-icon">📊</div>
-          <div class="placeholder-text">选择饰品查看数据图表</div>
-        </div>
-      </div>
-
-      <!-- 追踪按钮 -->
-      <div class="tracking-panel">
-        <button
-          class="track-button"
-          @click="trackItem(selectedItem.market_hash_name)"
-          :disabled="!selectedItem"
-        >
-          ⭐ 追踪此饰品
-        </button>
       </div>
     </div>
   </div>
 </template>
 
-<script>
-import { ref, shallowRef, onMounted, watch, nextTick } from "vue";
-import { useRoute } from "vue-router";
-import api, { client } from "../services/api";
-import * as echarts from "echarts/core";
-import { useToast } from "../composables/useToast";
+<script setup>
+import { ref, shallowRef, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
+import api, { client } from '../services/api';
+import * as echarts from 'echarts/core';
+import { useToast } from '../composables/useToast';
 import {
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent,
-  DataZoomComponent,
-  MarkPointComponent,
-  MarkLineComponent,
-} from "echarts/components";
-import { CandlestickChart, LineChart, BarChart } from "echarts/charts";
-import { CanvasRenderer } from "echarts/renderers";
+  TitleComponent, TooltipComponent, LegendComponent, GridComponent,
+  DataZoomComponent, MarkPointComponent, MarkLineComponent,
+} from 'echarts/components';
+import { CandlestickChart, LineChart, BarChart } from 'echarts/charts';
+import { CanvasRenderer } from 'echarts/renderers';
+import gsap from 'gsap';
 
 echarts.use([
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent,
-  DataZoomComponent,
-  MarkPointComponent,
-  MarkLineComponent,
-  CandlestickChart,
-  LineChart,
-  BarChart,
-  CanvasRenderer,
+  TitleComponent, TooltipComponent, LegendComponent, GridComponent,
+  DataZoomComponent, MarkPointComponent, MarkLineComponent,
+  CandlestickChart, LineChart, BarChart, CanvasRenderer,
 ]);
 
-export default {
-  name: "Items",
-  setup() {
-    const route = useRoute();
-    const searchQuery = ref("");
-    const searchResults = ref([]);
-    const selectedItem = ref(null);
-    const priceData = ref(null);
-    const searching = ref(false);
-    const loadingPrice = ref(false);
-    const klineData = ref([]);
-    const loadingKlineData = ref(false);
-    const klineError = ref(null); // 用于跟踪K线数据获取错误
-    const klineChart = ref(null); // 用于ECharts容器的引用
-    const myKlineChart = shallowRef(null); // 用于ECharts实例的引用
-    const dataChart = ref(null); // 用于数据图表容器的引用
-    const myDataChart = shallowRef(null); // 用于数据图表实例的引用
-    const highestSellPrice = ref(null); // 用于最高售卖价
-    const lowestBiddingPrice = ref(null); // 用于最低求购价
-    const user = ref(JSON.parse(localStorage.getItem("user")));
-    let searchTimeout = null;
-    const toast = useToast();
+const route = useRoute();
+const toast = useToast();
 
-    const trackItem = async (marketHashName) => {
-      if (!user.value) {
-        toast.error("请先登录再追踪饰品。");
-        return;
-      }
-      try {
-        const result = await client.post(
-          "/track/add",
-          {
-            email: user.value.email,
-            market_hash_name: marketHashName,
-          },
-          { timeout: 15000 },
-        );
-        if (result.data.success) {
-          toast.success("饰品已成功追踪！");
-        } else {
-          toast.error(`追踪失败: ${result.data.message}`);
-        }
-      } catch (error) {
-        // ECONNABORTED = Axios 超时；说明请求已到达服务器，DB 写入已完成
-        if (error.code === "ECONNABORTED" || error.code === "ERR_CANCELED") {
-          toast.success("饰品已成功追踪！");
-        } else {
-          console.error("追踪饰品时出错:", error);
-          toast.error("追踪饰品时出错，请查看控制台获取更多信息。");
-        }
-      }
-    };
+// DOM refs
+const rootEl = ref(null);
+const matrixCanvas = ref(null);
+const headerEl = ref(null);
+const typedEl = ref(null);
+const searchPanelEl = ref(null);
+const infoBarEl = ref(null);
+const priceStripEl = ref(null);
+const klinePanelEl = ref(null);
+const dataPanelEl = ref(null);
+const klineChart = ref(null);
+const dataChart = ref(null);
+const resultItemRefs = reactive({});
 
-    const handleSearch = () => {
-      if (searchTimeout) clearTimeout(searchTimeout);
+// Chart instances
+const myKlineChart = shallowRef(null);
+const myDataChart = shallowRef(null);
 
-      if (!searchQuery.value.trim()) {
-        searchResults.value = [];
-        return;
-      }
+// State
+const searchQuery = ref('');
+const searchResults = ref([]);
+const selectedItem = ref(null);
+const priceData = ref(null);
+const searching = ref(false);
+const loadingPrice = ref(false);
+const klineData = ref([]);
+const loadingKlineData = ref(false);
+const klineError = ref(null);
+const highestSellPrice = ref(null);
+const lowestBiddingPrice = ref(null);
+const user = ref(JSON.parse(localStorage.getItem('user')));
+let searchTimeout = null;
 
-      searchTimeout = setTimeout(async () => {
-        searching.value = true;
-        try {
-          const result = await api.searchItems(searchQuery.value);
-          if (result.success) {
-            searchResults.value = result.data || [];
-          }
-        } catch (error) {
-          console.error("搜索失败:", error);
-        } finally {
-          searching.value = false;
-        }
-      }, 300);
-    };
+// Matrix rain
+let _raf = null;
+let _matrixCleanup = null;
 
-    const selectItem = async (item) => {
-      selectedItem.value = item;
-      priceData.value = null;
-      klineData.value = [];
-      klineError.value = null;
-      loadingPrice.value = true;
-      loadingKlineData.value = true;
-      highestSellPrice.value = null; // 重置最高售卖价
-      lowestBiddingPrice.value = null; // 重置最低求购价
+// GSAP context
+let _ctx = null;
 
-      try {
-        // 获取实时价格数据
-        const priceResult = await api.getItemPrice(item.market_hash_name);
-        if (priceResult.success) {
-          priceData.value = {
-            data: priceResult.data,
-            updateTime: priceResult.data[0]?.updateTime || Date.now() / 1000,
-          };
+// Colors
+const upColor = '#00ff00';
+const downColor = '#ff0000';
 
-          // 计算最高售卖价和最低求购价
-          let maxSell = 0;
-          let minBidding = Infinity;
-          priceResult.data.forEach((p) => {
-            // 排除Steam平台和价格为0的数据
-            if (
-              p.platform === "Steam" ||
-              p.sellPrice === 0 ||
-              p.biddingPrice === 0
-            ) {
-              return;
-            }
-            if (p.sellPrice > maxSell) maxSell = p.sellPrice;
-            if (p.biddingPrice < minBidding) minBidding = p.biddingPrice;
-          });
-          highestSellPrice.value = maxSell > 0 ? maxSell : null;
-          lowestBiddingPrice.value =
-            minBidding !== Infinity ? minBidding : null;
-          console.log("Calculated highestSellPrice:", highestSellPrice.value);
-          console.log(
-            "Calculated lowestBiddingPrice:",
-            lowestBiddingPrice.value,
-          );
-        }
-      } catch (error) {
-        console.error("获取价格失败:", error);
-      } finally {
-        loadingPrice.value = false;
-      }
-
-      try {
-        // 获取K线数据
-        const klineResult = await api.getItemKlineData(item.market_hash_name);
-        console.log("K线数据返回:", klineResult);
-        if (klineResult.success) {
-          klineData.value = klineResult.data || [];
-          console.log("K线数据长度:", klineData.value.length);
-          console.log("K线数据示例:", klineData.value[0]);
-          klineError.value = null;
-        } else {
-          // 处理API返回的错误
-          if (klineResult.error?.status === 404) {
-            klineError.value = "该饰品暂不支持K线查询,请尝试其他饰品";
-          } else {
-            klineError.value =
-              klineResult.error?.message || "获取K线数据失败,请稍后重试";
-          }
-        }
-      } catch (error) {
-        console.error("获取K线数据失败:", error);
-        klineError.value = "获取K线数据失败,请稍后重试";
-      } finally {
-        loadingKlineData.value = false;
-      }
-    };
-
-    const formatTime = (timestamp) => {
-      if (!timestamp) return "";
-      const date = new Date(timestamp * 1000);
-      return date.toLocaleString("zh-CN");
-    };
-
-    // ECharts K线图配置项
-    const upColor = "#00ff00";
-    const downColor = "#ff0000";
-
-    const klineOption = {
-      backgroundColor: "#000",
-      title: {
-        text: "K-Line Chart",
-        left: "center",
-        textStyle: { color: "#00ff00", fontSize: 16 },
-      },
-      legend: {
-        data: ["Daily Price", "Buy Price", "交易个数"],
-        top: "8%",
-        textStyle: { color: "#ccc", fontSize: 12 },
-        inactiveColor: "#555",
-      },
-      tooltip: {
-        trigger: "axis",
-        axisPointer: { type: "cross" },
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        borderColor: "#00ff00",
-        textStyle: { color: "#00ff00" },
-        formatter: function (params) {
-          if (!params || params.length === 0) return "";
-          let res = `日期: ${params[0].name}<br/>`;
-
-          params.forEach((param) => {
-            if (
-              param.seriesName === "Daily Price" &&
-              param.data !== undefined
-            ) {
-              res += `在售最低价: ${param.data.toFixed(2)}<br/>`;
-            } else if (
-              param.seriesName === "Buy Price" &&
-              param.data !== undefined
-            ) {
-              res += `求购最高价: ${param.data.toFixed(2)}<br/>`;
-            } else if (
-              param.seriesName === "交易个数" &&
-              param.data !== undefined
-            ) {
-              res += `交易个数: ${param.data}<br/>`;
-            }
-          });
-          return res;
-        },
-      },
-      grid: {
-        left: "10%",
-        right: "10%",
-        bottom: "12%",
-        top: "18%",
-        height: "68%",
-      }, // 调整高度
-      xAxis: {
-        type: "category",
-        scale: true,
-        boundaryGap: false,
-        axisLine: { onZero: false, lineStyle: { color: "#8392A5" } },
-        splitLine: { show: false },
-        min: "dataMin",
-        max: "dataMax",
-        axisLabel: {
-          formatter: (value) => {
-            const date = new Date(value);
-            return `${date.getMonth() + 1}/${date.getDate()}`; // 只显示月/日
-          },
-        },
-      },
-      yAxis: {
-        scale: true,
-        position: "left",
-        axisLine: { lineStyle: { color: "#00ff00" } },
-        splitLine: {
-          show: true,
-          lineStyle: { color: "rgba(0, 255, 65, 0.1)" },
-        },
-        axisLabel: { color: "#00ff00" },
-      },
-      dataZoom: [
-        { type: "inside", start: 70, end: 100 },
-        {
-          show: true,
-          type: "slider",
-          top: "90%",
-          start: 70,
-          end: 100,
-          handleIcon:
-            "path://M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
-          handleSize: "80%",
-          handleStyle: {
-            color: "#fff",
-            shadowBlur: 3,
-            shadowColor: "rgba(0, 0, 0, 0.6)",
-            shadowOffsetX: 2,
-            shadowOffsetY: 2,
-          },
-        },
-      ],
-      series: [], // 系列将动态生成
-    };
-
-    // 数据处理函数
-    function splitData(rawData) {
-      console.log("splitData 接收到的数据:", rawData);
-      let categoryData = []; // X轴日期
-      let candlestickData = []; // K线图数据: [open, close, low, high]
-      let totalCountData = []; // 存世量数据
-      let buyCountData = []; // 求购数量数据
-      let sellCountData = []; // 在售数量数据
-      let turnoverData = []; // 交易额数据
-      let volumeData = []; // 交易个数数据
-
-      if (!rawData || rawData.length === 0) {
-        console.warn("splitData: 数据为空");
-        return {
-          categoryData,
-          candlestickData,
-          totalCountData,
-          buyCountData,
-          sellCountData,
-          turnoverData,
-          volumeData,
-        };
-      }
-
-      for (let i = 0; i < rawData.length; i++) {
-        const item = rawData[i];
-        if (!item) continue;
-
-        // 数据格式验证
-        if (
-          item.timestamp === undefined ||
-          item.price === undefined ||
-          item.buy_price === undefined ||
-          item.total_count === undefined ||
-          item.sell_count === undefined ||
-          item.buy_count === undefined ||
-          item.turnover === undefined ||
-          item.volume === undefined
-        ) {
-          console.warn("数据格式错误:", item);
-          continue;
-        }
-
-        const price = parseFloat(item.price);
-        const buyPrice = parseFloat(item.buy_price);
-        const totalCount = parseInt(item.total_count);
-        const sellCount = parseInt(item.sell_count);
-        const buyCount = parseInt(item.buy_count);
-        const turnover = parseFloat(item.turnover);
-        const volume = parseInt(item.volume);
-
-        const open = buyPrice;
-        const close = price;
-        const low = Math.min(price, buyPrice);
-        const high = Math.max(price, buyPrice);
-
-        categoryData.push(
-          new Date(item.timestamp * 1000).toLocaleDateString("zh-CN"),
-        );
-        candlestickData.push([open, close, low, high]);
-        totalCountData.push(totalCount);
-        buyCountData.push(buyCount);
-        sellCountData.push(sellCount);
-        turnoverData.push(turnover);
-        volumeData.push(volume);
-      }
-
-      console.log("splitData 处理后:", {
-        categoryData,
-        candlestickData,
-        totalCountData,
-        buyCountData,
-        sellCountData,
-        turnoverData,
-        volumeData,
-      });
-      return {
-        categoryData,
-        candlestickData,
-        totalCountData,
-        buyCountData,
-        sellCountData,
-        turnoverData,
-        volumeData,
-      };
+// Computed: display platforms (always show 10 slots)
+const displayPlatforms = computed(() => {
+  if (!priceData.value) return [];
+  return Array(10).fill(null).map((_, i) =>
+    priceData.value.data[i] || {
+      platform: '-', sellPrice: '-', sellCount: '-',
+      biddingPrice: '-', biddingCount: '-',
     }
+  );
+});
 
-    // 计算移动平均线
-    function calculateMA(dayCount, values) {
-      let result = [];
-      for (let i = 0; i < values.length; i++) {
-        if (i < dayCount - 1) {
-          result.push("-");
-          continue;
-        }
-        let sum = 0;
-        for (let j = 0; j < dayCount; j++) {
-          sum += values[i - j][1]; // 使用收盘价计算均线
-        }
-        result.push((sum / dayCount).toFixed(2));
-      }
-      return result;
+// --- Matrix rain background ---
+const initMatrix = () => {
+  const c = matrixCanvas.value;
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const FS = 13;
+  const JP = 'ｦｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈ0123456789ABCDEF@#$%';
+  let cols, drops;
+  const resize = () => {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    cols = Math.ceil(c.width / FS);
+    drops = Array.from({ length: cols }, () => -(Math.random() * (c.height / FS)));
+  };
+  resize();
+  window.addEventListener('resize', resize);
+  const draw = () => {
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.font = `${FS}px monospace`;
+    for (let i = 0; i < cols; i++) {
+      const ch = JP[Math.floor(Math.random() * JP.length)];
+      const y = drops[i] * FS;
+      ctx.fillStyle = drops[i] < 2
+        ? 'rgba(200,255,200,0.8)'
+        : `rgba(0,255,65,${Math.random() * 0.18 + 0.03})`;
+      ctx.fillText(ch, i * FS, y);
+      if (y > c.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i] += 0.35;
     }
+    _raf = requestAnimationFrame(draw);
+  };
+  draw();
+  _matrixCleanup = () => {
+    window.removeEventListener('resize', resize);
+    if (_raf) cancelAnimationFrame(_raf);
+  };
+};
 
-    // 初始化K线图
-    const initKlineChart = async () => {
-      if (!klineData.value || klineData.value.length === 0) {
-        console.log("没有K线数据,跳过初始化");
-        return;
-      }
-      await nextTick(); // 等待 DOM 渲染完成
-      if (!klineChart.value) {
-        console.error("K线图容器未找到");
-        return;
-      }
-      if (myKlineChart.value) {
-        myKlineChart.value.dispose(); // 清除旧实例
-      }
-      console.log("初始化K线图,数据条数:", klineData.value.length);
-      myKlineChart.value = echarts.init(klineChart.value, "dark");
-      // 不设置空的 klineOption,直接调用 updateKlineChart
-      updateKlineChart();
-    };
+// --- Typewriter ---
+const typewriter = async (el, text, msBase = 42) => {
+  el.textContent = '';
+  for (const ch of text) {
+    el.textContent += ch;
+    await new Promise((r) => setTimeout(r, msBase + Math.random() * 22));
+  }
+};
 
-    // 更新K线图数据
-    const updateKlineChart = () => {
-      if (!myKlineChart.value || !klineData.value.length) {
-        myKlineChart.value?.clear();
-        return;
-      }
+// --- GSAP entrance animations ---
+const initGSAP = () => {
+  _ctx = gsap.context(() => {
+    const tl = gsap.timeline({ delay: 0.05 });
 
-      const {
-        categoryData,
-        candlestickData,
-        totalCountData,
-        buyCountData,
-        sellCountData,
-        turnoverData,
-        volumeData,
-      } = splitData(klineData.value);
-
-      myKlineChart.value.setOption({
-        ...klineOption,
-        xAxis: {
-          ...klineOption.xAxis,
-          data: categoryData,
-        },
-        yAxis: [
-          {
-            // 第一个Y轴: 价格
-            scale: true,
-            position: "left",
-            axisLine: { lineStyle: { color: "#00ff00" } },
-            splitLine: {
-              show: true,
-              lineStyle: { color: "rgba(0, 255, 65, 0.1)" },
-            },
-            axisLabel: { color: "#00ff00" },
-          },
-          {
-            // 第二个Y轴: 交易个数
-            scale: true,
-            position: "right",
-            alignTicks: true,
-            axisLine: { lineStyle: { color: "#ADFF2F" } },
-            axisLabel: { color: "#ADFF2F", fontSize: 11 },
-          },
-        ],
-        series: [
-          {
-            name: "Daily Price",
-            type: "line",
-            data: candlestickData.map((item) => item[1]) /* 使用收盘价 */,
-            smooth: true,
-            showSymbol: false,
-            lineStyle: { opacity: 0.8, width: 2, color: upColor },
-          },
-          {
-            name: "Buy Price",
-            type: "line",
-            data: candlestickData.map(
-              (item) => item[0],
-            ) /* 使用开盘价作为求购价 */,
-            smooth: true,
-            showSymbol: false,
-            lineStyle: { opacity: 0.8, width: 2, color: downColor },
-          },
-          {
-            name: "交易个数",
-            type: "bar",
-            data: volumeData,
-            yAxisIndex: 1,
-            itemStyle: { color: "#ADFF2F", opacity: 0.5 },
-          },
-        ],
-      });
-
-      // 更新数据图表
-      updateDataChart(
-        categoryData,
-        totalCountData,
-        buyCountData,
-        sellCountData,
-        turnoverData,
-        volumeData,
-      );
-    };
-
-    // 初始化数据图表
-    const initDataChart = async () => {
-      if (!klineData.value || klineData.value.length === 0) {
-        console.log("没有数据,跳过数据图表初始化");
-        return;
-      }
-      await nextTick();
-      if (!dataChart.value) {
-        console.error("数据图表容器未找到");
-        return;
-      }
-      if (myDataChart.value) {
-        myDataChart.value.dispose();
-      }
-      console.log("初始化数据图表,数据条数:", klineData.value.length);
-      myDataChart.value = echarts.init(dataChart.value, "dark");
-      updateDataChart();
-    };
-
-    // 更新数据图表
-    const updateDataChart = (
-      categoryData,
-      totalCountData,
-      buyCountData,
-      sellCountData,
-      turnoverData,
-      volumeData,
-    ) => {
-      if (!myDataChart.value) return;
-
-      // 如果没有传入参数,则重新计算
-      if (!categoryData) {
-        if (!klineData.value.length) {
-          myDataChart.value?.clear();
-          return;
-        }
-        const data = splitData(klineData.value);
-        categoryData = data.categoryData;
-        totalCountData = data.totalCountData;
-        buyCountData = data.buyCountData;
-        sellCountData = data.sellCountData;
-        turnoverData = data.turnoverData;
-        volumeData = data.volumeData;
-      }
-
-      myDataChart.value.setOption({
-        backgroundColor: "#000",
-        title: {
-          text: "成交量分析",
-          left: "center",
-          textStyle: { color: "#00ff00", fontSize: 16 },
-        },
-        dataZoom: [
-          { type: "inside", start: 70, end: 100 },
-          {
-            show: true,
-            type: "slider",
-            top: "90%",
-            start: 70,
-            end: 100,
-            handleIcon:
-              "path://M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
-            handleSize: "80%",
-            handleStyle: {
-              color: "#fff",
-              shadowBlur: 3,
-              shadowColor: "rgba(0, 0, 0, 0.6)",
-              shadowOffsetX: 2,
-              shadowOffsetY: 2,
-            },
-          },
-        ],
-        tooltip: {
-          trigger: "axis",
-          axisPointer: { type: "cross" },
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
-          borderColor: "#00ff00",
-          textStyle: { color: "#00ff00" },
-        },
-        legend: {
-          data: ["存世量", "求购数量", "在售数量", "交易额"],
-          top: "8%",
-          textStyle: { color: "#ccc", fontSize: 12 },
-          inactiveColor: "#555",
-        },
-        grid: {
-          left: "10%",
-          right: "10%",
-          bottom: "12%",
-          top: "18%",
-          height: "68%",
-        },
-        xAxis: {
-          type: "category",
-          data: categoryData,
-          axisLine: { lineStyle: { color: "#8392A5" } },
-          axisLabel: {
-            formatter: (value) => {
-              const date = new Date(value);
-              return `${date.getMonth() + 1}/${date.getDate()}`;
-            },
-          },
-        },
-        yAxis: [
-          {
-            type: "value",
-            name: "存世量",
-            position: "left",
-            alignTicks: true,
-            axisLine: { lineStyle: { color: "#8A2BE2" } },
-            axisLabel: { color: "#8A2BE2", fontSize: 11 },
-          },
-          {
-            type: "value",
-            name: "买卖数量",
-            position: "right",
-            alignTicks: true,
-            axisLine: { lineStyle: { color: "#00BFFF" } },
-            axisLabel: { color: "#00BFFF", fontSize: 11 },
-          },
-          {
-            type: "value",
-            name: "交易额",
-            position: "right",
-            offset: 60,
-            alignTicks: true,
-            axisLine: { lineStyle: { color: "#FFA500" } },
-            axisLabel: { color: "#FFA500", fontSize: 11 },
-          },
-        ],
-        series: [
-          {
-            name: "存世量",
-            type: "line",
-            data: totalCountData,
-            yAxisIndex: 0,
-            smooth: true,
-            showSymbol: false,
-            lineStyle: { color: "#8A2BE2", width: 2 },
-          },
-          {
-            name: "求购数量",
-            type: "line",
-            data: buyCountData,
-            yAxisIndex: 1,
-            smooth: true,
-            showSymbol: false,
-            lineStyle: { color: "#00BFFF", width: 2 },
-          },
-          {
-            name: "在售数量",
-            type: "line",
-            data: sellCountData,
-            yAxisIndex: 1,
-            smooth: true,
-            showSymbol: false,
-            lineStyle: { color: "#FFD700", width: 2 },
-          },
-          {
-            name: "交易额",
-            type: "bar",
-            data: turnoverData,
-            yAxisIndex: 2,
-            itemStyle: { color: "#FFA500", opacity: 0.5 },
-          },
-        ],
-      });
-    };
-
-    watch(
-      klineData,
-      async (newVal) => {
-        await nextTick(); // 总是等待 DOM 更新
-
-        // 每次数据变化时,先销毁旧的图表实例
-        if (myKlineChart.value) {
-          myKlineChart.value.dispose();
-          myKlineChart.value = null;
-        }
-        if (myDataChart.value) {
-          myDataChart.value.dispose();
-          myDataChart.value = null;
-        }
-
-        if (newVal && newVal.length > 0) {
-          // 如果有新数据,重新初始化图表
-          initKlineChart();
-          initDataChart();
-        } else {
-          // 如果没有数据,图表已被销毁,无需额外操作
-        }
-      },
-      { immediate: true },
+    tl.fromTo(headerEl.value,
+      { opacity: 0, y: -28 },
+      { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' }
     );
 
-    // 支持从 URL query 参数自动搜索（如 /items?search=xxx）
-    onMounted(async () => {
-      const q = route.query.search;
-      if (q) {
-        searchQuery.value = q;
-        searching.value = true;
-        try {
-          const result = await api.searchItems(q);
-          if (result.success) {
-            searchResults.value = result.data || [];
-          }
-        } catch (error) {
-          console.error("自动搜索失败:", error);
-        } finally {
-          searching.value = false;
+    tl.fromTo(searchPanelEl.value,
+      { opacity: 0, x: -36 },
+      { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out' },
+      '-=0.2'
+    );
+
+    tl.fromTo([klinePanelEl.value, dataPanelEl.value],
+      { opacity: 0, y: 30 },
+      { opacity: 1, y: 0, duration: 0.55, stagger: 0.12, ease: 'power3.out' },
+      '-=0.15'
+    );
+
+    // Glow pulse on panel headers
+    gsap.to('.pc-dot', {
+      boxShadow: '0 0 10px #00ff41, 0 0 20px rgba(0,255,65,0.4)',
+      duration: 1.8,
+      yoyo: true,
+      repeat: -1,
+      stagger: { each: 0.6, from: 'random' },
+      ease: 'sine.inOut',
+    });
+  }, rootEl.value);
+};
+
+// Animate price cards entrance
+const animatePriceCards = () => {
+  if (!priceStripEl.value) return;
+  const cards = priceStripEl.value.querySelectorAll('.price-card');
+  gsap.fromTo(cards,
+    { opacity: 0, y: 16, scale: 0.95 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out' }
+  );
+};
+
+// Animate info bar
+const animateInfoBar = () => {
+  if (!infoBarEl.value) return;
+  gsap.fromTo(infoBarEl.value,
+    { opacity: 0, y: -16 },
+    { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+  );
+};
+
+// --- Track item ---
+const trackItem = async (marketHashName) => {
+  if (!user.value) {
+    toast.error('请先登录再追踪饰品。');
+    return;
+  }
+  try {
+    const result = await client.post('/track/add', {
+      email: user.value.email,
+      market_hash_name: marketHashName,
+    }, { timeout: 15000 });
+    if (result.data.success) {
+      toast.success('饰品已成功追踪！');
+    } else {
+      toast.error(`追踪失败: ${result.data.message}`);
+    }
+  } catch (error) {
+    if (error.code === 'ECONNABORTED' || error.code === 'ERR_CANCELED') {
+      toast.success('饰品已成功追踪！');
+    } else {
+      toast.error('追踪饰品时出错，请查看控制台获取更多信息。');
+    }
+  }
+};
+
+// --- Search ---
+const handleSearch = () => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  if (!searchQuery.value.trim()) {
+    searchResults.value = [];
+    return;
+  }
+  searchTimeout = setTimeout(async () => {
+    searching.value = true;
+    try {
+      const result = await api.searchItems(searchQuery.value);
+      if (result.success) {
+        searchResults.value = result.data || [];
+        // Animate results entrance
+        await nextTick();
+        const items = Object.values(resultItemRefs);
+        if (items.length) {
+          gsap.fromTo(items,
+            { opacity: 0, x: -12 },
+            { opacity: 1, x: 0, duration: 0.3, stagger: 0.04, ease: 'power2.out' }
+          );
         }
       }
-    });
+    } catch (error) {
+      console.error('搜索失败:', error);
+    } finally {
+      searching.value = false;
+    }
+  }, 300);
+};
 
-    return {
-      searchQuery,
-      searchResults,
-      selectedItem,
-      priceData,
-      searching,
-      loadingPrice,
-      klineData,
-      loadingKlineData,
-      klineError,
-      handleSearch,
-      selectItem,
-      formatTime,
-      klineChart,
-      myKlineChart,
-      dataChart,
-      myDataChart,
-      highestSellPrice,
-      lowestBiddingPrice,
-      trackItem,
-    };
+// --- Select item ---
+const selectItem = async (item) => {
+  selectedItem.value = item;
+  priceData.value = null;
+  klineData.value = [];
+  klineError.value = null;
+  loadingPrice.value = true;
+  loadingKlineData.value = true;
+  highestSellPrice.value = null;
+  lowestBiddingPrice.value = null;
+
+  try {
+    const priceResult = await api.getItemPrice(item.market_hash_name);
+    if (priceResult.success) {
+      priceData.value = {
+        data: priceResult.data,
+        updateTime: priceResult.data[0]?.updateTime || Date.now() / 1000,
+      };
+      let maxSell = 0;
+      let minBidding = Infinity;
+      priceResult.data.forEach((p) => {
+        if (p.platform === 'Steam' || p.sellPrice === 0 || p.biddingPrice === 0) return;
+        if (p.sellPrice > maxSell) maxSell = p.sellPrice;
+        if (p.biddingPrice < minBidding) minBidding = p.biddingPrice;
+      });
+      highestSellPrice.value = maxSell > 0 ? maxSell : null;
+      lowestBiddingPrice.value = minBidding !== Infinity ? minBidding : null;
+      await nextTick();
+      animateInfoBar();
+      animatePriceCards();
+    }
+  } catch (error) {
+    console.error('获取价格失败:', error);
+  } finally {
+    loadingPrice.value = false;
+  }
+
+  try {
+    const klineResult = await api.getItemKlineData(item.market_hash_name);
+    if (klineResult.success) {
+      klineData.value = klineResult.data || [];
+      klineError.value = null;
+    } else {
+      klineError.value = klineResult.error?.status === 404
+        ? '该饰品暂不支持K线查询'
+        : (klineResult.error?.message || '获取K线数据失败');
+    }
+  } catch (error) {
+    klineError.value = '获取K线数据失败，请稍后重试';
+  } finally {
+    loadingKlineData.value = false;
+  }
+};
+
+// --- Time formatting ---
+const formatTime = (timestamp) => {
+  if (!timestamp) return '';
+  return new Date(timestamp * 1000).toLocaleString('zh-CN');
+};
+
+// --- ECharts data processing ---
+function splitData(rawData) {
+  let categoryData = [], candlestickData = [], totalCountData = [];
+  let buyCountData = [], sellCountData = [], turnoverData = [], volumeData = [];
+
+  if (!rawData || rawData.length === 0) return {
+    categoryData, candlestickData, totalCountData, buyCountData, sellCountData, turnoverData, volumeData,
+  };
+
+  for (let i = 0; i < rawData.length; i++) {
+    const item = rawData[i];
+    if (!item || item.timestamp === undefined) continue;
+
+    const price = parseFloat(item.price);
+    const buyPrice = parseFloat(item.buy_price);
+    const open = buyPrice;
+    const close = price;
+    const low = Math.min(price, buyPrice);
+    const high = Math.max(price, buyPrice);
+
+    categoryData.push(new Date(item.timestamp * 1000).toLocaleDateString('zh-CN'));
+    candlestickData.push([open, close, low, high]);
+    totalCountData.push(parseInt(item.total_count));
+    buyCountData.push(parseInt(item.buy_count));
+    sellCountData.push(parseInt(item.sell_count));
+    turnoverData.push(parseFloat(item.turnover));
+    volumeData.push(parseInt(item.volume));
+  }
+  return { categoryData, candlestickData, totalCountData, buyCountData, sellCountData, turnoverData, volumeData };
+}
+
+// --- K-line chart option ---
+const klineChartOption = {
+  backgroundColor: 'transparent',
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'cross' },
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    borderColor: '#00ff41',
+    textStyle: { color: '#00ff41' },
+    formatter(params) {
+      if (!params?.length) return '';
+      let res = `日期: ${params[0].name}<br/>`;
+      params.forEach((p) => {
+        if (p.seriesName === 'Daily Price' && p.data !== undefined)
+          res += `在售最低价: ${p.data.toFixed(2)}<br/>`;
+        else if (p.seriesName === 'Buy Price' && p.data !== undefined)
+          res += `求购最高价: ${p.data.toFixed(2)}<br/>`;
+        else if (p.seriesName === '交易个数' && p.data !== undefined)
+          res += `交易个数: ${p.data}<br/>`;
+      });
+      return res;
+    },
   },
+  legend: {
+    data: ['Daily Price', 'Buy Price', '交易个数'],
+    top: '4%',
+    textStyle: { color: '#aaa', fontSize: 11 },
+    inactiveColor: '#555',
+  },
+  grid: { left: '8%', right: '8%', bottom: '18%', top: '14%' },
+  xAxis: {
+    type: 'category', scale: true, boundaryGap: false,
+    axisLine: { lineStyle: { color: '#333' } }, splitLine: { show: false },
+    axisLabel: {
+      color: '#666', fontSize: 10,
+      formatter: (v) => { const d = new Date(v); return `${d.getMonth() + 1}/${d.getDate()}`; },
+    },
+  },
+  yAxis: [
+    {
+      scale: true, position: 'left',
+      axisLine: { lineStyle: { color: '#00ff41' } },
+      splitLine: { lineStyle: { color: 'rgba(0,255,65,0.08)' } },
+      axisLabel: { color: '#00ff41', fontSize: 10 },
+      splitArea: { show: true, areaStyle: { color: ['rgba(0,255,65,0.02)', 'rgba(0,255,65,0.04)'] } },
+    },
+    {
+      scale: true, position: 'right', alignTicks: true,
+      axisLine: { lineStyle: { color: '#ADFF2F' } },
+      axisLabel: { color: '#ADFF2F', fontSize: 10 },
+    },
+  ],
+  dataZoom: [
+    { type: 'inside', start: 70, end: 100 },
+    {
+      show: true, type: 'slider', top: '92%', start: 70, end: 100, height: 20,
+      borderColor: '#333', fillerColor: 'rgba(0,255,65,0.1)', handleStyle: { color: '#00ff41' },
+    },
+  ],
+  series: [],
+};
+
+// --- Init K-line chart ---
+const initKlineChart = async () => {
+  if (!klineData.value?.length) return;
+  await nextTick();
+  if (!klineChart.value) return;
+  if (myKlineChart.value) myKlineChart.value.dispose();
+  myKlineChart.value = echarts.init(klineChart.value, 'dark');
+  updateKlineChart();
+};
+
+// --- Update K-line chart ---
+const updateKlineChart = () => {
+  if (!myKlineChart.value || !klineData.value.length) {
+    myKlineChart.value?.clear();
+    return;
+  }
+  const { categoryData, candlestickData, volumeData, totalCountData, buyCountData, sellCountData, turnoverData } = splitData(klineData.value);
+
+  myKlineChart.value.setOption({
+    ...klineChartOption,
+    xAxis: { ...klineChartOption.xAxis, data: categoryData },
+    series: [
+      {
+        name: 'Daily Price', type: 'line',
+        data: candlestickData.map((d) => d[1]),
+        smooth: true, showSymbol: false,
+        lineStyle: { opacity: 0.8, width: 2, color: upColor },
+        itemStyle: { color: upColor },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(0,255,0,0.15)' },
+              { offset: 1, color: 'rgba(0,255,0,0)' },
+            ],
+          },
+        },
+      },
+      {
+        name: 'Buy Price', type: 'line',
+        data: candlestickData.map((d) => d[0]),
+        smooth: true, showSymbol: false,
+        lineStyle: { opacity: 0.8, width: 2, color: downColor },
+        itemStyle: { color: downColor },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(255,0,0,0.08)' },
+              { offset: 1, color: 'rgba(255,0,0,0)' },
+            ],
+          },
+        },
+      },
+      {
+        name: '交易个数', type: 'bar', data: volumeData, yAxisIndex: 1,
+        itemStyle: { color: '#ADFF2F', opacity: 0.4 },
+      },
+    ],
+  });
+
+  updateDataChart(categoryData, totalCountData, buyCountData, sellCountData, turnoverData, volumeData);
+};
+
+// --- Init data chart ---
+const initDataChart = async () => {
+  if (!klineData.value?.length) return;
+  await nextTick();
+  if (!dataChart.value) return;
+  if (myDataChart.value) myDataChart.value.dispose();
+  myDataChart.value = echarts.init(dataChart.value, 'dark');
+  updateDataChart();
+};
+
+// --- Update data chart ---
+const updateDataChart = (categoryData, totalCountData, buyCountData, sellCountData, turnoverData, volumeData) => {
+  if (!myDataChart.value) return;
+  if (!categoryData) {
+    if (!klineData.value.length) { myDataChart.value?.clear(); return; }
+    const data = splitData(klineData.value);
+    categoryData = data.categoryData;
+    totalCountData = data.totalCountData;
+    buyCountData = data.buyCountData;
+    sellCountData = data.sellCountData;
+    turnoverData = data.turnoverData;
+    volumeData = data.volumeData;
+  }
+
+  myDataChart.value.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'cross' },
+      backgroundColor: 'rgba(0,0,0,0.9)', borderColor: '#00ff41', textStyle: { color: '#00ff41' },
+    },
+    legend: {
+      data: ['存世量', '求购数量', '在售数量', '交易额'],
+      top: '4%', textStyle: { color: '#aaa', fontSize: 11 }, inactiveColor: '#555',
+    },
+    grid: { left: '8%', right: '8%', bottom: '18%', top: '14%' },
+    dataZoom: [
+      { type: 'inside', start: 70, end: 100 },
+      {
+        show: true, type: 'slider', top: '92%', start: 70, end: 100, height: 20,
+        borderColor: '#333', fillerColor: 'rgba(0,255,65,0.1)', handleStyle: { color: '#00ff41' },
+      },
+    ],
+    xAxis: {
+      type: 'category', data: categoryData,
+      axisLine: { lineStyle: { color: '#333' } },
+      axisLabel: {
+        color: '#666', fontSize: 10,
+        formatter: (v) => { const d = new Date(v); return `${d.getMonth() + 1}/${d.getDate()}`; },
+      },
+    },
+    yAxis: [
+      {
+        type: 'value', name: '存世量', position: 'left', alignTicks: true,
+        axisLine: { lineStyle: { color: '#8A2BE2' } }, axisLabel: { color: '#8A2BE2', fontSize: 10 },
+      },
+      {
+        type: 'value', name: '买卖数量', position: 'right', alignTicks: true,
+        axisLine: { lineStyle: { color: '#00BFFF' } }, axisLabel: { color: '#00BFFF', fontSize: 10 },
+      },
+      {
+        type: 'value', name: '交易额', position: 'right', offset: 60, alignTicks: true,
+        axisLine: { lineStyle: { color: '#FFA500' } }, axisLabel: { color: '#FFA500', fontSize: 10 },
+      },
+    ],
+    series: [
+      {
+        name: '存世量', type: 'line', data: totalCountData, yAxisIndex: 0,
+        smooth: true, showSymbol: false,
+        lineStyle: { color: '#8A2BE2', width: 2 },
+        areaStyle: {
+          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+            { offset: 0, color: 'rgba(138,43,226,0.15)' }, { offset: 1, color: 'rgba(138,43,226,0)' },
+          ]},
+        },
+      },
+      {
+        name: '求购数量', type: 'line', data: buyCountData, yAxisIndex: 1,
+        smooth: true, showSymbol: false,
+        lineStyle: { color: '#00BFFF', width: 2 },
+      },
+      {
+        name: '在售数量', type: 'line', data: sellCountData, yAxisIndex: 1,
+        smooth: true, showSymbol: false,
+        lineStyle: { color: '#FFD700', width: 2 },
+      },
+      {
+        name: '交易额', type: 'bar', data: turnoverData, yAxisIndex: 2,
+        itemStyle: { color: '#FFA500', opacity: 0.5 },
+      },
+    ],
+  });
+};
+
+// --- Watch kline data ---
+watch(klineData, async (newVal) => {
+  await nextTick();
+  if (myKlineChart.value) { myKlineChart.value.dispose(); myKlineChart.value = null; }
+  if (myDataChart.value) { myDataChart.value.dispose(); myDataChart.value = null; }
+  if (newVal?.length > 0) {
+    initKlineChart();
+    initDataChart();
+  }
+}, { immediate: true });
+
+// --- Lifecycle ---
+onMounted(async () => {
+  initMatrix();
+  initGSAP();
+
+  // Typewriter header
+  setTimeout(async () => {
+    if (!typedEl.value) return;
+    await typewriter(typedEl.value, './item-search.sh --mode=scan', 42);
+  }, 300);
+
+  // Support URL query auto-search
+  const q = route.query.search;
+  if (q) {
+    searchQuery.value = q;
+    searching.value = true;
+    try {
+      const result = await api.searchItems(q);
+      if (result.success) searchResults.value = result.data || [];
+    } catch (error) {
+      console.error('自动搜索失败:', error);
+    } finally {
+      searching.value = false;
+    }
+  }
+
+  // Handle resize for charts
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  if (_matrixCleanup) _matrixCleanup();
+  if (_ctx) _ctx.revert();
+  if (myKlineChart.value) myKlineChart.value.dispose();
+  if (myDataChart.value) myDataChart.value.dispose();
+  window.removeEventListener('resize', handleResize);
+});
+
+const handleResize = () => {
+  myKlineChart.value?.resize();
+  myDataChart.value?.resize();
+  const c = matrixCanvas.value;
+  if (c) { c.width = window.innerWidth; c.height = window.innerHeight; }
 };
 </script>
 
 <style scoped>
+/* === Base === */
 .items-page {
   width: 100%;
-  max-width: 1400px;
-  padding: 24px;
-  margin: 40px auto 0;
-  animation: fadeIn 0.4s ease;
+  min-height: 100vh;
+  position: relative;
+  padding: 20px;
+  font-family: 'Share Tech Mono', 'Source Code Pro', monospace;
 }
-.items-grid-container {
-  display: grid;
-  grid-template-columns: 0.8fr 2.2fr;
-  grid-template-rows: auto auto 1fr;
-  gap: 20px;
-  grid-template-areas: "tracking price" "search kline" "search data" "search data";
+
+/* Matrix canvas */
+.matrix-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.35;
 }
-@media (max-width: 900px) {
-  .items-grid-container {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    grid-template-areas: "search" "price" "kline" "data" "tracking";
-  }
+
+/* Scanlines */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px
+  );
+  animation: scanmove 12s linear infinite;
 }
-.search-panel {
-  grid-area: search;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #00ff41;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
+@keyframes scanmove {
+  from { background-position: 0 0; }
+  to { background-position: 0 100vh; }
 }
-.price-panel {
-  grid-area: price;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #00ff41;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 250px;
+
+/* === Header === */
+.hdr {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.18);
 }
-.kline-panel {
-  grid-area: kline;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #00ff41;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 450px;
-}
-.kline-chart-container {
-  width: 100%;
-  height: 420px;
-  min-height: 420px;
-}
-.data-panel {
-  grid-area: data;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #00ff41;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 450px;
-}
-.data-chart-container {
-  width: 100%;
-  height: 420px;
-  min-height: 420px;
-}
-.tracking-panel {
-  grid-area: tracking;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #00ff41;
-  border-radius: 8px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.panel-title {
-  color: #00ff41;
-  font-family: "Courier New", monospace;
-  font-size: 24px;
-  margin-bottom: 12px;
-}
-.panel-placeholder {
-  color: rgba(0, 255, 65, 0.6);
-  font-family: "Courier New", monospace;
-  font-size: 16px;
-  text-align: center;
-}
-.track-button {
-  background: #00ff41;
-  color: #000;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
+.hdr-prompt {
   font-size: 18px;
   font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  line-height: 1.7;
 }
-.track-button:hover {
-  background: #00e63c;
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+.p-usr { color: #00e5ff; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); }
+.p-at { color: rgba(0, 255, 65, 0.6); }
+.p-host { color: var(--primary-green); text-shadow: 0 0 8px rgba(0, 255, 65, 0.5); }
+.p-sep { color: rgba(0, 255, 65, 0.45); }
+.p-cmd { color: var(--primary-green); min-width: 2ch; }
+.p-cur { color: var(--primary-green); animation: blink 1s step-end infinite; margin-left: 1px; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.hdr-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(0, 255, 65, 0.5);
+  letter-spacing: 1.2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.items-header {
-  margin-bottom: 12px;
+.hm-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00ff41;
+  box-shadow: 0 0 8px #00ff41;
+  animation: pdot 2s ease-in-out infinite;
 }
-.title {
-  font-family: "Courier New", monospace;
-  font-size: 20px;
-  font-weight: 700;
-  color: #00ff41;
-  margin: 0 0 8px 0;
-  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+@keyframes pdot {
+  0%, 100% { box-shadow: 0 0 4px #00ff41; }
+  50% { box-shadow: 0 0 14px #00ff41, 0 0 28px rgba(0, 255, 65, 0.35); }
 }
+
+/* === Main Grid Layout === */
+.main-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* === Panel Card (shared) === */
+.panel-card {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 65, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.panel-card:hover {
+  border-color: rgba(0, 255, 65, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 255, 65, 0.06);
+}
+
+.pc-hd {
+  font-size: 13px;
+  color: var(--primary-green);
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+  background: rgba(0, 255, 65, 0.025);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.pc-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-green);
+  box-shadow: 0 0 6px var(--primary-green);
+  flex-shrink: 0;
+}
+
+/* === Search Panel === */
+.search-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 120px);
+  position: sticky;
+  top: 20px;
+}
+
 .search-box {
   position: relative;
+  padding: 10px 12px;
 }
 .search-input {
   width: 100%;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-family: "Courier New", monospace;
-  background: rgba(0, 0, 0, 0.6);
-  border: 2px solid #00ff41;
-  border-radius: 8px;
-  color: #00ff41;
+  padding: 9px 36px 9px 12px;
+  font-size: 13px;
+  font-family: 'Share Tech Mono', monospace;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  border-radius: 6px;
+  color: var(--primary-green);
   outline: none;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
-.search-input::placeholder {
-  color: rgba(0, 255, 65, 0.4);
-}
+.search-input::placeholder { color: rgba(0, 255, 65, 0.35); }
 .search-input:focus {
-  border-color: #00ff41;
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+  border-color: rgba(0, 255, 65, 0.5);
+  box-shadow: 0 0 16px rgba(0, 255, 65, 0.15);
 }
-.search-status {
+
+.search-loading {
   position: absolute;
-  right: 20px;
+  right: 22px;
   top: 50%;
   transform: translateY(-50%);
-  color: #00ff41;
-  font-size: 14px;
 }
-.search-results {
-  margin-top: 24px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #00ff41;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
+.spin-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-green);
+  animation: spin-pulse 0.8s ease-in-out infinite;
 }
-.results-header {
-  padding: 12px 20px;
-  background: rgba(0, 255, 65, 0.1);
-  border-bottom: 1px solid #00ff41;
-  color: #00ff41;
-  font-family: "Courier New", monospace;
-  font-size: 14px;
+@keyframes spin-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
+
+/* Result count badge */
+.result-count {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  border: 1px solid rgba(0, 255, 65, 0.35);
+  background: rgba(0, 255, 65, 0.07);
+  color: var(--primary-green);
+}
+
+/* Results list */
 .results-list {
-  flex-grow: 1;
+  flex: 1;
   overflow-y: auto;
 }
+.results-list::-webkit-scrollbar { width: 4px; }
+.results-list::-webkit-scrollbar-track { background: transparent; }
+.results-list::-webkit-scrollbar-thumb { background: rgba(0, 255, 65, 0.25); border-radius: 2px; }
+.results-list::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 65, 0.4); }
+
 .result-item {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+  padding: 10px 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-.result-item:last-child {
-  border-bottom: none;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.06);
+  transition: background 0.2s, border-color 0.2s;
 }
 .result-item:hover {
-  background: rgba(0, 255, 65, 0.1);
+  background: rgba(0, 255, 65, 0.05);
 }
 .result-item.selected {
-  background: rgba(0, 255, 65, 0.2);
+  background: rgba(0, 255, 65, 0.1);
+  border-left: 2px solid var(--primary-green);
 }
-.item-name {
-  color: #00ff41;
-  font-family: "Courier New", monospace;
-  font-size: 16px;
-  margin-bottom: 4px;
-}
-.item-hash {
-  color: rgba(0, 255, 65, 0.6);
-  font-family: "Courier New", monospace;
-  font-size: 12px;
-}
-.price-details {
-  padding: 0;
-}
-.details-header {
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0, 255, 65, 0.3);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.details-header h2 {
-  color: #00ff41;
-  font-family: "Courier New", monospace;
-  font-size: 16px;
-  margin: 0;
-}
-.update-time {
-  color: rgba(0, 255, 65, 0.6);
-  font-family: "Courier New", monospace;
-  font-size: 11px;
-}
-.price-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-auto-rows: minmax(min-content, max-content);
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.price-card {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(0, 255, 65, 0.3);
-  border-radius: 6px;
-  padding: 8px;
-  transition: all 0.3s ease;
-}
-.price-card:hover {
-  border-color: #00ff41;
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
-}
-.platform-name {
-  color: #00ff41;
-  font-family: "Courier New", monospace;
+.ri-name {
   font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  text-align: center;
+  color: var(--primary-green);
+  font-weight: 500;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.price-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.price-line {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.price-line .label {
-  color: rgba(0, 255, 65, 0.7);
-  font-family: "Courier New", monospace;
-  font-size: 11px;
-  min-width: 50px;
-}
-.price-line .value.price {
-  color: #00ff41;
-  font-family: "Courier New", monospace;
-  font-size: 13px;
-  font-weight: 700;
-}
-.price-line .count {
-  color: rgba(0, 255, 65, 0.5);
-  font-family: "Courier New", monospace;
+.ri-hash {
   font-size: 10px;
+  color: rgba(0, 255, 65, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.loading {
+
+/* Empty state */
+.panel-empty {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
-  gap: 16px;
-  color: #00ff41;
-  font-family: "Courier New", monospace;
-}
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(0, 255, 65, 0.2);
-  border-top-color: #00ff41;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.empty-state,
-.placeholder-state,
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  gap: 16px;
+  padding: 40px 16px;
   flex-grow: 1;
 }
-.empty-icon,
-.placeholder-icon,
-.error-icon {
-  font-size: 64px;
-  opacity: 0.5;
+.empty-line {
+  font-size: 13px;
+  color: rgba(0, 255, 65, 0.35);
+  font-family: 'Share Tech Mono', monospace;
 }
-.error-icon {
-  color: rgba(255, 100, 100, 0.8);
-}
-.empty-text,
-.placeholder-text {
-  color: rgba(0, 255, 65, 0.6);
-  font-family: "Courier New", monospace;
-  font-size: 16px;
-}
-.error-text {
-  color: rgba(255, 100, 100, 0.8);
-  font-family: "Courier New", monospace;
-  font-size: 16px;
-  text-align: center;
-}
-.highest-sell {
-  color: red !important;
-  text-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
-}
-.lowest-bidding {
-  color: #ff0 !important;
-  text-shadow: 0 0 8px rgba(255, 255, 0, 0.7);
-}
-.empty-card {
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px dashed rgba(0, 255, 65, 0.1);
-  color: rgba(0, 255, 65, 0.3);
+.empty-line.error { color: rgba(255, 80, 80, 0.7); }
+
+/* === Content Area === */
+.content-area {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Info bar */
+.info-bar {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  gap: 12px;
 }
-.empty-card .platform-name,
-.empty-card .price-info {
-  display: none;
+.info-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
 }
-.results-list::-webkit-scrollbar {
-  width: 8px;
+.info-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-green);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.results-list::-webkit-scrollbar-track {
+.info-time {
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.45);
+  white-space: nowrap;
+}
+
+/* Track button */
+.track-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: rgba(0, 255, 65, 0.08);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-radius: 5px;
+  color: var(--primary-green);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.25s ease;
+  letter-spacing: 0.5px;
+}
+.track-btn:hover {
+  background: rgba(0, 255, 65, 0.15);
+  border-color: rgba(0, 255, 65, 0.5);
+  box-shadow: 0 0 16px rgba(0, 255, 65, 0.15);
+  transform: translateY(-1px);
+}
+.tb-icon {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* === Price Strip === */
+.price-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+@media (max-width: 1100px) {
+  .price-strip { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .price-strip { grid-template-columns: repeat(2, 1fr); }
+}
+
+.price-card {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 65, 0.12);
+  border-radius: 6px;
+  padding: 8px 10px;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+}
+.price-card:hover {
+  border-color: rgba(0, 255, 65, 0.35);
+  box-shadow: 0 0 12px rgba(0, 255, 65, 0.08);
+  transform: translateY(-2px);
+}
+.price-card.empty {
   background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed rgba(0, 255, 65, 0.08);
 }
-.results-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 65, 0.3);
-  border-radius: 4px;
+.pf-name {
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.6);
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
 }
-.results-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 65, 0.5);
+.pf-body { display: flex; flex-direction: column; gap: 3px; }
+.pf-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pf-label {
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.4);
+  width: 16px;
+  flex-shrink: 0;
+}
+.pf-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-green);
+  transition: color 0.3s, text-shadow 0.3s;
+}
+.pf-cnt {
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.35);
+}
+.pf-val.highlight {
+  color: #ff4444 !important;
+  text-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
+}
+.pf-val.highlight-yellow {
+  color: #ffdd00 !important;
+  text-shadow: 0 0 8px rgba(255, 221, 0, 0.6);
+}
+
+/* === Chart Panels === */
+.chart-panel {
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+}
+.chart-container {
+  flex: 1;
+  width: 100%;
+  min-height: 350px;
+}
+
+/* Loading states */
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: rgba(0, 255, 65, 0.5);
+  font-size: 13px;
+}
+.panel-loading-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px;
+  color: rgba(0, 255, 65, 0.5);
+  font-size: 13px;
+  flex-grow: 1;
+}
+.ld-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 255, 65, 0.15);
+  border-top-color: var(--primary-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.ld-spinner.sm { width: 14px; height: 14px; border-width: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* === Responsive === */
+@media (max-width: 900px) {
+  .items-page { padding: 16px 12px; }
+  .search-panel {
+    position: static;
+    max-height: 360px;
+  }
+  .info-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 }
 </style>

@@ -52,13 +52,30 @@ class UserActions:
         try:
             conn = self.user_manager.get_db_connection()
             with conn.cursor() as cursor:
+                # 1. 删除该用户的追踪记录
                 cursor.execute(
                     "DELETE FROM track WHERE email = %s AND market_hash_name = %s",
                     (email, market_hash_name)
                 )
-            conn.commit()
+                conn.commit()
+
+                # 2. 检查是否还有其他用户在追踪这个饰品
+                cursor.execute(
+                    "SELECT 1 FROM track WHERE market_hash_name = %s LIMIT 1",
+                    (market_hash_name,)
+                )
+                if not cursor.fetchone():
+                    # 没有人在追踪了，清理 item_kline_day 中的缓存数据
+                    cursor.execute(
+                        "DELETE FROM item_kline_day WHERE market_hash_name = %s",
+                        (market_hash_name,)
+                    )
+                    conn.commit()
+                    logger.info(f"饰品 {market_hash_name} 已无用户追踪，已清理其K线缓存数据")
+
             return {"success": True, "message": "Item untracked successfully."}
         except Exception as e:
+            logger.error(f"取消追踪失败: {e}")
             return {"success": False, "message": str(e)}
         finally:
             if conn:
