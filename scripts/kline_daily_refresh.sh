@@ -17,7 +17,28 @@ echo "=========================================="
 echo "K线缓存每日刷新启动 @ $TIMESTAMP"
 echo "=========================================="
 
-# 在backend容器内运行批量刷新
+# ─── Step 1: 同步 CS2 饰品基础信息（每日一次，新增入库）─────────────────
+echo "▶ [Step 1] 同步 CS2 饰品基础信息..."
+docker exec \
+    -e HOST="$HOST" \
+    -e PORT="$PORT" \
+    -e DB_USER="$DB_USER" \
+    -e DB_PASSWORD="$DB_PASSWORD" \
+    -e DATABASE="$DATABASE" \
+    -e CHARSET="$CHARSET" \
+    -e BUFFTRACKER_URL="$BUFFTRACKER_URL" \
+    buffotte-backend-1 python -m db.cs2_items_processor
+
+if [ $? -ne 0 ]; then
+    echo "⚠️  饰品基础信息同步失败（不影响 K 线刷新，继续执行）"
+else
+    echo "✅ 饰品基础信息同步完成"
+fi
+
+echo ""
+
+# ─── Step 2: 刷新所有追踪饰品的 K 线缓存 ──────────────────────────────
+echo "▶ [Step 2] 刷新追踪饰品 K 线缓存..."
 docker exec \
     -e HOST="$HOST" \
     -e PORT="$PORT" \
@@ -28,9 +49,11 @@ docker exec \
     buffotte-backend-1 python -m db.item_kline_processor --refresh-tracked
 
 if [ $? -ne 0 ]; then
-    echo "K线缓存刷新失败"
+    echo "❌ K线缓存刷新失败"
     exit 1
 fi
 
-echo "K线缓存刷新完成 @ $(date '+%Y-%m-%d %H:%M:%S')"
+echo "✅ K线缓存刷新完成"
+echo ""
+echo "全部任务完成 @ $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=========================================="
