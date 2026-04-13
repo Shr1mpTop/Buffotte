@@ -159,6 +159,31 @@
       </div>
     </div>
 
+    <!-- QUOTA MONITOR -->
+    <div ref="c4" class="card quota-card">
+      <div class="c-glow"></div>
+      <div class="c-hd">
+        <span class="c-dot"></span>API 配额监控
+        <span class="badge ok" v-if="quotaData">ONLINE</span>
+        <span class="badge" style="color:rgba(0,255,65,0.4);border-color:rgba(0,255,65,0.15);background:rgba(0,255,65,0.03)" v-else>SCANNING</span>
+        <span class="quota-ts" v-if="quotaData">{{ quotaData.timestamp }}</span>
+      </div>
+      <div class="c-bd">
+        <div v-if="quotaData" class="quota-grid">
+          <div class="quota-item" v-for="q in quotaBars" :key="q.label">
+            <div class="qi-head">
+              <span class="qi-label">{{ q.icon }} {{ q.label }}</span>
+              <span class="qi-val" :class="q.warn">{{ q.remaining }}<span class="qi-dim">/{{ q.total }}</span></span>
+            </div>
+            <div class="qi-track">
+              <div class="qi-fill" :class="q.warn" :style="{ width: q.pct + '%' }"></div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="ph">扫描中<span class="dots">...</span></div>
+      </div>
+    </div>
+
     <!-- TICKER -->
     <div ref="tickerEl" class="ticker">
       <div ref="tickInner" class="tick-inner">
@@ -189,6 +214,7 @@ const c0 = ref(null);
 const c1 = ref(null);
 const c2 = ref(null);
 const c3 = ref(null);
+const c4 = ref(null);
 const ldBar = ref(null);
 const ldNum = ref(null);
 const scBar = ref(null);
@@ -207,6 +233,29 @@ const userDetails = ref(null);
 const loadingDetails = ref(false);
 const sysStats = reactive({ cpu: 0, mem: 0, load1: '0.00', uptime: '--' });
 let _sysTimer = null;
+let _quotaTimer = null;
+
+// Quota data
+const quotaData = ref(null);
+const quotaBars = computed(() => {
+  if (!quotaData.value) return [];
+  const d = quotaData.value;
+  return [
+    { label: "单品查询", icon: "◈", remaining: d.single_remaining, total: d.single_total },
+    { label: "批量查询", icon: "◆", remaining: d.batch_remaining, total: d.batch_total },
+    { label: "基础查询", icon: "◎", remaining: d.base_remaining, total: d.base_total },
+  ].map(q => {
+    const pct = q.total > 0 ? (q.remaining / q.total) * 100 : 0;
+    return { ...q, pct, warn: pct < 20 ? "crit" : pct < 50 ? "warn" : "" };
+  });
+});
+
+const fetchQuota = async () => {
+  try {
+    const r = await client.get('/bufftracker/quota', { timeout: 5000 });
+    if (r.data?.success) quotaData.value = r.data;
+  } catch { /* silent */ }
+};
 
 const CIRC = 2 * Math.PI * 32;
 const ACTIONS = [
@@ -350,7 +399,7 @@ const initGSAP = () => {
     );
 
     tl.fromTo(
-      [c0.value, c1.value, c2.value, c3.value],
+      [c0.value, c1.value, c2.value, c3.value, c4.value],
       { opacity: 0, y: 36, scale: 0.96 },
       {
         opacity: 1,
@@ -472,6 +521,10 @@ onMounted(async () => {
   fetchSysStats();
   _sysTimer = setInterval(fetchSysStats, 3000);
 
+  // Quota polling (10s)
+  fetchQuota();
+  _quotaTimer = setInterval(fetchQuota, 10000);
+
   if (user.value?.email) {
     loadingDetails.value = true;
     try {
@@ -488,6 +541,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (_timer) clearInterval(_timer);
   if (_sysTimer) clearInterval(_sysTimer);
+  if (_quotaTimer) clearInterval(_quotaTimer);
   if (_matrixCleanup) _matrixCleanup();
   if (_ctx) _ctx.revert();
 });
@@ -1034,6 +1088,86 @@ onUnmounted(() => {
   66% {
     opacity: 0.5;
   }
+}
+
+/* Quota card */
+.quota-card {
+  margin-top: 16px;
+}
+.quota-ts {
+  margin-left: auto;
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.4);
+  font-weight: 400;
+}
+.quota-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 700px) {
+  .quota-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+.quota-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qi-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.qi-label {
+  font-size: 12px;
+  color: rgba(0, 255, 65, 0.55);
+  letter-spacing: 0.5px;
+}
+.qi-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-green);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+.qi-dim {
+  font-weight: 400;
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.4);
+}
+.qi-track {
+  height: 6px;
+  background: rgba(0, 255, 65, 0.07);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.qi-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #00cc33, #00ff88);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.35);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.qi-fill.warn {
+  background: linear-gradient(90deg, #ff8c00, #ffcc00);
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.4);
+}
+.qi-val.warn {
+  color: #ffcc00;
+  text-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
+}
+.qi-fill.crit {
+  background: linear-gradient(90deg, #ff2020, #ff6040);
+  box-shadow: 0 0 10px rgba(255, 32, 32, 0.5);
+  animation: crit-pulse 1.5s ease-in-out infinite;
+}
+.qi-val.crit {
+  color: #ff4040;
+  text-shadow: 0 0 10px rgba(255, 64, 64, 0.5);
+}
+@keyframes crit-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* Ticker */

@@ -1,7 +1,7 @@
 <template>
   <div class="main-layout">
-    <Sidebar />
-    <div class="content-area">
+    <Sidebar @collapse-change="onCollapseChange" />
+    <div class="content-area" :class="{ collapsed }">
       <router-view />
     </div>
   </div>
@@ -9,10 +9,16 @@
 
 <script>
 import Sidebar from '../components/Sidebar.vue'
+import { ref } from 'vue'
 
 export default {
   name: 'MainLayout',
-  components: { Sidebar }
+  components: { Sidebar },
+  setup() {
+    const collapsed = ref(false)
+    const onCollapseChange = (val) => { collapsed.value = val }
+    return { collapsed, onCollapseChange }
+  }
 }
 </script>
 
@@ -32,28 +38,24 @@ export default {
   overflow-y: auto;
   overflow-x: hidden;
   background: #000;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* 隐藏滚动条 */
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: #0a0e0a;
-  }
-  
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: #0a0e0a; }
   &::-webkit-scrollbar-thumb {
     background: rgba(0, 255, 127, 0.3);
     border-radius: 3px;
-    
-    &:hover {
-      background: #00ff7f;
-      box-shadow: 0 0 8px rgba(0, 255, 127, 0.6);
-    }
+    &:hover { background: #00ff7f; box-shadow: 0 0 8px rgba(0, 255, 127, 0.6); }
   }
-
-  /* Firefox */
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 255, 127, 0.3) #0a0e0a;
+}
+
+.content-area.collapsed {
+  margin-left: 56px;
+}
+
+@media (max-width: 900px) {
+  .content-area { margin-left: 56px !important; }
 }
 </style>
