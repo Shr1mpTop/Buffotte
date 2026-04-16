@@ -18,6 +18,7 @@ dependencies = [
     "cryptography",
     "httpx",
     "playwright",
+    "markdown",
 ]
 
 [build-system]

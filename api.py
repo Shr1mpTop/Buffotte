@@ -18,6 +18,10 @@ import pytz
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 
+# 挂载在线文档 Wiki
+from wiki import mount_wiki
+mount_wiki(app)
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
