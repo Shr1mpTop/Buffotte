@@ -28,7 +28,7 @@
         class="nav-item"
         :class="{ active: $route.path === item.to }"
         :title="collapsed ? item.label : ''"
-        :ref="(el) => { if (el) navRefs[idx] = el }"
+        :ref="(el) => setNavRef(el, idx)"
       >
         <span class="nav-icon">{{ item.icon }}</span>
         <span class="nav-text" v-if="!collapsed">{{ item.label }}</span>
@@ -77,6 +77,15 @@ export default {
       { to: '/skins',     icon: '★', label: '热点' },
       { to: '/tracking',  icon: '◉', label: '追踪' },
     ];
+
+    const setNavRef = (el, idx) => {
+      const target = el?.$el || el;
+      if (target?.nodeType === 1) {
+        navRefs[idx] = target;
+      } else {
+        delete navRefs[idx];
+      }
+    };
 
     // --- Session timer ---
     let _startTime = Date.now();
@@ -138,7 +147,7 @@ export default {
         { opacity: 0, x: -40 },
         { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out' }
       );
-      const items = Object.values(navRefs);
+      const items = Object.values(navRefs).filter((el) => el?.nodeType === 1);
       if (items.length) {
         gsap.fromTo(items,
           { opacity: 0, x: -16 },
@@ -172,7 +181,7 @@ export default {
 
     return {
       sidebarEl, matrixCanvas, navRefs, collapsed,
-      user, sessionTime, navItems, logout,
+      user, sessionTime, navItems, setNavRef, logout,
     };
   },
 };

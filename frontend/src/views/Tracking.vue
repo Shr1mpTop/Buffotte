@@ -53,7 +53,14 @@
             @click="selectItem(item)"
             :ref="(el) => { if (el) itemRefs[idx] = el }"
           >
-            <div class="ri-name">{{ item.name }}</div>
+            <div class="ri-info">
+              <div class="ri-name">{{ item.name }}</div>
+              <div class="ri-profit-badge" v-if="getItemProfitBadge(item)">
+                <span :class="getItemProfitBadge(item).cls">
+                  {{ getItemProfitBadge(item).text }}
+                </span>
+              </div>
+            </div>
             <button
               class="untrack-btn"
               @click.stop="untrackItem(item.market_hash_name)"
@@ -160,6 +167,70 @@
           </div>
         </div>
 
+        <!-- Profit Prediction Panel -->
+        <div ref="profitPanelEl" class="panel-card profit-panel" v-if="selectedItem && (profitLoading || profitData)">
+          <div class="pc-hd">
+            <span class="pc-dot"></span>7天预测利润
+            <div v-if="profitLoading" class="refresh-badge">
+              <span class="refresh-dot"></span>预测中
+            </div>
+          </div>
+          <div v-if="profitLoading" class="panel-loading-inline">
+            <div class="ld-spinner sm"></div>
+            <span>LGBM 模型预测中...</span>
+          </div>
+          <div v-else-if="profitError" class="panel-empty">
+            <div class="empty-line error">{{ profitError }}</div>
+          </div>
+          <div v-else-if="profitData" class="profit-content">
+            <div class="profit-summary">
+              <div class="ps-item">
+                <div class="ps-label">当前价格</div>
+                <div class="ps-value">¥{{ profitData.current_price ?? '-' }}</div>
+              </div>
+              <div class="ps-item">
+                <div class="ps-label">7天预测价</div>
+                <div class="ps-value predicted">¥{{ profitData.predicted_price_7d }}</div>
+                <div class="ps-range" v-if="profitData.predicted_lower && profitData.predicted_upper">
+                  ¥{{ profitData.predicted_lower }} ~ ¥{{ profitData.predicted_upper }}
+                  <span :class="'confidence-' + profitData.confidence">{{ profitData.confidence }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="profit-table" v-if="profitData.profit_by_platform && Object.keys(profitData.profit_by_platform).length">
+              <div class="pt-header">
+                <span class="pt-col-name">平台</span>
+                <span class="pt-col">卖出价</span>
+                <span class="pt-col">手续费</span>
+                <span class="pt-col">提现费</span>
+                <span class="pt-col">净利润</span>
+                <span class="pt-col">利润率</span>
+                <span class="pt-col">年化</span>
+              </div>
+              <div
+                v-for="(pdata, pkey) in profitData.profit_by_platform"
+                :key="pkey"
+                class="pt-row"
+                :class="{ 'best-profit': isBestProfit(pkey) }"
+              >
+                <span class="pt-col-name">{{ pdata.display_name || pkey }}</span>
+                <span class="pt-col">¥{{ pdata.sell_price }}</span>
+                <span class="pt-col fee">¥{{ pdata.sell_fee }}</span>
+                <span class="pt-col fee">¥{{ pdata.withdraw_fee }}</span>
+                <span class="pt-col" :class="pdata.net_profit >= 0 ? 'profit-positive' : 'profit-negative'">
+                  ¥{{ pdata.net_profit }}
+                </span>
+                <span class="pt-col" :class="pdata.profit_rate >= 0 ? 'profit-positive' : 'profit-negative'">
+                  {{ pdata.profit_rate }}%
+                </span>
+                <span class="pt-col" :class="pdata.annualized_return >= 0 ? 'profit-positive' : 'profit-negative'">
+                  {{ pdata.annualized_return }}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- K-line Chart -->
         <div ref="klinePanelEl" class="panel-card chart-panel">
           <div class="pc-hd">
@@ -235,6 +306,9 @@ import {
 import { LineChart, BarChart } from 'echarts/charts';
 import { CanvasRenderer } from 'echarts/renderers';
 import gsap from 'gsap';
+import { CSSPlugin } from 'gsap/CSSPlugin';
+
+gsap.registerPlugin(CSSPlugin);
 
 echarts.use([
   TitleComponent, TooltipComponent, LegendComponent, GridComponent,
@@ -276,6 +350,11 @@ const klineError = ref(null);
 const highestSellPrice = ref(null);
 const lowestBiddingPrice = ref(null);
 const isRefreshingKline = ref(false);
+const profitData = ref(null);
+const profitLoading = ref(false);
+const profitError = ref(null);
+const profitPanelEl = ref(null);
+const trackedProfitMap = ref({}); // {market_hash_name: {best_rate, best_platform}}
 
 // Matrix rain
 let _raf = null;
@@ -455,6 +534,9 @@ const selectItem = async (item) => {
   isRefreshingKline.value = false;
   highestSellPrice.value = null;
   lowestBiddingPrice.value = null;
+  profitData.value = null;
+  profitError.value = null;
+  profitLoading.value = true;
 
   // Fetch price
   try {
@@ -545,9 +627,68 @@ const selectItem = async (item) => {
       loadingKlineData.value = false;
     }
   }
+
+  // Phase 3: 预测利润
+  api.predictItemProfit(item.market_hash_name).then((result) => {
+    if (selectedItem.value?.market_hash_name !== item.market_hash_name) return;
+    if (result.success && result.data) {
+      profitData.value = result.data;
+      // 更新追踪列表的利润标记
+      updateTrackedProfitMap(result.data);
+    } else {
+      profitError.value = result.error || '数据不足，无法预测';
+    }
+  }).catch((e) => {
+    console.error('利润预测失败:', e);
+    profitError.value = '预测失败';
+  }).finally(() => {
+    if (selectedItem.value?.market_hash_name === item.market_hash_name) {
+      profitLoading.value = false;
+    }
+  });
 };
 
-// --- Time formatting ---
+// --- Profit helpers ---
+const updateTrackedProfitMap = (data) => {
+  if (!data.profit_by_platform) return;
+  let bestRate = -Infinity;
+  let bestPlatform = null;
+  for (const [pkey, pdata] of Object.entries(data.profit_by_platform)) {
+    if (pdata.profit_rate > bestRate) {
+      bestRate = pdata.profit_rate;
+      bestPlatform = pkey;
+    }
+  }
+  trackedProfitMap.value[data.market_hash_name] = {
+    best_rate: bestRate,
+    best_platform: bestPlatform,
+  };
+};
+
+const getItemProfitBadge = (item) => {
+  const info = trackedProfitMap.value[item.market_hash_name];
+  if (!info) return null;
+  const rate = info.best_rate;
+  if (rate > 0) {
+    return { text: `+${rate.toFixed(1)}%`, cls: 'badge-profit' };
+  } else if (rate < 0) {
+    return { text: `${rate.toFixed(1)}%`, cls: 'badge-loss' };
+  }
+  return null;
+};
+
+const isBestProfit = (pkey) => {
+  if (!profitData.value?.profit_by_platform) return false;
+  let bestRate = -Infinity;
+  let bestKey = null;
+  for (const [k, v] of Object.entries(profitData.value.profit_by_platform)) {
+    if (v.profit_rate > bestRate) {
+      bestRate = v.profit_rate;
+      bestKey = k;
+    }
+  }
+  return pkey === bestKey;
+};
 const formatTime = (timestamp) => {
   if (!timestamp) return '';
   return new Date(timestamp * 1000).toLocaleString('zh-CN');
@@ -1277,5 +1418,139 @@ const handleResize = () => {
     align-items: flex-start;
     gap: 8px;
   }
+}
+
+/* === Profit Prediction Panel === */
+.profit-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.profit-content {
+  padding: 12px 14px;
+}
+
+.profit-summary {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.ps-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ps-label {
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ps-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-green);
+}
+
+.ps-value.predicted {
+  color: #00e5ff;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.ps-range {
+  font-size: 10px;
+  color: rgba(0, 255, 65, 0.35);
+}
+
+.confidence-high { color: #00ff41; margin-left: 4px; }
+.confidence-medium { color: #ffdd00; margin-left: 4px; }
+.confidence-low { color: #ff6b6b; margin-left: 4px; }
+
+/* Profit table */
+.profit-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.pt-header, .pt-row {
+  display: grid;
+  grid-template-columns: 90px repeat(6, 1fr);
+  gap: 4px;
+  padding: 6px 0;
+  font-size: 12px;
+  align-items: center;
+}
+
+.pt-header {
+  color: rgba(0, 255, 65, 0.4);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.pt-row {
+  border-bottom: 1px solid rgba(0, 255, 65, 0.04);
+  transition: background 0.2s;
+}
+
+.pt-row:hover {
+  background: rgba(0, 255, 65, 0.03);
+}
+
+.pt-row.best-profit {
+  background: rgba(0, 255, 65, 0.06);
+  border-left: 2px solid var(--primary-green);
+}
+
+.pt-col-name {
+  color: rgba(0, 255, 65, 0.6);
+  font-weight: 600;
+}
+
+.pt-col {
+  color: rgba(0, 255, 65, 0.5);
+  text-align: right;
+}
+
+.pt-col.fee {
+  color: rgba(255, 165, 0, 0.5);
+}
+
+.profit-positive {
+  color: #00ff41 !important;
+  font-weight: 700;
+}
+
+.profit-negative {
+  color: #ff4444 !important;
+  font-weight: 700;
+}
+
+/* List item profit badge */
+.ri-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ri-profit-badge {
+  font-size: 10px;
+}
+
+.badge-profit {
+  color: #00ff41;
+  font-weight: 600;
+}
+
+.badge-loss {
+  color: #ff4444;
+  font-weight: 600;
 }
 </style>

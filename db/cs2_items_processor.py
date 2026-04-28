@@ -10,9 +10,10 @@ import logging
 import os
 from typing import Dict, List, Optional
 
-import httpx
 import pymysql
 from dotenv import load_dotenv
+
+from app.integrations.bufftracker import BuffTrackerClient
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +51,7 @@ class Cs2ItemsProcessor:
     """通过 SteamDT /open/cs2/v1/base 接口同步所有 CS2 饰品基础信息到 cs2_items 表。"""
 
     def __init__(self):
-        self.bufftracker_url = os.getenv(
-            "BUFFTRACKER_URL", "http://host.docker.internal:8001"
-        )
+        self.bufftracker_client = BuffTrackerClient(timeout=60.0)
 
     def get_db_connection(self):
         return _get_db_connection()
@@ -80,11 +79,8 @@ class Cs2ItemsProcessor:
           { "name": str, "marketHashName": str,
             "platformList": [{"name": str, "itemId": str}, ...] }
         """
-        url = f"{self.bufftracker_url}/api/base"
         try:
-            response = httpx.get(url, timeout=60.0)
-            response.raise_for_status()
-            data = response.json()
+            data = self.bufftracker_client.get_base_items_sync()
             if not data.get("success"):
                 logger.error(
                     f"buff-tracker 返回失败: {data.get('errorMsg') or data.get('errorCodeStr', '')}"

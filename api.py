@@ -1,22 +1,50 @@
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 import asyncio
 import logging
 import traceback
-import os
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from db.user_manager import UserManager
-from db.kline_data_processor import KlineDataProcessor
-from db.item_kline_processor import ItemKlineProcessor
-from db.user_actions import UserActions
-from crawler.item_price import DailyKlineCrawler
 import pymysql
 from datetime import date, datetime
 import pytz
+from app.core.config import settings
+from app.dependencies import (
+    get_bufftracker_client,
+    get_item_crawler,
+    get_item_kline_processor,
+    get_kline_processor,
+    get_profit_processor,
+    get_user_actions,
+    get_user_manager,
+)
+from app.routers.auth import router as auth_router
+from app.routers.bufftracker import router as bufftracker_router
+from app.routers.system import router as system_router
+from app.routers.users import router as users_router
 
-app = FastAPI()
 logging.basicConfig(level=logging.INFO)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Best-effort schema bootstrap without making module import require MySQL."""
+    loop = asyncio.get_running_loop()
+
+    def _ensure_tables():
+        user_manager.create_user_table()
+        user_actions.create_track_table()
+
+    try:
+        await loop.run_in_executor(None, _ensure_tables)
+    except Exception:
+        logging.exception("核心数据表初始化失败，服务将继续启动并在请求时返回具体错误")
+
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 # 挂载在线文档 Wiki
 from wiki import mount_wiki
@@ -40,95 +68,42 @@ async def global_exception_handler(request: Request, exc: Exception):
 # 添加 CORS 中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174", "https://buffotte.hezhili.online"],  # 前端地址
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-user_manager = UserManager()
-user_manager.create_user_table()
-kline_processor = KlineDataProcessor()
-item_kline_processor = ItemKlineProcessor()
-item_crawler = DailyKlineCrawler()
-user_actions = UserActions()
+app.include_router(auth_router)
+app.include_router(bufftracker_router)
+app.include_router(system_router)
+app.include_router(users_router)
 
-class RegisterRequest(BaseModel):
-    username: str
-    email: str
-    password: str
+user_manager = get_user_manager()
+kline_processor = get_kline_processor()
+item_kline_processor = get_item_kline_processor()
+item_crawler = get_item_crawler()
+user_actions = get_user_actions()
+profit_processor = get_profit_processor()
+bufftracker_client = get_bufftracker_client()
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
+# 延迟建表：不在模块加载时连接数据库，首次请求时再建
+_tables_ensured = False
+
+@app.middleware("http")
+async def ensure_profit_tables(request: Request, call_next):
+    global _tables_ensured
+    if not _tables_ensured:
+        try:
+            profit_processor.ensure_tables()
+            _tables_ensured = True
+        except Exception:
+            pass  # 数据库暂不可用，不阻塞其他请求
+    return await call_next(request)
 
 class TrackRequest(BaseModel):
     email: str
     market_hash_name: str
-
-
-@app.post("/api/register")
-async def register(request: RegisterRequest):
-    try:
-        success = user_manager.register_user(request.username, request.email, request.password)
-    except pymysql.err.OperationalError as e:
-        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
-    except Exception as e:
-        # 数据库连接或内部错误
-        raise HTTPException(status_code=500, detail=f"注册失败: {e}")
-    if success:
-        return {"success": True, "message": "注册成功"}
-    else:
-        raise HTTPException(status_code=409, detail="邮箱已存在")
-
-@app.post("/api/login")
-async def login(request: LoginRequest, http_request: Request):
-    try:
-        verified = user_manager.verify_password(request.email, request.password)
-    except pymysql.err.OperationalError as e:
-        logging.exception("数据库连接错误 during verify_password")
-        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
-    except Exception as e:
-        logging.exception("异常 during verify_password")
-        # 数据库连接/其它内部错误
-        raise HTTPException(status_code=500, detail=f"服务器错误: {e}")
-    if verified:
-        # 获取用户信息
-        try:
-            conn = user_manager.get_db_connection()
-        except pymysql.err.OperationalError as e:
-            logging.exception("数据库连接失败 when attempting to retrieve username")
-            raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
-        except Exception as e:
-            logging.exception("Unexpected error while obtaining DB connection")
-            raise HTTPException(status_code=500, detail=str(e))
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT id, username, created_at FROM user WHERE email = %s", (request.email,))
-                result = cursor.fetchone()
-                if result:
-                    user_id = result[0]
-                    username = result[1]
-                    created_at = result[2]
-                    # 将 datetime 对象转换为 ISO 格式字符串
-                    created_at_str = created_at.isoformat() if created_at else None
-                    return {
-                        "success": True,
-                        "message": "登录成功",
-                        "user": {"id": user_id, "email": request.email, "username": username, "created_at": created_at_str}
-                    }
-                else:
-                    raise HTTPException(status_code=404, detail="用户不存在")
-        except Exception as e:
-            logging.exception("异常 during SELECT username")
-            raise HTTPException(status_code=500, detail=str(e))
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
-    else:
-        raise HTTPException(status_code=401, detail="邮箱或密码错误")
 
 @app.get("/api/kline/chart-data")
 async def get_chart_data():
@@ -271,32 +246,6 @@ async def get_market_analysis():
     except Exception as e:
         logging.exception("获取市场分析失败")
         raise HTTPException(status_code=500, detail=f"获取市场分析失败: {e}")
-
-@app.get("/api/user/profile")
-async def get_user_profile(email: str):
-    try:
-        created_at = user_manager.get_user_created_at(email)
-        if created_at:
-            return {"created_at": created_at.isoformat()}
-        else:
-            raise HTTPException(status_code=404, detail="用户不存在")
-    except pymysql.err.OperationalError as e:
-        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取用户信息失败: {e}")
-
-@app.get("/api/user/details/{email}")
-async def get_user_details(email: str):
-    try:
-        details = user_manager.get_user_details(email)
-        if details:
-            return details
-        else:
-            raise HTTPException(status_code=404, detail="用户不存在")
-    except pymysql.err.OperationalError as e:
-        raise HTTPException(status_code=503, detail=f"数据库不可用: {e}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取用户详情失败: {e}")
 
 @app.get("/api/summary/latest")
 async def get_latest_summary():
@@ -464,46 +413,6 @@ async def get_news_stats():
         if conn and conn.open:
             conn.close()
 
-
-# 代理到 buff-tracker API
-@app.api_route("/api/bufftracker/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-async def proxy_bufftracker(request: Request, path: str):
-    """
-    代理 buff-tracker API 请求，避免 HTTPS 网站的 Mixed Content 问题
-    """
-    import httpx
-
-    # 本地开发：BUFFTRACKER_URL=http://localhost:8001
-    # Docker部署：BUFFTRACKER_URL=http://host.docker.internal:8001（默认）
-    bufftracker_base = os.getenv("BUFFTRACKER_URL", "http://host.docker.internal:8001")
-
-    # 构建目标 URL
-    target_url = f"{bufftracker_base}/api/{path}"
-
-    # 添加查询参数
-    if request.url.query:
-        target_url += f"?{request.url.query}"
-
-    try:
-        # 转发请求
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # 获取请求体
-            body = await request.body()
-
-            # 转发请求
-            response = await client.request(
-                method=request.method,
-                url=target_url,
-                headers={k: v for k, v in request.headers.items() if k.lower() not in ['host', 'content-length']},
-                content=body
-            )
-
-            # 返回响应
-            return Response(content=response.content, status_code=response.status_code, headers=dict(response.headers))
-
-    except Exception as e:
-        logging.error(f"Buff-tracker proxy error: {repr(e)}")
-        raise HTTPException(status_code=503, detail=f"Buff-tracker service unavailable: {str(e)}")
 
 @app.get("/api/item-price/{item_id}")
 async def get_item_price(item_id: str):
@@ -702,21 +611,17 @@ async def _fetch_and_store_kline_via_bufftracker(name: str):
     本地 Playwright 爬虫在容器内 WAF 挑战容易失败，改用 buff-tracker API 更可靠。
     """
     try:
-        import httpx
         item_id = item_kline_processor.get_item_id_from_db(name)
         if not item_id:
             logging.error(f"未找到饰品 {name} 的 item_id，跳过K线数据获取。")
             return []
 
-        bufftracker_url = os.getenv("BUFFTRACKER_URL", "http://host.docker.internal:8001")
-        from urllib.parse import quote
-        encoded_name = quote(name, safe='')
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            response = await http_client.get(
-                f"{bufftracker_url}/api/item/kline-data/{encoded_name}",
-                params={"platform": "BUFF", "type_day": "1", "date_type": 3}
-            )
-            data = response.json()
+        data = await bufftracker_client.get_item_kline_data(
+            name,
+            platform="BUFF",
+            type_day="1",
+            date_type=3,
+        )
 
         if not data.get("success") or not data.get("data"):
             logging.error(f"buff-tracker 返回无效数据: {name}")
@@ -839,79 +744,179 @@ async def get_skin_detail(skin_id: int):
         raise HTTPException(status_code=500, detail=f"获取饰品详情失败: {e}")
 
 
-@app.get("/api/system/stats")
-async def get_system_stats():
-    """读取宿主机真实系统状态（CPU、内存、负载、运行时间）。"""
+# ── 搬砖收益计算 API ─────────────────────────────────────────────────────
+
+@app.get("/api/profit/platform-fees")
+async def get_platform_fees():
+    """获取所有平台的费率配置。"""
     try:
-        proc_path = "/host_proc"
-        # fallback：如果没挂载 host_proc 则用容器自身的 /proc
-        import os as _os
-        if not _os.path.exists(f"{proc_path}/stat"):
-            proc_path = "/proc"
-
-        stats = {}
-
-        # --- CPU 使用率 ---
-        def read_cpu_times(p):
-            with open(f"{p}/stat") as f:
-                line = f.readline()
-            fields = line.split()[1:]  # skip 'cpu'
-            values = [int(x) for x in fields[:8]]
-            idle = values[3] + values[4]  # idle + iowait
-            total = sum(values)
-            return total, idle
-
-        t1_total, t1_idle = read_cpu_times(proc_path)
-        import asyncio
-        await asyncio.sleep(0.1)
-        t2_total, t2_idle = read_cpu_times(proc_path)
-
-        diff_total = t2_total - t1_total
-        diff_idle = t2_idle - t1_idle
-        cpu_pct = (1 - diff_idle / diff_total) * 100 if diff_total > 0 else 0
-        stats["cpu_percent"] = round(cpu_pct, 1)
-
-        # --- 内存 ---
-        mem_info = {}
-        with open(f"{proc_path}/meminfo") as f:
-            for line in f:
-                parts = line.split()
-                key = parts[0].rstrip(":")
-                val = int(parts[1])  # kB
-                mem_info[key] = val
-
-        mem_total = mem_info.get("MemTotal", 0)
-        mem_available = mem_info.get("MemAvailable", 0)
-        mem_used = mem_total - mem_available
-        mem_pct = (mem_used / mem_total * 100) if mem_total > 0 else 0
-
-        stats["mem_total_gb"] = round(mem_total / 1024 / 1024, 1)
-        stats["mem_used_gb"] = round(mem_used / 1024 / 1024, 1)
-        stats["mem_percent"] = round(mem_pct, 1)
-
-        # --- 负载 ---
-        with open(f"{proc_path}/loadavg") as f:
-            load_parts = f.read().split()
-        stats["load_1m"] = float(load_parts[0])
-        stats["load_5m"] = float(load_parts[1])
-        stats["load_15m"] = float(load_parts[2])
-
-        # --- 运行时间 ---
-        with open(f"{proc_path}/uptime") as f:
-            uptime_sec = float(f.read().split()[0])
-        days = int(uptime_sec // 86400)
-        hours = int((uptime_sec % 86400) // 3600)
-        minutes = int((uptime_sec % 3600) // 60)
-        if days > 0:
-            stats["uptime"] = f"{days}d {hours}h"
-        else:
-            stats["uptime"] = f"{hours}h {minutes}m"
-        stats["uptime_seconds"] = int(uptime_sec)
-
-        return {"success": True, "data": stats}
+        fees = profit_processor.get_all_platform_fees()
+        for f in fees:
+            for k, v in f.items():
+                if hasattr(v, "__float__"):
+                    f[k] = float(v)
+        return {"success": True, "data": fees}
     except Exception as e:
-        logging.exception("获取系统状态失败")
-        raise HTTPException(status_code=500, detail=f"获取系统状态失败: {e}")
+        logging.exception("获取平台费率失败")
+        raise HTTPException(status_code=500, detail=f"获取平台费率失败: {e}")
+
+
+@app.get("/api/profit/calculate")
+async def calculate_profit(
+    buy_price: float,
+    sell_price: float,
+    sell_platform: str = "BUFF",
+    hold_days: int = 7,
+):
+    """计算搬砖利润（指定平台费率）。"""
+    try:
+        result = profit_processor.calc_profit_for_platform(
+            buy_price=buy_price,
+            sell_price=sell_price,
+            sell_platform=sell_platform,
+            hold_days=hold_days,
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail=f"未找到平台 {sell_platform} 的费率配置")
+        return {"success": True, "data": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("利润计算失败")
+        raise HTTPException(status_code=500, detail=f"利润计算失败: {e}")
+
+
+@app.get("/api/profit/calculate-all")
+async def calculate_profit_all_platforms(
+    buy_price: float,
+    sell_price: float,
+    hold_days: int = 7,
+):
+    """计算在所有平台卖出的利润对比。"""
+    try:
+        results = profit_processor.calc_all_platforms_profit(
+            buy_price=buy_price,
+            sell_price=sell_price,
+            hold_days=hold_days,
+        )
+        return {"success": True, "data": results}
+    except Exception as e:
+        logging.exception("利润计算失败")
+        raise HTTPException(status_code=500, detail=f"利润计算失败: {e}")
+
+
+@app.get("/api/profit/predict/{market_hash_name}")
+async def predict_item_profit(market_hash_name: str, hold_days: int = 7):
+    """
+    预测指定饰品 7 天后的价格，并计算各平台卖出利润。
+    """
+    try:
+        from models.item_price_predictor import predict_item_7d_range
+        prediction = predict_item_7d_range(market_hash_name)
+        if not prediction:
+            raise HTTPException(
+                status_code=404,
+                detail=f"无法预测 {market_hash_name}（数据不足，至少需要 {60} 天K线数据）"
+            )
+
+        # 获取当前价格
+        conn = None
+        current_price = None
+        try:
+            conn = profit_processor.get_db_connection()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT price FROM item_kline_day "
+                    "WHERE market_hash_name = %s "
+                    "ORDER BY timestamp DESC LIMIT 1",
+                    (market_hash_name,),
+                )
+                row = cursor.fetchone()
+                if row:
+                    current_price = float(row[0])
+        finally:
+            if conn:
+                conn.close()
+
+        # 计算各平台利润
+        profit_by_platform = {}
+        if current_price and prediction["predicted"] > 0:
+            profit_by_platform = profit_processor.calc_all_platforms_profit(
+                buy_price=current_price,
+                sell_price=prediction["predicted"],
+                hold_days=hold_days,
+            )
+
+        return {
+            "success": True,
+            "data": {
+                "market_hash_name": market_hash_name,
+                "current_price": current_price,
+                "predicted_price_7d": prediction["predicted"],
+                "predicted_lower": prediction["lower"],
+                "predicted_upper": prediction["upper"],
+                "confidence": prediction["confidence"],
+                "profit_by_platform": profit_by_platform,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(f"预测饰品 {market_hash_name} 利润失败")
+        raise HTTPException(status_code=500, detail=f"预测失败: {e}")
+
+
+@app.get("/api/profit/tracked/{email}")
+async def get_tracked_items_profit(email: str):
+    """
+    获取用户所有追踪饰品的预测利润。
+    后台触发 LGBM 预测 + 利润计算。
+    """
+    try:
+        # 1. 获取用户追踪的饰品列表
+        loop = asyncio.get_event_loop()
+        tracked_result = await loop.run_in_executor(
+            None, user_actions.get_tracked_items_by_email, email
+        )
+        if not tracked_result.get("success"):
+            raise HTTPException(status_code=400, detail=tracked_result.get("message", "获取追踪列表失败"))
+
+        items = tracked_result["data"]
+        if not items:
+            return {"success": True, "data": []}
+
+        # 2. 批量预测价格
+        from models.item_price_predictor import batch_predict_items
+        names = [item["market_hash_name"] for item in items]
+        predicted_prices = await loop.run_in_executor(
+            None, batch_predict_items, names
+        )
+
+        # 3. 获取利润信息
+        items_with_profit = await loop.run_in_executor(
+            None,
+            profit_processor.get_tracked_items_with_profit,
+            email,
+            predicted_prices,
+        )
+
+        # 序列化 Decimal → float
+        for item in items_with_profit:
+            for k, v in item.items():
+                if hasattr(v, "__float__") and not isinstance(v, (int, float, type(None), bool)):
+                    item[k] = float(v)
+            if item.get("profit_by_platform"):
+                for pdata in item["profit_by_platform"].values():
+                    for pk, pv in pdata.items():
+                        if hasattr(pv, "__float__"):
+                            pdata[pk] = float(pv)
+
+        return {"success": True, "data": items_with_profit}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("获取追踪饰品利润失败")
+        raise HTTPException(status_code=500, detail=f"获取追踪利润失败: {e}")
 
 
 if __name__ == "__main__":

@@ -228,4 +228,53 @@ export default {
       };
     }
   },
+
+  // ─── 搬砖收益计算 API ─────────────────────────────────────────────
+
+  // 获取所有平台费率
+  async getPlatformFees() {
+    try {
+      const { data } = await client.get("/profit/platform-fees");
+      return { success: true, data: data.data || [] };
+    } catch (err) {
+      console.error("获取平台费率失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
+
+  // 计算单次搬砖利润
+  async calculateProfit(buyPrice, sellPrice, sellPlatform = "BUFF", holdDays = 7) {
+    try {
+      const { data } = await client.get("/profit/calculate", {
+        params: { buy_price: buyPrice, sell_price: sellPrice, sell_platform: sellPlatform, hold_days: holdDays },
+      });
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error("利润计算失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
+
+  // 预测饰品 7 天后价格 + 各平台利润
+  async predictItemProfit(marketHashName) {
+    try {
+      const encodedName = encodeURIComponent(marketHashName);
+      const { data } = await client.get(`/profit/predict/${encodedName}`, { timeout: 30000 });
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error("预测利润失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
+
+  // 获取用户所有追踪饰品的预测利润
+  async getTrackedItemsProfit(email) {
+    try {
+      const { data } = await client.get(`/profit/tracked/${encodeURIComponent(email)}`, { timeout: 60000 });
+      return { success: true, data: data.data || [] };
+    } catch (err) {
+      console.error("获取追踪利润失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
 };

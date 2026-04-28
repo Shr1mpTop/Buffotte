@@ -9,6 +9,8 @@ import pytz
 from fastapi import HTTPException
 import asyncio
 
+from app.integrations.bufftracker import BuffTrackerClient
+
 logger = logging.getLogger(__name__)
 
 # 加载环境变量
@@ -558,15 +560,12 @@ class ItemKlineProcessor:
 
     def refresh_kline_for_all_tracked(self):
         """通过 buff-tracker API 批量刷新所有追踪饰品的K线数据。"""
-        import httpx
-        from urllib.parse import quote
-
         items = self.get_all_tracked_items()
         if not items:
             logger.info("没有追踪中的饰品，跳过刷新。")
             return
 
-        bufftracker_url = os.getenv("BUFFTRACKER_URL", "http://host.docker.internal:8001")
+        bufftracker_client = BuffTrackerClient()
         success_count = 0
         fail_count = 0
         total = len(items)
@@ -576,13 +575,12 @@ class ItemKlineProcessor:
             item_id = str(item['item_id'])
             logger.info(f"[{idx}/{total}] 刷新: {name}")
             try:
-                encoded_name = quote(name, safe='')
-                response = httpx.get(
-                    f"{bufftracker_url}/api/item/kline-data/{encoded_name}",
-                    params={"platform": "BUFF", "type_day": "1", "date_type": 3},
-                    timeout=30.0,
+                data = bufftracker_client.get_item_kline_data_sync(
+                    name,
+                    platform="BUFF",
+                    type_day="1",
+                    date_type=3,
                 )
-                data = response.json()
 
                 if not data.get("success") or not data.get("data"):
                     fail_count += 1
