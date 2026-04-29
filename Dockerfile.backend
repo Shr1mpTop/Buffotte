@@ -34,6 +34,8 @@ RUN pip install --no-cache-dir \
     openai \
     pytz \
     cryptography \
+    httpx \
+    markdown \
     playwright
 
 # 安装 playwright chromium 浏览器二进制

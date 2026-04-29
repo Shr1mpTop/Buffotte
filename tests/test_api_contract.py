@@ -20,6 +20,10 @@ def test_core_route_paths_are_registered():
         "/api/item/kline-data/{market_hash_name}",
         "/api/item/kline-refresh/{market_hash_name}",
         "/api/track/add",
+        "/api/trade-notes/{email}/positions",
+        "/api/trade-notes/{email}/entries",
+        "/api/trade-notes",
+        "/api/trade-notes/{email}/entries/{entry_id}",
         "/api/system/stats",
         "/api/profit/calculate",
     }

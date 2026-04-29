@@ -277,4 +277,48 @@ export default {
       return { success: false, error: err.response?.data?.detail || err.message };
     }
   },
+
+  // ─── 买卖笔记 API ─────────────────────────────────────────────────
+
+  async getTradeNotePositions(email) {
+    try {
+      const { data } = await client.get(`/trade-notes/${encodeURIComponent(email)}/positions`);
+      return { success: true, data: data.data || [] };
+    } catch (err) {
+      console.error("获取买卖笔记仓位失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
+
+  async getTradeNoteEntries(email, marketHashName = null) {
+    try {
+      const { data } = await client.get(`/trade-notes/${encodeURIComponent(email)}/entries`, {
+        params: marketHashName ? { market_hash_name: marketHashName } : {},
+      });
+      return { success: true, data: data.data || [] };
+    } catch (err) {
+      console.error("获取买卖笔记流水失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
+
+  async addTradeNoteEntry(payload) {
+    try {
+      const { data } = await client.post("/trade-notes", payload);
+      return { success: true, data: data.data };
+    } catch (err) {
+      console.error("新增买卖笔记失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
+
+  async deleteTradeNoteEntry(email, entryId) {
+    try {
+      await client.delete(`/trade-notes/${encodeURIComponent(email)}/entries/${entryId}`);
+      return { success: true };
+    } catch (err) {
+      console.error("删除买卖笔记失败:", err);
+      return { success: false, error: err.response?.data?.detail || err.message };
+    }
+  },
 };

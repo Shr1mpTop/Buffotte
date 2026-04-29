@@ -137,6 +137,26 @@ class ProfitProcessor:
             for platform, fees in DEFAULT_PLATFORM_FEES.items()
         ]
 
+    @classmethod
+    def _merge_fee_rows_with_defaults(cls, rows: List[Dict]) -> List[Dict]:
+        """Return DB-configured fees plus any missing defaults, with zero seeds repaired."""
+        by_platform = {}
+        extras = []
+        for row in rows or []:
+            effective = cls._effective_fee_row(row)
+            platform = effective["platform_name"]
+            if platform in DEFAULT_PLATFORM_FEES:
+                by_platform[platform] = effective
+            else:
+                extras.append(effective)
+
+        merged = []
+        for default_row in cls._default_fee_rows():
+            platform = default_row["platform_name"]
+            merged.append(by_platform.get(platform) or default_row)
+        merged.extend(sorted(extras, key=lambda item: item["platform_name"]))
+        return merged
+
     @staticmethod
     def normalize_platform(platform: str) -> str:
         """Map display/platform aliases from upstream price feeds to fee keys."""
@@ -204,19 +224,21 @@ class ProfitProcessor:
                 conn.close()
 
     def _seed_platform_fees(self, conn):
-        """如果 platform_fees 表为空，插入默认费率数据。"""
+        """插入缺失的平台费率，并修复旧版本种下的 0 手续费。"""
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT COUNT(*) FROM platform_fees")
-                count = cursor.fetchone()[0]
-                if count > 0:
-                    return
                 for platform, fees in DEFAULT_PLATFORM_FEES.items():
                     cursor.execute(
                         "INSERT INTO platform_fees "
                         "(platform_name, display_name, sell_fee_rate, withdraw_fee_rate, "
                         "withdraw_min_fee, withdraw_max_single) "
-                        "VALUES (%s, %s, %s, %s, %s, %s)",
+                        "VALUES (%s, %s, %s, %s, %s, %s) "
+                        "ON DUPLICATE KEY UPDATE "
+                        "display_name = COALESCE(display_name, VALUES(display_name)), "
+                        "sell_fee_rate = IF(sell_fee_rate <= 0, VALUES(sell_fee_rate), sell_fee_rate), "
+                        "withdraw_fee_rate = IF(withdraw_fee_rate <= 0, VALUES(withdraw_fee_rate), withdraw_fee_rate), "
+                        "withdraw_min_fee = IF(withdraw_min_fee <= 0, VALUES(withdraw_min_fee), withdraw_min_fee), "
+                        "withdraw_max_single = COALESCE(withdraw_max_single, VALUES(withdraw_max_single))",
                         (
                             platform,
                             PLATFORM_DISPLAY_NAMES.get(platform, platform),
@@ -227,7 +249,7 @@ class ProfitProcessor:
                         ),
                     )
                 conn.commit()
-                logger.info(f"已初始化 {len(DEFAULT_PLATFORM_FEES)} 个平台的默认费率")
+                logger.info(f"已确保 {len(DEFAULT_PLATFORM_FEES)} 个平台的默认费率")
         except Exception as e:
             logger.error(f"初始化平台费率失败: {e}")
             conn.rollback()
@@ -244,10 +266,7 @@ class ProfitProcessor:
                     "withdraw_fee_rate, withdraw_min_fee, withdraw_max_single "
                     "FROM platform_fees ORDER BY id"
                 )
-                return [
-                    self._effective_fee_row(row)
-                    for row in cursor.fetchall()
-                ]
+                return self._merge_fee_rows_with_defaults(cursor.fetchall())
         except Exception as e:
             logger.error(f"查询平台费率失败: {e}")
             return self._default_fee_rows()

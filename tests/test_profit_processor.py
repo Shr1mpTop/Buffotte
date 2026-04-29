@@ -1,5 +1,5 @@
-from db.profit_processor import ProfitProcessor
-from api import _estimate_future_bidding_node
+from db.profit_processor import DEFAULT_PLATFORM_FEES, ProfitProcessor
+from api import _current_price_nodes, _estimate_future_bidding_node
 
 
 def test_calc_profit_paths_uses_distinct_buy_and_sell_nodes():
@@ -75,3 +75,50 @@ def test_estimated_future_bidding_keeps_current_bid_platform():
 
     assert node["platform"] == "悠悠有品"
     assert node["platform_key"] == "YOUPIN"
+
+
+def test_current_price_nodes_do_not_fallback_from_explicit_zero_prices():
+    nodes = _current_price_nodes(
+        [
+            {
+                "platform": "BUFF",
+                "sellPrice": 0,
+                "price": 999,
+                "biddingPrice": 0,
+                "buyPrice": 888,
+            },
+            {"platform": "IGXE", "sellPrice": 100, "biddingPrice": 90},
+            {"platform": "C5", "sellPrice": 110, "biddingPrice": 95},
+        ]
+    )
+
+    lowest_bid, lowest_sell, highest_bid, highest_sell = nodes
+
+    assert lowest_sell["platform"] == "IGXE"
+    assert lowest_sell["price"] == 100
+    assert highest_sell["platform"] == "C5"
+    assert highest_sell["price"] == 110
+    assert lowest_bid["platform"] == "IGXE"
+    assert highest_bid["platform"] == "C5"
+
+
+def test_platform_fee_rows_merge_missing_defaults_and_repair_zero_seeded_values():
+    rows = ProfitProcessor._merge_fee_rows_with_defaults(
+        [
+            {
+                "platform_name": "YOUPIN",
+                "display_name": "悠悠有品",
+                "sell_fee_rate": 0,
+                "withdraw_fee_rate": 0,
+                "withdraw_min_fee": 0,
+                "withdraw_max_single": 20000,
+            }
+        ]
+    )
+
+    by_platform = {row["platform_name"]: row for row in rows}
+
+    assert set(DEFAULT_PLATFORM_FEES).issubset(by_platform)
+    assert by_platform["YOUPIN"]["sell_fee_rate"] == DEFAULT_PLATFORM_FEES["YOUPIN"]["sell_fee_rate"]
+    assert by_platform["YOUPIN"]["withdraw_fee_rate"] == DEFAULT_PLATFORM_FEES["YOUPIN"]["withdraw_fee_rate"]
+    assert by_platform["YOUPIN"]["withdraw_min_fee"] == DEFAULT_PLATFORM_FEES["YOUPIN"]["withdraw_min_fee"]

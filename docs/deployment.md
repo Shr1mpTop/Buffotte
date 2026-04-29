@@ -45,6 +45,16 @@ BUFFTRACKER_URL=http://host.docker.internal:8001
 docker compose up -d --build
 ```
 
+已有部署更新代码时，建议在项目目录执行：
+
+```bash
+git pull
+docker compose up -d --build
+docker compose logs -f backend
+```
+
+后端启动时会自动确保核心表、利润费率表和买卖笔记表存在；旧版本费率表中缺失的平台会补齐，历史 0 手续费种子数据会按默认费率修正。若启动时数据库短暂不可用，买卖笔记接口也会在首次请求时再次尝试建表。
+
 服务端口映射：
 
 | 服务 | 容器端口 | 宿主机端口 | 说明 |

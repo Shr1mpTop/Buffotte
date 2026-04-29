@@ -76,6 +76,7 @@ export default {
       { to: '/news',      icon: '◎', label: '资讯' },
       { to: '/skins',     icon: '★', label: '热点' },
       { to: '/tracking',  icon: '◉', label: '追踪' },
+      { to: '/trade-notes', icon: '✎', label: '账本' },
     ];
 
     const setNavRef = (el, idx) => {

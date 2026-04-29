@@ -22,6 +22,7 @@ const routes = [
       { path: "news", component: NewsView },
       { path: "skins", component: SkinsView },
       { path: "tracking", component: () => import("./views/Tracking.vue") },
+      { path: "trade-notes", component: () => import("./views/TradeNotes.vue") },
     ],
   },
 ];

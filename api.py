@@ -5,6 +5,7 @@ import logging
 import math
 import traceback
 from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pymysql
@@ -17,6 +18,7 @@ from app.dependencies import (
     get_item_kline_processor,
     get_kline_processor,
     get_profit_processor,
+    get_trade_notes_processor,
     get_user_actions,
     get_user_manager,
 )
@@ -34,8 +36,17 @@ async def lifespan(app: FastAPI):
     loop = asyncio.get_running_loop()
 
     def _ensure_tables():
-        user_manager.create_user_table()
-        user_actions.create_track_table()
+        bootstrappers = [
+            ("用户表", user_manager.create_user_table),
+            ("追踪表", user_actions.create_track_table),
+            ("利润表", profit_processor.ensure_tables),
+            ("买卖笔记表", trade_notes_processor.ensure_tables),
+        ]
+        for label, bootstrap in bootstrappers:
+            try:
+                bootstrap()
+            except Exception:
+                logging.exception("%s初始化失败，服务将继续启动", label)
 
     try:
         await loop.run_in_executor(None, _ensure_tables)
@@ -86,6 +97,7 @@ item_kline_processor = get_item_kline_processor()
 item_crawler = get_item_crawler()
 user_actions = get_user_actions()
 profit_processor = get_profit_processor()
+trade_notes_processor = get_trade_notes_processor()
 bufftracker_client = get_bufftracker_client()
 
 # 延迟建表：不在模块加载时连接数据库，首次请求时再建
@@ -105,6 +117,18 @@ async def ensure_profit_tables(request: Request, call_next):
 class TrackRequest(BaseModel):
     email: str
     market_hash_name: str
+
+
+class TradeNoteRequest(BaseModel):
+    email: str
+    market_hash_name: str
+    item_name: Optional[str] = None
+    side: str
+    platform: str = "BUFF"
+    trade_date: Optional[str] = None
+    quantity: float
+    unit_price: float
+    note: Optional[str] = None
 
 @app.get("/api/kline/chart-data")
 async def get_chart_data():
@@ -678,6 +702,70 @@ async def remove_track(request: TrackRequest):
     else:
         raise HTTPException(status_code=400, detail=result["message"])
 
+
+@app.get("/api/trade-notes/{email}/positions")
+async def get_trade_note_positions(email: str):
+    """获取买卖笔记聚合仓位。"""
+    try:
+        loop = asyncio.get_event_loop()
+        positions = await loop.run_in_executor(
+            None, trade_notes_processor.list_positions, email
+        )
+        return {"success": True, "data": positions}
+    except Exception as e:
+        logging.exception("获取买卖笔记仓位失败")
+        raise HTTPException(status_code=500, detail=f"获取买卖笔记仓位失败: {e}")
+
+
+@app.get("/api/trade-notes/{email}/entries")
+async def get_trade_note_entries(email: str, market_hash_name: Optional[str] = None):
+    """获取买卖笔记流水。"""
+    try:
+        loop = asyncio.get_event_loop()
+        entries = await loop.run_in_executor(
+            None, trade_notes_processor.list_entries, email, market_hash_name
+        )
+        return {"success": True, "data": entries}
+    except Exception as e:
+        logging.exception("获取买卖笔记流水失败")
+        raise HTTPException(status_code=500, detail=f"获取买卖笔记流水失败: {e}")
+
+
+@app.post("/api/trade-notes")
+async def add_trade_note_entry(request: TradeNoteRequest):
+    """新增买入/卖出流水。"""
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, trade_notes_processor.add_entry, request.dict()
+        )
+        if result.get("success"):
+            return result
+        raise HTTPException(status_code=400, detail=result.get("message", "新增失败"))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("新增买卖笔记失败")
+        raise HTTPException(status_code=500, detail=f"新增买卖笔记失败: {e}")
+
+
+@app.delete("/api/trade-notes/{email}/entries/{entry_id}")
+async def delete_trade_note_entry(email: str, entry_id: int):
+    """删除一条买卖流水。"""
+    try:
+        loop = asyncio.get_event_loop()
+        deleted = await loop.run_in_executor(
+            None, trade_notes_processor.delete_entry, email, entry_id
+        )
+        if deleted:
+            return {"success": True}
+        raise HTTPException(status_code=404, detail="记录不存在或无权删除")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("删除买卖笔记失败")
+        raise HTTPException(status_code=500, detail=f"删除买卖笔记失败: {e}")
+
 @app.get("/api/skin/trending")
 async def get_trending_skins(limit: int = 20):
     """获取热门饰品列表（按提及次数 + 最新更新排序）"""
@@ -816,6 +904,18 @@ def _positive_float(value):
     return result
 
 
+def _positive_price_from_row(row, keys):
+    """Return the first explicitly provided positive price without masking a zero."""
+    for key in keys:
+        if key not in row:
+            continue
+        value = row.get(key)
+        if value is None or value == "":
+            continue
+        return _positive_float(value)
+    return None
+
+
 def _extract_price_rows(price_payload):
     if not isinstance(price_payload, dict):
         return []
@@ -859,11 +959,10 @@ def _current_price_nodes(price_rows, fallback_sell=None, fallback_bid=None):
         if platform.strip().lower().startswith("steam"):
             continue
 
-        sell_price = _positive_float(
-            row.get("sellPrice") or row.get("sell_price") or row.get("price")
-        )
-        bidding_price = _positive_float(
-            row.get("biddingPrice") or row.get("buyPrice") or row.get("buy_price")
+        sell_price = _positive_price_from_row(row, ("sellPrice", "sell_price", "price"))
+        bidding_price = _positive_price_from_row(
+            row,
+            ("biddingPrice", "buyPrice", "buy_price"),
         )
 
         if sell_price:
