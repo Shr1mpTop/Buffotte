@@ -38,7 +38,7 @@ DEFAULT_PLATFORM_FEES = {
         "withdraw_max_single": 50000.0,
     },
     "YOUPIN": {
-        "sell_fee_rate": 0.0,
+        "sell_fee_rate": 0.01,
         "withdraw_fee_rate": 0.01,
         "withdraw_min_fee": 2.0,
         "withdraw_max_single": 20000.0,
@@ -49,6 +49,14 @@ DEFAULT_PLATFORM_FEES = {
         "withdraw_min_fee": 0.0,
         "withdraw_max_single": None,
     },
+}
+
+PLATFORM_DISPLAY_NAMES = {
+    "BUFF": "网易 BUFF",
+    "IGXE": "IGXE",
+    "C5": "C5GAME",
+    "YOUPIN": "悠悠有品",
+    "CSFLOAT": "CSFloat（海外）",
 }
 
 
@@ -115,6 +123,66 @@ class ProfitProcessor:
     def get_db_connection(self):
         return pymysql.connect(**self.config)
 
+    @staticmethod
+    def _default_fee_rows() -> List[Dict]:
+        return [
+            {
+                "platform_name": platform,
+                "display_name": PLATFORM_DISPLAY_NAMES.get(platform, platform),
+                "sell_fee_rate": fees["sell_fee_rate"],
+                "withdraw_fee_rate": fees["withdraw_fee_rate"],
+                "withdraw_min_fee": fees["withdraw_min_fee"],
+                "withdraw_max_single": fees["withdraw_max_single"],
+            }
+            for platform, fees in DEFAULT_PLATFORM_FEES.items()
+        ]
+
+    @staticmethod
+    def normalize_platform(platform: str) -> str:
+        """Map display/platform aliases from upstream price feeds to fee keys."""
+        if not platform:
+            return "BUFF"
+        text = str(platform).strip().upper().replace(" ", "")
+        if "BUFF" in text or "网易" in text:
+            return "BUFF"
+        if "IGXE" in text:
+            return "IGXE"
+        if "C5" in text:
+            return "C5"
+        if "YOUPIN" in text or "悠悠" in text:
+            return "YOUPIN"
+        if "CSFLOAT" in text or "CSFLOAT" in text.replace("（海外）", ""):
+            return "CSFLOAT"
+        return text
+
+    @classmethod
+    def _effective_fee_row(cls, row: Dict) -> Dict:
+        platform = cls.normalize_platform(row.get("platform_name"))
+        defaults = DEFAULT_PLATFORM_FEES.get(platform, {})
+        sell_fee_rate = float(row.get("sell_fee_rate") or 0)
+        withdraw_fee_rate = float(row.get("withdraw_fee_rate") or 0)
+        withdraw_min_fee = float(row.get("withdraw_min_fee") or 0)
+
+        # Keep older seeded DB rows from silently treating a platform sale as fee-free.
+        if sell_fee_rate <= 0 and defaults.get("sell_fee_rate", 0) > 0:
+            sell_fee_rate = float(defaults["sell_fee_rate"])
+        if withdraw_fee_rate <= 0 and defaults.get("withdraw_fee_rate", 0) > 0:
+            withdraw_fee_rate = float(defaults["withdraw_fee_rate"])
+        if withdraw_min_fee <= 0 and defaults.get("withdraw_min_fee", 0) > 0:
+            withdraw_min_fee = float(defaults["withdraw_min_fee"])
+
+        return {
+            "platform_name": platform,
+            "display_name": row.get("display_name") or PLATFORM_DISPLAY_NAMES.get(platform, platform),
+            "sell_fee_rate": sell_fee_rate,
+            "withdraw_fee_rate": withdraw_fee_rate,
+            "withdraw_min_fee": withdraw_min_fee,
+            "withdraw_max_single": row.get(
+                "withdraw_max_single",
+                defaults.get("withdraw_max_single"),
+            ),
+        }
+
     # ── 表创建 ────────────────────────────────────────────────────────────
 
     def ensure_tables(self):
@@ -143,13 +211,6 @@ class ProfitProcessor:
                 count = cursor.fetchone()[0]
                 if count > 0:
                     return
-                display_names = {
-                    "BUFF": "网易 BUFF",
-                    "IGXE": "IGXE",
-                    "C5": "C5GAME",
-                    "YOUPIN": "悠悠有品",
-                    "CSFLOAT": "CSFloat（海外）",
-                }
                 for platform, fees in DEFAULT_PLATFORM_FEES.items():
                     cursor.execute(
                         "INSERT INTO platform_fees "
@@ -158,7 +219,7 @@ class ProfitProcessor:
                         "VALUES (%s, %s, %s, %s, %s, %s)",
                         (
                             platform,
-                            display_names.get(platform, platform),
+                            PLATFORM_DISPLAY_NAMES.get(platform, platform),
                             fees["sell_fee_rate"],
                             fees["withdraw_fee_rate"],
                             fees["withdraw_min_fee"],
@@ -183,10 +244,13 @@ class ProfitProcessor:
                     "withdraw_fee_rate, withdraw_min_fee, withdraw_max_single "
                     "FROM platform_fees ORDER BY id"
                 )
-                return cursor.fetchall()
+                return [
+                    self._effective_fee_row(row)
+                    for row in cursor.fetchall()
+                ]
         except Exception as e:
             logger.error(f"查询平台费率失败: {e}")
-            return []
+            return self._default_fee_rows()
         finally:
             if conn:
                 conn.close()
@@ -194,6 +258,7 @@ class ProfitProcessor:
     def get_platform_fees(self, platform: str) -> Optional[Dict]:
         """获取单个平台的费率配置。"""
         conn = None
+        platform_key = self.normalize_platform(platform)
         try:
             conn = self.get_db_connection()
             with conn.cursor(pymysql.cursors.DictCursor) as cursor:
@@ -201,15 +266,28 @@ class ProfitProcessor:
                     "SELECT platform_name, sell_fee_rate, withdraw_fee_rate, "
                     "withdraw_min_fee, withdraw_max_single "
                     "FROM platform_fees WHERE platform_name = %s",
-                    (platform,),
+                    (platform_key,),
                 )
-                return cursor.fetchone()
+                row = cursor.fetchone()
+                if row:
+                    return self._effective_fee_row(row)
         except Exception as e:
             logger.error(f"查询平台 {platform} 费率失败: {e}")
-            return None
         finally:
             if conn:
                 conn.close()
+
+        default_fees = DEFAULT_PLATFORM_FEES.get(platform_key)
+        if not default_fees:
+            return None
+        return {
+            "platform_name": platform_key,
+            "display_name": PLATFORM_DISPLAY_NAMES.get(platform_key, platform_key),
+            "sell_fee_rate": default_fees["sell_fee_rate"],
+            "withdraw_fee_rate": default_fees["withdraw_fee_rate"],
+            "withdraw_min_fee": default_fees["withdraw_min_fee"],
+            "withdraw_max_single": default_fees["withdraw_max_single"],
+        }
 
     # ── 利润计算核心 ──────────────────────────────────────────────────────
 
@@ -243,8 +321,10 @@ class ProfitProcessor:
         return {
             "buy_price": round(buy_price, 2),
             "sell_price": round(sell_price, 2),
+            "sell_fee_rate": round(sell_fee_rate * 100, 4),
             "sell_fee": round(sell_fee, 2),
             "actual_receive": round(actual_receive, 2),
+            "withdraw_fee_rate": round(withdraw_fee_rate * 100, 4),
             "withdraw_fee": round(withdraw_fee, 2),
             "net_profit": round(net_profit, 2),
             "profit_rate": round(profit_rate * 100, 4),
@@ -283,6 +363,7 @@ class ProfitProcessor:
         all_fees = self.get_all_platform_fees()
         results = {}
         for platform_fee in all_fees:
+            platform_fee = self._effective_fee_row(platform_fee)
             pname = platform_fee["platform_name"]
             result = self.calc_profit(
                 buy_price=buy_price,
@@ -296,6 +377,98 @@ class ProfitProcessor:
             result["display_name"] = platform_fee.get("display_name", pname)
             results[pname] = result
         return results
+
+    def calc_profit_paths(
+        self,
+        buy_nodes: List[Dict],
+        sell_nodes: List[Dict],
+        hold_days: int = 7,
+    ) -> List[Dict]:
+        """Calculate profit for each buy-node to sell-node path."""
+        all_fees = self.get_all_platform_fees()
+        fee_by_platform = {
+            self.normalize_platform(row.get("platform_name")): self._effective_fee_row(row)
+            for row in all_fees
+        }
+
+        results = []
+        for buy_node in buy_nodes:
+            buy_price = self._node_price(buy_node)
+            if not buy_price:
+                continue
+
+            for sell_node in sell_nodes:
+                sell_price = self._node_price(sell_node)
+                if not sell_price:
+                    continue
+
+                buy_platform_raw = buy_node.get("platform")
+                sell_platform_raw = sell_node.get("platform")
+                buy_platform = self.normalize_platform(buy_platform_raw)
+                sell_platform = self.normalize_platform(sell_platform_raw)
+                fees = fee_by_platform.get(sell_platform)
+                if not fees:
+                    default_fees = DEFAULT_PLATFORM_FEES.get(sell_platform)
+                    if not default_fees:
+                        continue
+                    fees = self._effective_fee_row({
+                        "platform_name": sell_platform,
+                        "display_name": PLATFORM_DISPLAY_NAMES.get(sell_platform, sell_platform),
+                        **default_fees,
+                    })
+                else:
+                    fees = self._effective_fee_row(fees)
+
+                result = self.calc_profit(
+                    buy_price=buy_price,
+                    sell_price=sell_price,
+                    sell_fee_rate=float(fees["sell_fee_rate"]),
+                    withdraw_fee_rate=float(fees["withdraw_fee_rate"]),
+                    withdraw_min_fee=float(fees["withdraw_min_fee"]),
+                    hold_days=hold_days,
+                )
+                path_id = f"{buy_node.get('id', 'buy')}_to_{sell_node.get('id', 'sell')}"
+                result.update(
+                    {
+                        "id": path_id,
+                        "name": (
+                            f"{buy_node.get('label', '买入')} -> "
+                            f"{sell_node.get('label', '卖出')}"
+                        ),
+                        "buy_node": buy_node,
+                        "sell_node": sell_node,
+                        "buy_price_source": buy_node.get("id"),
+                        "sell_price_source": sell_node.get("id"),
+                        "buy_platform": buy_platform,
+                        "buy_platform_raw": buy_platform_raw,
+                        "buy_platform_display": buy_platform_raw or PLATFORM_DISPLAY_NAMES.get(buy_platform, buy_platform),
+                        "sell_platform": sell_platform,
+                        "sell_platform_raw": sell_platform_raw,
+                        "sell_platform_display": fees.get(
+                            "display_name",
+                            PLATFORM_DISPLAY_NAMES.get(sell_platform, sell_platform),
+                        ),
+                        "platform_route": (
+                            f"{buy_platform_raw or PLATFORM_DISPLAY_NAMES.get(buy_platform, buy_platform)}"
+                            " -> "
+                            f"{sell_platform_raw or PLATFORM_DISPLAY_NAMES.get(sell_platform, sell_platform)}"
+                        ),
+                    }
+                )
+                results.append(result)
+
+        results.sort(key=lambda item: item["profit_rate"], reverse=True)
+        return results
+
+    @staticmethod
+    def _node_price(node: Dict) -> Optional[float]:
+        try:
+            value = float(node.get("price"))
+        except (TypeError, ValueError):
+            return None
+        if value <= 0 or not math.isfinite(value):
+            return None
+        return value
 
     # ── 计算记录存储 ──────────────────────────────────────────────────────
 

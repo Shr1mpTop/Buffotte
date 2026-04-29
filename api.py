@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 import asyncio
 import logging
+import math
 import traceback
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
@@ -805,6 +806,199 @@ async def calculate_profit_all_platforms(
         raise HTTPException(status_code=500, detail=f"利润计算失败: {e}")
 
 
+def _positive_float(value):
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    if result <= 0 or not math.isfinite(result):
+        return None
+    return result
+
+
+def _extract_price_rows(price_payload):
+    if not isinstance(price_payload, dict):
+        return []
+
+    data = price_payload.get("data", [])
+    if isinstance(data, dict):
+        if isinstance(data.get("data"), list):
+            data = data["data"]
+        elif isinstance(data.get("items"), list):
+            data = data["items"]
+        else:
+            data = list(data.values())
+
+    if not isinstance(data, list):
+        return []
+
+    return [row for row in data if isinstance(row, dict)]
+
+
+def _make_price_node(node_id, label, price, row=None, count_key=None, source="live"):
+    row = row or {}
+    platform = row.get("platform") or "BUFF"
+    count = row.get(count_key) if count_key else None
+    return {
+        "id": node_id,
+        "label": label,
+        "price": round(price, 2),
+        "platform": platform,
+        "platform_key": profit_processor.normalize_platform(platform),
+        "count": count,
+        "source": source,
+    }
+
+
+def _current_price_nodes(price_rows, fallback_sell=None, fallback_bid=None):
+    sell_candidates = []
+    bid_candidates = []
+
+    for row in price_rows:
+        platform = str(row.get("platform") or "")
+        if platform.strip().lower().startswith("steam"):
+            continue
+
+        sell_price = _positive_float(
+            row.get("sellPrice") or row.get("sell_price") or row.get("price")
+        )
+        bidding_price = _positive_float(
+            row.get("biddingPrice") or row.get("buyPrice") or row.get("buy_price")
+        )
+
+        if sell_price:
+            sell_candidates.append((sell_price, row))
+        if bidding_price:
+            bid_candidates.append((bidding_price, row))
+
+    lowest_sell = min(sell_candidates, key=lambda item: item[0], default=None)
+    highest_sell = max(sell_candidates, key=lambda item: item[0], default=None)
+    lowest_bid = min(bid_candidates, key=lambda item: item[0], default=None)
+    highest_bid = max(bid_candidates, key=lambda item: item[0], default=None)
+
+    lowest_sell_node = (
+        _make_price_node(
+            "current_lowest_sell",
+            "最低卖价",
+            lowest_sell[0],
+            lowest_sell[1],
+            "sellCount",
+        )
+        if lowest_sell
+        else None
+    )
+    lowest_bid_node = (
+        _make_price_node(
+            "current_lowest_bidding",
+            "最低求购",
+            lowest_bid[0],
+            lowest_bid[1],
+            "biddingCount",
+        )
+        if lowest_bid
+        else None
+    )
+    highest_sell_node = (
+        _make_price_node(
+            "current_highest_sell",
+            "最高卖价",
+            highest_sell[0],
+            highest_sell[1],
+            "sellCount",
+        )
+        if highest_sell
+        else None
+    )
+    highest_bid_node = (
+        _make_price_node(
+            "current_highest_bidding",
+            "最高求购",
+            highest_bid[0],
+            highest_bid[1],
+            "biddingCount",
+        )
+        if highest_bid
+        else None
+    )
+
+    if not lowest_sell_node and fallback_sell:
+        lowest_sell_node = _make_price_node(
+            "current_lowest_sell",
+            "最低卖价",
+            fallback_sell,
+            source="cache",
+        )
+    if not highest_sell_node and fallback_sell:
+        highest_sell_node = _make_price_node(
+            "current_highest_sell",
+            "最高卖价",
+            fallback_sell,
+            source="cache",
+        )
+    if not lowest_bid_node and fallback_bid:
+        lowest_bid_node = _make_price_node(
+            "current_lowest_bidding",
+            "最低求购",
+            fallback_bid,
+            source="cache",
+        )
+    if not highest_bid_node and fallback_bid:
+        highest_bid_node = _make_price_node(
+            "current_highest_bidding",
+            "最高求购",
+            fallback_bid,
+            source="cache",
+        )
+
+    return lowest_bid_node, lowest_sell_node, highest_bid_node, highest_sell_node
+
+
+def _estimate_future_bidding_node(predicted_sell, current_sell_node, current_highest_bid_node):
+    if not current_sell_node or not current_highest_bid_node:
+        return None
+
+    current_sell = _positive_float(current_sell_node.get("price"))
+    current_bid = _positive_float(current_highest_bid_node.get("price"))
+    if not current_sell or not current_bid:
+        return None
+
+    bid_to_sell_ratio = min(current_bid / current_sell, 1.0)
+    if bid_to_sell_ratio <= 0:
+        return None
+
+    predicted_bid = round(predicted_sell * bid_to_sell_ratio, 2)
+    node = _make_price_node(
+        "future_predicted_bidding",
+        "预测求购",
+        predicted_bid,
+        current_highest_bid_node,
+        "count",
+        source="estimated_from_spread",
+    )
+    node["estimation_ratio"] = round(bid_to_sell_ratio, 4)
+    return node
+
+
+def _latest_cached_price_pair(market_hash_name):
+    conn = None
+    try:
+        conn = profit_processor.get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT price, buy_price FROM item_kline_day "
+                "WHERE market_hash_name = %s "
+                "ORDER BY timestamp DESC LIMIT 1",
+                (market_hash_name,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None, None
+            return _positive_float(row[0]), _positive_float(row[1])
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/api/profit/predict/{market_hash_name}")
 async def predict_item_profit(market_hash_name: str, hold_days: int = 7):
     """
@@ -819,31 +1013,90 @@ async def predict_item_profit(market_hash_name: str, hold_days: int = 7):
                 detail=f"无法预测 {market_hash_name}（数据不足，至少需要 {60} 天K线数据）"
             )
 
-        # 获取当前价格
-        conn = None
-        current_price = None
+        cached_sell_price = None
+        cached_bidding_price = None
         try:
-            conn = profit_processor.get_db_connection()
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "SELECT price FROM item_kline_day "
-                    "WHERE market_hash_name = %s "
-                    "ORDER BY timestamp DESC LIMIT 1",
-                    (market_hash_name,),
-                )
-                row = cursor.fetchone()
-                if row:
-                    current_price = float(row[0])
-        finally:
-            if conn:
-                conn.close()
+            cached_sell_price, cached_bidding_price = _latest_cached_price_pair(
+                market_hash_name
+            )
+        except Exception:
+            logging.exception(f"读取 {market_hash_name} 最新缓存价格失败")
 
-        # 计算各平台利润
+        live_price_rows = []
+        try:
+            live_price_rows = _extract_price_rows(
+                await bufftracker_client.get_price(market_hash_name)
+            )
+        except Exception:
+            logging.exception(f"读取 {market_hash_name} 实时多平台价格失败")
+
+        (
+            current_lowest_bidding_node,
+            current_lowest_sell_node,
+            current_highest_bidding_node,
+            current_highest_sell_node,
+        ) = _current_price_nodes(
+            live_price_rows,
+            fallback_sell=cached_sell_price,
+            fallback_bid=cached_bidding_price,
+        )
+
+        predicted_sell_price = _positive_float(prediction["predicted"])
+        future_predicted_sell_node = (
+            _make_price_node(
+                "future_predicted_sell",
+                "预测卖价",
+                predicted_sell_price,
+                {"platform": "BUFF"},
+                source="lgbm",
+            )
+            if predicted_sell_price
+            else None
+        )
+        future_predicted_bidding_node = (
+            _estimate_future_bidding_node(
+                predicted_sell_price,
+                current_lowest_sell_node,
+                current_highest_bidding_node,
+            )
+            if predicted_sell_price
+            else None
+        )
+
+        buy_nodes = [
+            node
+            for node in [current_lowest_bidding_node, current_lowest_sell_node]
+            if node
+        ]
+        sell_nodes = [
+            node
+            for node in [future_predicted_bidding_node, future_predicted_sell_node]
+            if node
+        ]
+        profit_paths = profit_processor.calc_profit_paths(
+            buy_nodes=buy_nodes,
+            sell_nodes=sell_nodes,
+            hold_days=hold_days,
+        )
+        current_profit_paths = profit_processor.calc_profit_paths(
+            buy_nodes=buy_nodes,
+            sell_nodes=[
+                node
+                for node in [current_highest_bidding_node, current_highest_sell_node]
+                if node
+            ],
+            hold_days=hold_days,
+        )
+
+        # 兼容旧前端字段：保留“当前最低卖价买入 + 预测卖价卖出”的平台费率对比。
+        current_price = (
+            current_lowest_sell_node.get("price") if current_lowest_sell_node else None
+        )
         profit_by_platform = {}
-        if current_price and prediction["predicted"] > 0:
+        if current_price and predicted_sell_price:
             profit_by_platform = profit_processor.calc_all_platforms_profit(
                 buy_price=current_price,
-                sell_price=prediction["predicted"],
+                sell_price=predicted_sell_price,
                 hold_days=hold_days,
             )
 
@@ -852,10 +1105,45 @@ async def predict_item_profit(market_hash_name: str, hold_days: int = 7):
             "data": {
                 "market_hash_name": market_hash_name,
                 "current_price": current_price,
-                "predicted_price_7d": prediction["predicted"],
+                "current_lowest_bidding_price": (
+                    current_lowest_bidding_node.get("price")
+                    if current_lowest_bidding_node
+                    else None
+                ),
+                "current_lowest_sell_price": current_price,
+                "current_highest_bidding_price": (
+                    current_highest_bidding_node.get("price")
+                    if current_highest_bidding_node
+                    else None
+                ),
+                "current_highest_sell_price": (
+                    current_highest_sell_node.get("price")
+                    if current_highest_sell_node
+                    else None
+                ),
+                "predicted_highest_bidding_price": (
+                    future_predicted_bidding_node.get("price")
+                    if future_predicted_bidding_node
+                    else None
+                ),
+                "predicted_price_7d": predicted_sell_price,
                 "predicted_lower": prediction["lower"],
                 "predicted_upper": prediction["upper"],
                 "confidence": prediction["confidence"],
+                "price_nodes": {
+                    "current_lowest_bidding": current_lowest_bidding_node,
+                    "current_lowest_sell": current_lowest_sell_node,
+                    "current_highest_bidding": current_highest_bidding_node,
+                    "current_highest_sell": current_highest_sell_node,
+                    "future_predicted_bidding": future_predicted_bidding_node,
+                    "future_predicted_sell": future_predicted_sell_node,
+                },
+                "profit_paths": profit_paths,
+                "best_path": profit_paths[0] if profit_paths else None,
+                "current_profit_paths": current_profit_paths,
+                "best_current_path": (
+                    current_profit_paths[0] if current_profit_paths else None
+                ),
                 "profit_by_platform": profit_by_platform,
             },
         }

@@ -121,12 +121,11 @@
               <div class="pf-row">
                 <span class="pf-label">卖</span>
                 <span
-                  class="pf-val"
-                  :class="{
-                    highlight:
-                      platform.sellPrice === highestSellPrice &&
-                      highestSellPrice !== null,
-                  }"
+	                  class="pf-val"
+	                  :class="{
+	                    'highlight-sell-low': isPriceExtreme(platform.sellPrice, lowestSellPrice),
+	                    'highlight-sell-high': isPriceExtreme(platform.sellPrice, highestSellPrice),
+	                  }"
                   >¥{{ platform.sellPrice }}</span
                 >
                 <span class="pf-cnt">({{ platform.sellCount }})</span>
@@ -134,12 +133,11 @@
               <div class="pf-row">
                 <span class="pf-label">购</span>
                 <span
-                  class="pf-val"
-                  :class="{
-                    'highlight-yellow':
-                      platform.biddingPrice === lowestBiddingPrice &&
-                      lowestBiddingPrice !== null,
-                  }"
+	                  class="pf-val"
+	                  :class="{
+	                    'highlight-bid-low': isPriceExtreme(platform.biddingPrice, lowestBiddingPrice),
+	                    'highlight-bid-high': isPriceExtreme(platform.biddingPrice, highestBiddingPrice),
+	                  }"
                   >¥{{ platform.biddingPrice }}</span
                 >
                 <span class="pf-cnt">({{ platform.biddingCount }})</span>
@@ -170,7 +168,7 @@
         <!-- Profit Prediction Panel -->
         <div ref="profitPanelEl" class="panel-card profit-panel" v-if="selectedItem && (profitLoading || profitData)">
           <div class="pc-hd">
-            <span class="pc-dot"></span>7天预测利润
+            <span class="pc-dot"></span>利润路径规划
             <div v-if="profitLoading" class="refresh-badge">
               <span class="refresh-dot"></span>预测中
             </div>
@@ -183,13 +181,57 @@
             <div class="empty-line error">{{ profitError }}</div>
           </div>
           <div v-else-if="profitData" class="profit-content">
+            <div class="profit-section" v-if="currentProfitRows.length">
+              <div class="profit-section-title">当前即时参考</div>
+              <div class="profit-table current">
+	                <div class="pt-header">
+	                  <span class="pt-col-name">路径</span>
+	                  <span class="pt-col">平台</span>
+	                  <span class="pt-col">买入成本</span>
+	                  <span class="pt-col">卖出价</span>
+	                  <span class="pt-col">手续费</span>
+                  <span class="pt-col">提现费</span>
+                  <span class="pt-col">净利润</span>
+                  <span class="pt-col">收益率</span>
+                </div>
+                <div
+                  v-for="path in currentProfitRows"
+                  :key="path.id"
+                  class="pt-row"
+                  :class="{ 'best-profit': isBestCurrentProfit(path.id) }"
+                >
+                  <span class="pt-col-name">{{ path.name }}</span>
+                  <span class="pt-col">{{ path.platform_route || path.sell_platform_display || path.sell_platform || '-' }}</span>
+                  <span class="pt-col">¥{{ path.buy_price }}</span>
+                  <span class="pt-col">¥{{ path.sell_price }}</span>
+                  <span class="pt-col fee">¥{{ path.sell_fee }} / {{ formatRate(path.sell_fee_rate) }}%</span>
+                  <span class="pt-col fee">¥{{ path.withdraw_fee }} / {{ formatRate(path.withdraw_fee_rate) }}%</span>
+                  <span class="pt-col" :class="path.net_profit >= 0 ? 'profit-positive' : 'profit-negative'">
+                    ¥{{ path.net_profit }}
+                  </span>
+                  <span class="pt-col" :class="path.profit_rate >= 0 ? 'profit-positive' : 'profit-negative'">
+                    {{ path.profit_rate }}%
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="profit-section">
+              <div class="profit-section-title">7天预测利润</div>
             <div class="profit-summary">
               <div class="ps-item">
-                <div class="ps-label">当前价格</div>
-                <div class="ps-value">¥{{ profitData.current_price ?? '-' }}</div>
+                <div class="ps-label">最低求购买入</div>
+                <div class="ps-value">¥{{ profitData.current_lowest_bidding_price ?? '-' }}</div>
               </div>
               <div class="ps-item">
-                <div class="ps-label">7天预测价</div>
+                <div class="ps-label">最低卖价买入</div>
+                <div class="ps-value">¥{{ profitData.current_lowest_sell_price ?? profitData.current_price ?? '-' }}</div>
+              </div>
+              <div class="ps-item">
+                <div class="ps-label">预测求购卖出</div>
+                <div class="ps-value predicted">¥{{ profitData.predicted_highest_bidding_price ?? '-' }}</div>
+              </div>
+              <div class="ps-item">
+                <div class="ps-label">预测卖价卖出</div>
                 <div class="ps-value predicted">¥{{ profitData.predicted_price_7d }}</div>
                 <div class="ps-range" v-if="profitData.predicted_lower && profitData.predicted_upper">
                   ¥{{ profitData.predicted_lower }} ~ ¥{{ profitData.predicted_upper }}
@@ -197,9 +239,11 @@
                 </div>
               </div>
             </div>
-            <div class="profit-table" v-if="profitData.profit_by_platform && Object.keys(profitData.profit_by_platform).length">
+            <div class="profit-table" v-if="profitRows.length">
               <div class="pt-header">
-                <span class="pt-col-name">平台</span>
+                <span class="pt-col-name">路径</span>
+                <span class="pt-col">平台</span>
+                <span class="pt-col">买入成本</span>
                 <span class="pt-col">卖出价</span>
                 <span class="pt-col">手续费</span>
                 <span class="pt-col">提现费</span>
@@ -208,25 +252,28 @@
                 <span class="pt-col">年化</span>
               </div>
               <div
-                v-for="(pdata, pkey) in profitData.profit_by_platform"
-                :key="pkey"
+                v-for="path in profitRows"
+                :key="path.id"
                 class="pt-row"
-                :class="{ 'best-profit': isBestProfit(pkey) }"
+                :class="{ 'best-profit': isBestProfit(path.id) }"
               >
-                <span class="pt-col-name">{{ pdata.display_name || pkey }}</span>
-                <span class="pt-col">¥{{ pdata.sell_price }}</span>
-                <span class="pt-col fee">¥{{ pdata.sell_fee }}</span>
-                <span class="pt-col fee">¥{{ pdata.withdraw_fee }}</span>
-                <span class="pt-col" :class="pdata.net_profit >= 0 ? 'profit-positive' : 'profit-negative'">
-                  ¥{{ pdata.net_profit }}
+                <span class="pt-col-name">{{ path.name }}</span>
+                <span class="pt-col">{{ path.platform_route || path.sell_platform_display || path.sell_platform || '-' }}</span>
+                <span class="pt-col">¥{{ path.buy_price }}</span>
+                <span class="pt-col">¥{{ path.sell_price }}</span>
+                <span class="pt-col fee">¥{{ path.sell_fee }} / {{ formatRate(path.sell_fee_rate) }}%</span>
+                <span class="pt-col fee">¥{{ path.withdraw_fee }} / {{ formatRate(path.withdraw_fee_rate) }}%</span>
+                <span class="pt-col" :class="path.net_profit >= 0 ? 'profit-positive' : 'profit-negative'">
+                  ¥{{ path.net_profit }}
                 </span>
-                <span class="pt-col" :class="pdata.profit_rate >= 0 ? 'profit-positive' : 'profit-negative'">
-                  {{ pdata.profit_rate }}%
+                <span class="pt-col" :class="path.profit_rate >= 0 ? 'profit-positive' : 'profit-negative'">
+                  {{ path.profit_rate }}%
                 </span>
-                <span class="pt-col" :class="pdata.annualized_return >= 0 ? 'profit-positive' : 'profit-negative'">
-                  {{ pdata.annualized_return }}%
+                <span class="pt-col" :class="path.annualized_return >= 0 ? 'profit-positive' : 'profit-negative'">
+                  {{ path.annualized_return }}%
                 </span>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -347,14 +394,16 @@ const loadingPrice = ref(false);
 const klineData = ref([]);
 const loadingKlineData = ref(false);
 const klineError = ref(null);
+const lowestSellPrice = ref(null);
 const highestSellPrice = ref(null);
 const lowestBiddingPrice = ref(null);
+const highestBiddingPrice = ref(null);
 const isRefreshingKline = ref(false);
 const profitData = ref(null);
 const profitLoading = ref(false);
 const profitError = ref(null);
 const profitPanelEl = ref(null);
-const trackedProfitMap = ref({}); // {market_hash_name: {best_rate, best_platform}}
+const trackedProfitMap = ref({}); // {market_hash_name: {best_rate, best_path}}
 
 // Matrix rain
 let _raf = null;
@@ -375,6 +424,31 @@ const displayPlatforms = computed(() => {
     }
   );
 });
+
+const isPriceExtreme = (value, extreme) => {
+  const price = Number(value);
+  return extreme !== null && Number.isFinite(price) && price > 0 && price === extreme;
+};
+
+const getProfitRows = (data) => {
+  if (!data) return [];
+  if (Array.isArray(data.profit_paths) && data.profit_paths.length) {
+    return data.profit_paths;
+  }
+  if (!data.profit_by_platform) return [];
+  return Object.entries(data.profit_by_platform).map(([key, value]) => ({
+    id: key,
+    name: value.display_name || key,
+    ...value,
+  }));
+};
+
+const profitRows = computed(() => getProfitRows(profitData.value));
+const currentProfitRows = computed(() =>
+  Array.isArray(profitData.value?.current_profit_paths)
+    ? profitData.value.current_profit_paths
+    : []
+);
 
 // --- Matrix rain background ---
 const initMatrix = () => {
@@ -532,8 +606,10 @@ const selectItem = async (item) => {
   klineData.value = [];
   klineError.value = null;
   isRefreshingKline.value = false;
+  lowestSellPrice.value = null;
   highestSellPrice.value = null;
   lowestBiddingPrice.value = null;
+  highestBiddingPrice.value = null;
   profitData.value = null;
   profitError.value = null;
   profitLoading.value = true;
@@ -546,15 +622,22 @@ const selectItem = async (item) => {
         data: priceResult.data,
         updateTime: priceResult.data[0]?.updateTime || Date.now() / 1000,
       };
-      let maxSell = 0;
+      let minSell = Infinity;
+      let maxSell = -Infinity;
       let minBidding = Infinity;
+      let maxBidding = -Infinity;
       priceResult.data.forEach((p) => {
-        if (p.platform === 'Steam' || p.sellPrice === 0 || p.biddingPrice === 0) return;
-        if (p.sellPrice > maxSell) maxSell = p.sellPrice;
-        if (p.biddingPrice < minBidding) minBidding = p.biddingPrice;
+        const sellPrice = Number(p.sellPrice);
+        const biddingPrice = Number(p.biddingPrice);
+        if (Number.isFinite(sellPrice) && sellPrice > 0 && sellPrice < minSell) minSell = sellPrice;
+        if (Number.isFinite(sellPrice) && sellPrice > 0 && sellPrice > maxSell) maxSell = sellPrice;
+        if (Number.isFinite(biddingPrice) && biddingPrice > 0 && biddingPrice < minBidding) minBidding = biddingPrice;
+        if (Number.isFinite(biddingPrice) && biddingPrice > 0 && biddingPrice > maxBidding) maxBidding = biddingPrice;
       });
-      highestSellPrice.value = maxSell > 0 ? maxSell : null;
+      lowestSellPrice.value = minSell !== Infinity ? minSell : null;
+      highestSellPrice.value = maxSell !== -Infinity ? maxSell : null;
       lowestBiddingPrice.value = minBidding !== Infinity ? minBidding : null;
+      highestBiddingPrice.value = maxBidding !== -Infinity ? maxBidding : null;
       await nextTick();
       animateInfoBar();
       animatePriceCards();
@@ -650,18 +733,19 @@ const selectItem = async (item) => {
 
 // --- Profit helpers ---
 const updateTrackedProfitMap = (data) => {
-  if (!data.profit_by_platform) return;
+  const rows = getProfitRows(data);
+  if (!rows.length) return;
   let bestRate = -Infinity;
-  let bestPlatform = null;
-  for (const [pkey, pdata] of Object.entries(data.profit_by_platform)) {
-    if (pdata.profit_rate > bestRate) {
-      bestRate = pdata.profit_rate;
-      bestPlatform = pkey;
+  let bestPath = null;
+  rows.forEach((row) => {
+    if (row.profit_rate > bestRate) {
+      bestRate = row.profit_rate;
+      bestPath = row.id;
     }
-  }
+  });
   trackedProfitMap.value[data.market_hash_name] = {
     best_rate: bestRate,
-    best_platform: bestPlatform,
+    best_path: bestPath,
   };
 };
 
@@ -677,18 +761,40 @@ const getItemProfitBadge = (item) => {
   return null;
 };
 
-const isBestProfit = (pkey) => {
-  if (!profitData.value?.profit_by_platform) return false;
+const isBestProfit = (pathId) => {
+  const rows = profitRows.value;
+  if (!rows.length) return false;
   let bestRate = -Infinity;
-  let bestKey = null;
-  for (const [k, v] of Object.entries(profitData.value.profit_by_platform)) {
-    if (v.profit_rate > bestRate) {
-      bestRate = v.profit_rate;
-      bestKey = k;
+  let bestId = null;
+  rows.forEach((row) => {
+    if (row.profit_rate > bestRate) {
+      bestRate = row.profit_rate;
+      bestId = row.id;
     }
-  }
-  return pkey === bestKey;
+  });
+  return pathId === bestId;
 };
+
+const isBestCurrentProfit = (pathId) => {
+  const rows = currentProfitRows.value;
+  if (!rows.length) return false;
+  let bestRate = -Infinity;
+  let bestId = null;
+  rows.forEach((row) => {
+    if (row.profit_rate > bestRate) {
+      bestRate = row.profit_rate;
+      bestId = row.id;
+    }
+  });
+  return pathId === bestId;
+};
+
+const formatRate = (value) => {
+  const rate = Number(value);
+  if (!Number.isFinite(rate)) return '-';
+  return rate.toFixed(4).replace(/\.?0+$/, '');
+};
+
 const formatTime = (timestamp) => {
   if (!timestamp) return '';
   return new Date(timestamp * 1000).toLocaleString('zh-CN');
@@ -1355,13 +1461,21 @@ const handleResize = () => {
   font-size: 9px;
   color: rgba(0, 255, 65, 0.35);
 }
-.pf-val.highlight {
+.pf-val.highlight-sell-low {
+  color: #00e5ff !important;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+.pf-val.highlight-sell-high {
   color: #ff4444 !important;
   text-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
 }
-.pf-val.highlight-yellow {
+.pf-val.highlight-bid-low {
   color: #ffdd00 !important;
   text-shadow: 0 0 8px rgba(255, 221, 0, 0.6);
+}
+.pf-val.highlight-bid-high {
+  color: #00ff41 !important;
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.65);
 }
 
 /* === Chart Panels === */
@@ -1430,6 +1544,17 @@ const handleResize = () => {
   padding: 12px 14px;
 }
 
+.profit-section + .profit-section {
+  margin-top: 16px;
+}
+
+.profit-section-title {
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.55);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
 .profit-summary {
   display: flex;
   gap: 24px;
@@ -1478,11 +1603,16 @@ const handleResize = () => {
 
 .pt-header, .pt-row {
   display: grid;
-  grid-template-columns: 90px repeat(6, 1fr);
+  grid-template-columns: minmax(150px, 1.4fr) repeat(8, minmax(70px, 1fr));
   gap: 4px;
   padding: 6px 0;
   font-size: 12px;
   align-items: center;
+}
+
+.profit-table.current .pt-header,
+.profit-table.current .pt-row {
+  grid-template-columns: minmax(150px, 1.4fr) repeat(7, minmax(70px, 1fr));
 }
 
 .pt-header {
@@ -1510,6 +1640,7 @@ const handleResize = () => {
 .pt-col-name {
   color: rgba(0, 255, 65, 0.6);
   font-weight: 600;
+  min-width: 0;
 }
 
 .pt-col {

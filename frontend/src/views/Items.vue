@@ -109,9 +109,8 @@
                 <span
                   class="pf-val"
                   :class="{
-                    highlight:
-                      platform.sellPrice === highestSellPrice &&
-                      highestSellPrice !== null,
+                    'highlight-sell-low': isPriceExtreme(platform.sellPrice, lowestSellPrice),
+                    'highlight-sell-high': isPriceExtreme(platform.sellPrice, highestSellPrice),
                   }"
                   >¥{{ platform.sellPrice }}</span
                 >
@@ -122,9 +121,8 @@
                 <span
                   class="pf-val"
                   :class="{
-                    'highlight-yellow':
-                      platform.biddingPrice === lowestBiddingPrice &&
-                      lowestBiddingPrice !== null,
+                    'highlight-bid-low': isPriceExtreme(platform.biddingPrice, lowestBiddingPrice),
+                    'highlight-bid-high': isPriceExtreme(platform.biddingPrice, highestBiddingPrice),
                   }"
                   >¥{{ platform.biddingPrice }}</span
                 >
@@ -254,8 +252,10 @@ const loadingPrice = ref(false);
 const klineData = ref([]);
 const loadingKlineData = ref(false);
 const klineError = ref(null);
+const lowestSellPrice = ref(null);
 const highestSellPrice = ref(null);
 const lowestBiddingPrice = ref(null);
+const highestBiddingPrice = ref(null);
 const user = ref(JSON.parse(localStorage.getItem('user')));
 let searchTimeout = null;
 
@@ -280,6 +280,11 @@ const displayPlatforms = computed(() => {
     }
   );
 });
+
+const isPriceExtreme = (value, extreme) => {
+  const price = Number(value);
+  return extreme !== null && Number.isFinite(price) && price > 0 && price === extreme;
+};
 
 // --- Matrix rain background ---
 const initMatrix = () => {
@@ -446,8 +451,10 @@ const selectItem = async (item) => {
   klineError.value = null;
   loadingPrice.value = true;
   loadingKlineData.value = true;
+  lowestSellPrice.value = null;
   highestSellPrice.value = null;
   lowestBiddingPrice.value = null;
+  highestBiddingPrice.value = null;
 
   try {
     const priceResult = await api.getItemPrice(item.market_hash_name);
@@ -456,15 +463,22 @@ const selectItem = async (item) => {
         data: priceResult.data,
         updateTime: priceResult.data[0]?.updateTime || Date.now() / 1000,
       };
-      let maxSell = 0;
+      let minSell = Infinity;
+      let maxSell = -Infinity;
       let minBidding = Infinity;
+      let maxBidding = -Infinity;
       priceResult.data.forEach((p) => {
-        if (p.platform === 'Steam' || p.sellPrice === 0 || p.biddingPrice === 0) return;
-        if (p.sellPrice > maxSell) maxSell = p.sellPrice;
-        if (p.biddingPrice < minBidding) minBidding = p.biddingPrice;
+        const sellPrice = Number(p.sellPrice);
+        const biddingPrice = Number(p.biddingPrice);
+        if (Number.isFinite(sellPrice) && sellPrice > 0 && sellPrice < minSell) minSell = sellPrice;
+        if (Number.isFinite(sellPrice) && sellPrice > 0 && sellPrice > maxSell) maxSell = sellPrice;
+        if (Number.isFinite(biddingPrice) && biddingPrice > 0 && biddingPrice < minBidding) minBidding = biddingPrice;
+        if (Number.isFinite(biddingPrice) && biddingPrice > 0 && biddingPrice > maxBidding) maxBidding = biddingPrice;
       });
-      highestSellPrice.value = maxSell > 0 ? maxSell : null;
+      lowestSellPrice.value = minSell !== Infinity ? minSell : null;
+      highestSellPrice.value = maxSell !== -Infinity ? maxSell : null;
       lowestBiddingPrice.value = minBidding !== Infinity ? minBidding : null;
+      highestBiddingPrice.value = maxBidding !== -Infinity ? maxBidding : null;
       await nextTick();
       animateInfoBar();
       animatePriceCards();
@@ -1179,13 +1193,21 @@ const handleResize = () => {
   font-size: 9px;
   color: rgba(0, 255, 65, 0.35);
 }
-.pf-val.highlight {
+.pf-val.highlight-sell-low {
+  color: #00e5ff !important;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+.pf-val.highlight-sell-high {
   color: #ff4444 !important;
   text-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
 }
-.pf-val.highlight-yellow {
+.pf-val.highlight-bid-low {
   color: #ffdd00 !important;
   text-shadow: 0 0 8px rgba(255, 221, 0, 0.6);
+}
+.pf-val.highlight-bid-high {
+  color: #00ff41 !important;
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.65);
 }
 
 /* === Chart Panels === */
